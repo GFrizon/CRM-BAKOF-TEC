@@ -159,7 +159,7 @@ class Banner(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return Usuario.query.get(int(user_id))
+    return db.session.get(Usuario, int(user_id))
 
 # =============================================================================
 # HELPERS
@@ -546,7 +546,7 @@ def registrar_ligacao(cliente_id: int):
         except:
             valor_venda = 0.0
 
-        cli = Cliente.query.get(cliente_id)
+        cli = db.session.get(Cliente, cliente_id)
         if not cli:
             return jsonify({"ok": False, "mensagem": "Cliente não encontrado."}), 404
 
@@ -605,13 +605,13 @@ def registrar_ligacao(cliente_id: int):
         return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
 
 # =============================================================================
-# 🆕 EDITAR OBSERVAÇÃO DE LIGAÇÃO
+# EDITAR OBSERVAÇÃO DE LIGAÇÃO
 # =============================================================================
 @app.route('/editar-observacao/<int:ligacao_id>', methods=['POST'])
 @login_required
 def editar_observacao(ligacao_id: int):
     try:
-        ligacao = Ligacao.query.get(ligacao_id)
+        ligacao = db.session.get(Ligacao, ligacao_id)
         if not ligacao:
             return jsonify({"ok": False, "mensagem": "Ligação não encontrada"}), 404
         
@@ -632,6 +632,76 @@ def editar_observacao(ligacao_id: int):
         return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
 
 # =============================================================================
+# EDITAR LIGAÇÃO COMPLETA (RESULTADO, VALOR, OBSERVAÇÃO)
+# =============================================================================
+@app.route('/editar-ligacao/<int:ligacao_id>', methods=['POST'])
+@login_required
+def editar_ligacao(ligacao_id: int):
+    try:
+        ligacao = db.session.get(Ligacao, ligacao_id)
+        if not ligacao:
+            return jsonify({"ok": False, "mensagem": "Ligação não encontrada"}), 404
+        
+        # Verificar permissão: consultor só pode editar suas próprias ligações
+        if current_user.tipo == 'consultor' and ligacao.consultor_id != current_user.id:
+            return jsonify({"ok": False, "mensagem": "Sem permissão para editar esta ligação"}), 403
+        
+        payload = request.get_json(silent=True) or {}
+        
+        # Editar resultado
+        if 'resultado' in payload:
+            novo_resultado = s(payload.get('resultado'))
+            if novo_resultado in ('comprou', 'nao_comprou', 'retornar', 'sem_interesse', 'relacionamento', 'cliente_inativo'):
+                ligacao.resultado = novo_resultado
+        
+        # Editar valor da venda
+        if 'valor_venda' in payload:
+            try:
+                novo_valor = float(str(payload.get('valor_venda') or 0).replace(',', '.'))
+                ligacao.valor_venda = novo_valor
+            except:
+                ligacao.valor_venda = 0.0
+        
+        # Editar observação
+        if 'observacao' in payload:
+            ligacao.observacao = s(payload.get('observacao')) or None
+        
+        db.session.commit()
+        return jsonify({"ok": True, "mensagem": "Ligação atualizada com sucesso!"})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
+
+# =============================================================================
+# OBTER DETALHES DA LIGAÇÃO PARA EDIÇÃO
+# =============================================================================
+@app.route('/api/detalhes-ligacao/<int:ligacao_id>')
+@login_required
+def api_detalhes_ligacao(ligacao_id: int):
+    try:
+        ligacao = db.session.get(Ligacao, ligacao_id)
+        if not ligacao:
+            return jsonify({"erro": "Ligação não encontrada"}), 404
+        
+        # Verificar permissão
+        if current_user.tipo == 'consultor' and ligacao.consultor_id != current_user.id:
+            return jsonify({"erro": "Sem permissão"}), 403
+        
+        return jsonify({
+            "id": ligacao.id,
+            "resultado": ligacao.resultado,
+            "valor_venda": float(ligacao.valor_venda or 0),
+            "valor_venda_fmt": formatar_dinheiro(ligacao.valor_venda),
+            "observacao": ligacao.observacao,
+            "contato_nome": ligacao.contato_nome,
+            "data_hora": ligacao.data_hora.strftime("%d/%m/%Y %H:%M") if ligacao.data_hora else ""
+        })
+        
+    except Exception as e:
+        return jsonify({"erro": f"Erro: {str(e)}"}), 500
+
+# =============================================================================
 # HISTÓRICO LIGAÇÕES
 # =============================================================================
 @app.route('/historico-ligacoes/<int:cliente_id>')
@@ -640,7 +710,7 @@ def historico_ligacoes(cliente_id: int):
         return jsonify([])
 
     try:
-        cli = Cliente.query.get(cliente_id)
+        cli = db.session.get(Cliente, cliente_id)
         if not cli:
             return jsonify([])
 
@@ -712,7 +782,7 @@ def adicionar_nota(cliente_id: int):
     if not texto:
         return jsonify({"ok": False, "mensagem": "Texto obrigatório"}), 400
 
-    cli = Cliente.query.get(cliente_id)
+    cli = db.session.get(Cliente, cliente_id)
     if not cli:
         return jsonify({"ok": False, "mensagem": "Cliente não encontrado"}), 404
 
@@ -1485,26 +1555,26 @@ def build_relatorio_html():
 def enviar_relatorio_email(recipients=None):
     recs = recipients or MAIL_RECIPIENTS
     if not recs:
-        print("❌ Email: Sem destinatários")
+        print("Email: Sem destinatários")
         return False, "Sem destinatários configurados."
     
     if not MAIL_PASSWORD:
-        print("❌ Email: Senha não configurada")
+        print("Email: Senha não configurada")
         return False, "MAIL_PASSWORD não configurado."
     
     html = build_relatorio_html()
-    assunto = f"📊 Relatório de Ligações — {datetime.now().strftime('%d/%m/%Y')}"
+    assunto = f"Relatório de Ligações — {datetime.now().strftime('%d/%m/%Y')}"
     
     try:
-        print(f"📧 Tentando enviar email para: {', '.join(recs)}")
+        print(f"Tentando enviar email para: {', '.join(recs)}")
         with app.app_context():
             msg = Message(subject=assunto, recipients=recs)
             msg.html = html
             mail.send(msg)
-        print(f"✅ Email enviado com sucesso!")
+        print(f"Email enviado com sucesso!")
         return True, f"Relatório enviado para: {', '.join(recs)}"
     except Exception as e:
-        print(f"❌ Erro ao enviar email: {e}")
+        print(f"Erro ao enviar email: {e}")
         return False, f"Falha ao enviar e-mail: {e}"
 
 
@@ -1661,7 +1731,7 @@ def editar_usuario(usuario_id):
         return jsonify({"ok": False, "mensagem": "Acesso negado"}), 403
     
     try:
-        usuario = Usuario.query.get(usuario_id)
+        usuario = db.session.get(Usuario, usuario_id)
         if not usuario:
             return jsonify({"ok": False, "mensagem": "Usuário não encontrado"}), 404
         
@@ -1702,7 +1772,7 @@ def toggle_status_usuario(usuario_id):
         return jsonify({"ok": False, "mensagem": "Acesso negado"}), 403
     
     try:
-        usuario = Usuario.query.get(usuario_id)
+        usuario = db.session.get(Usuario, usuario_id)
         if not usuario:
             return jsonify({"ok": False, "mensagem": "Usuário não encontrado"}), 404
         
@@ -1727,7 +1797,7 @@ def redefinir_senha_usuario(usuario_id):
         return jsonify({"ok": False, "mensagem": "Acesso negado"}), 403
     
     try:
-        usuario = Usuario.query.get(usuario_id)
+        usuario = db.session.get(Usuario, usuario_id)
         if not usuario:
             return jsonify({"ok": False, "mensagem": "Usuário não encontrado"}), 404
         
@@ -1816,7 +1886,7 @@ def toggle_banner_status(banner_id):
         return jsonify({"ok": False, "mensagem": "Acesso negado"}), 403
     
     try:
-        banner = Banner.query.get(banner_id)
+        banner = db.session.get(Banner, banner_id)
         if not banner:
             return jsonify({"ok": False, "mensagem": "Banner não encontrado"}), 404
         
@@ -1838,7 +1908,7 @@ def excluir_banner(banner_id):
         return jsonify({"ok": False, "mensagem": "Acesso negado"}), 403
     
     try:
-        banner = Banner.query.get(banner_id)
+        banner = db.session.get(Banner, banner_id)
         if not banner:
             return jsonify({"ok": False, "mensagem": "Banner não encontrado"}), 404
         
@@ -2010,7 +2080,7 @@ def api_busca_clientes():
 @login_required
 def remover_cliente(cliente_id):
     try:
-        cliente = Cliente.query.get(cliente_id)
+        cliente = db.session.get(Cliente, cliente_id)
         if not cliente:
             return jsonify({"ok": False, "mensagem": "Cliente não encontrado"}), 404
         
@@ -2074,7 +2144,7 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
-    # 🆕 coluna viu_novidades em usuarios
+    # coluna viu_novidades em usuarios
     try:
         db.session.execute(text("ALTER TABLE usuarios ADD COLUMN viu_novidades BOOLEAN DEFAULT FALSE"))
         db.session.commit()
@@ -2115,13 +2185,13 @@ with app.app_context():
         db.session.rollback()
 
     if not MAIL_PASSWORD:
-        print("⚠️ AVISO: MAIL_PASSWORD não configurado! Email não funcionará.")
+        print("AVISO: MAIL_PASSWORD não configurado! Email não funcionará.")
         print("   Configure a variável MAIL_PASSWORD no .env")
     
     if not MAIL_RECIPIENTS:
-        print("⚠️ AVISO: Nenhum destinatário configurado para relatórios.")
+        print("AVISO: Nenhum destinatário configurado para relatórios.")
     else:
-        print(f"✅ Email configurado. Destinatários: {', '.join(MAIL_RECIPIENTS)}")
+        print(f"Email configurado. Destinatários: {', '.join(MAIL_RECIPIENTS)}")
 
 # =============================================================================
 # SCHEDULER DIÁRIO 18:00
@@ -2142,9 +2212,9 @@ def start_scheduler_once():
         with app.app_context():
             try:
                 ok, msg = enviar_relatorio_email(MAIL_RECIPIENTS)
-                print(f"📧 Relatório automático: {msg}")
+                print(f"Relatório automático: {msg}")
             except Exception as e:
-                print(f"❌ Erro no relatório automático: {e}")
+                print(f"Erro no relatório automático: {e}")
     
     _scheduler.add_job(
         job_relatorio,
@@ -2158,7 +2228,7 @@ def start_scheduler_once():
     
     _scheduler.start()
     app._scheduler_started = True
-    print("✅ Scheduler configurado: envio diário às 18:00 (America/Sao_Paulo)")
+    print("Scheduler configurado: envio diário às 18:00 (America/Sao_Paulo)")
 
 # =============================================================================
 # MAIN
@@ -2177,5 +2247,5 @@ if __name__ == "__main__":
     def health():
         return jsonify(status="ok"), 200
 
-    print(f"🚀 Servidor de produção iniciado, Controle de Ligações em http://{host}:{port}")
+    print(f"Servidor de produção iniciado, Controle de Ligações em http://{host}:{port}")
     serve(app, host=host, port=port, threads=32)

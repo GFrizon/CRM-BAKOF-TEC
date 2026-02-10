@@ -436,6 +436,55 @@
   </div>
 </div>
 
+<!-- 🆕 MODAL: EDITAR LIGAÇÃO COMPLETA -->
+<div class="modal fade" id="modalEditarLigacao" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Editar Ligação</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editLigacaoId">
+        
+        <div class="mb-3">
+          <label class="form-label">Resultado</label>
+          <select class="form-select" id="editResultado">
+            <option value="nao_comprou">Não Comprou</option>
+            <option value="comprou">Comprou</option>
+            <option value="retornar">Retornar</option>
+            <option value="sem_interesse">Sem Interesse</option>
+            <option value="relacionamento">Relacionamento</option>
+            <option value="cliente_inativo">Cliente Inativo</option>
+          </select>
+        </div>
+        
+        <div class="mb-3" id="editValorContainer" style="display: none;">
+          <label class="form-label">Valor da Venda</label>
+          <input type="text" class="form-control" id="editValorVenda" placeholder="0,00">
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Observação</label>
+          <textarea class="form-control" id="editObservacao" rows="3"></textarea>
+        </div>
+        
+        <div class="alert alert-info small">
+          <i class="bi bi-info-circle"></i> 
+          <strong>Data/Hora:</strong> <span id="editDataHora"></span><br>
+          <strong>Contato:</strong> <span id="editContatoNome"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="salvarEdicaoLigacao()">
+          <i class="bi bi-save"></i> Salvar Alterações
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ====================================================== -->
 <!-- MODAL: LIMPAR CLIENTES -->
 <!-- ====================================================== -->
@@ -540,6 +589,7 @@ let modalHistorico = new bootstrap.Modal(document.getElementById('modalHistorico
 let modalLimpar = new bootstrap.Modal(document.getElementById('modalLimpar'));
 let modalAdicionar = new bootstrap.Modal(document.getElementById('modalAdicionar'));
 let modalEditarObs = new bootstrap.Modal(document.getElementById('modalEditarObs')); // 🆕 NOVO
+let modalEditarLigacao = new bootstrap.Modal(document.getElementById('modalEditarLigacao')); // 🆕 NOVO
 
 // 🆕 FECHAR POP-UP DE NOVIDADES
 async function fecharNovidades() {
@@ -607,8 +657,8 @@ function historico(id) {
                   ${item.observacao ? '<div class="mt-2 p-2 bg-light rounded"><em>'+item.observacao+'</em></div>' : ''}
                 </div>
                 ${item.pode_editar ? `
-                  <button class="btn btn-sm btn-outline-primary" onclick="editarObservacao(${item.id}, '${(item.observacao || '').replace(/'/g, "\\'")}')">
-                    <i class="bi bi-pencil"></i>
+                  <button class="btn btn-sm btn-outline-primary" onclick="editarLigacaoCompleta(${item.id})">
+                    <i class="bi bi-pencil-square"></i>
                   </button>
                 ` : ''}
               </div>
@@ -623,6 +673,83 @@ function historico(id) {
       document.getElementById('historicoContent').innerHTML =
         '<p class="text-danger">Erro ao carregar histórico.</p>';
     });
+}
+
+// 🆕 ABRIR MODAL DE EDIÇÃO COMPLETA
+async function editarLigacaoCompleta(ligacaoId) {
+  try {
+    // Carregar dados atuais da ligação
+    const r = await fetch(`/api/detalhes-ligacao/${ligacaoId}`);
+    const data = await r.json();
+    
+    if (!r.ok) {
+      alert(data.erro || 'Erro ao carregar dados da ligação');
+      return;
+    }
+    
+    // Preencher formulário
+    document.getElementById('editLigacaoId').value = data.id;
+    document.getElementById('editResultado').value = data.resultado;
+    document.getElementById('editValorVenda').value = data.valor_venda_fmt.replace('R$ ', '');
+    document.getElementById('editObservacao').value = data.observacao || '';
+    document.getElementById('editDataHora').textContent = data.data_hora;
+    document.getElementById('editContatoNome').textContent = data.contato_nome || 'N/A';
+    
+    // Mostrar/esconder campo de valor conforme resultado
+    toggleEditValorContainer();
+    
+    // Adicionar listener para mudança no resultado
+    document.getElementById('editResultado').onchange = toggleEditValorContainer;
+    
+    modalHistorico.hide();
+    modalEditarLigacao.show();
+    
+  } catch (erro) {
+    console.error('Erro:', erro);
+    alert('Erro ao carregar dados da ligação');
+  }
+}
+
+// 🆕 MOSTRAR/OCULTAR CAMPO DE VALOR NA EDIÇÃO
+function toggleEditValorContainer() {
+  const resultado = document.getElementById('editResultado').value;
+  const valorContainer = document.getElementById('editValorContainer');
+  
+  if (resultado === 'comprou') {
+    valorContainer.style.display = 'block';
+  } else {
+    valorContainer.style.display = 'none';
+  }
+}
+
+// 🆕 SALVAR EDIÇÃO COMPLETA DA LIGAÇÃO
+async function salvarEdicaoLigacao() {
+  const ligacaoId = document.getElementById('editLigacaoId').value;
+  
+  try {
+    const r = await fetch(`/editar-ligacao/${ligacaoId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        resultado: document.getElementById('editResultado').value,
+        valor_venda: document.getElementById('editValorVenda').value,
+        observacao: document.getElementById('editObservacao').value
+      })
+    });
+    
+    const j = await r.json();
+    
+    if (j.ok) {
+      modalEditarLigacao.hide();
+      alert(j.mensagem || 'Ligação atualizada com sucesso!');
+      location.reload();
+    } else {
+      alert(j.mensagem || 'Erro ao atualizar ligação');
+    }
+  } catch (erro) {
+    console.error('Erro:', erro);
+    alert('Erro ao atualizar ligação');
+  }
 }
 
 // 🆕 ABRIR MODAL DE EDIÇÃO
