@@ -2745,12 +2745,12 @@ def start_scheduler_once():
         replace_existing=True
     )
     
-    # Adicionar sincronização Oracle - todo dia às 6:00
+    # Adicionar sincronização Oracle - todo dia às 07:20
     _scheduler.add_job(
         job_sincronizacao_oracle,
         trigger='cron',
-        hour=6,
-        minute=0,
+        hour=7,
+        minute=20,
         id='sincronizacao_oracle_diaria',
         replace_existing=True
     )
