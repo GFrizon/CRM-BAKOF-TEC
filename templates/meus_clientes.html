@@ -283,7 +283,7 @@
           </div>
           <div class="flex-grow-1 ms-3">
             <div class="fw-bold text-info">Ticket Médio</div>
-            <div class="h5 mb-0">R$ {{ "%.0f"|format(stats_oracle.ticket_medio or 0) }}</div>
+            <div class="h5 mb-0">R$ {{ "%.0f"|format(stats_oracle.ticket_medio or 0) | replace('.', ',') }}</div>
           </div>
         </div>
       </div>
@@ -423,24 +423,16 @@
             </td>
             <td>
               {% if c.valor_ultimo_pedido %}
-              <div class="fw-bold text-success">R$ {{ "%.2f"|format(c.valor_ultimo_pedido) }}</div>
-                {% if c.situacao_ultimo_pedido %}
-                <small class="badge {% if c.situacao_ultimo_pedido == 'P' %}bg-success{% elif c.situacao_ultimo_pedido == 'C' %}bg-warning{% else %}bg-secondary{% endif %}">
-                  {% if c.situacao_ultimo_pedido == 'P' %}
-                    <i class="bi bi-check"></i> Pago
-                  {% elif c.situacao_ultimo_pedido == 'C' %}
-                    <i class="bi bi-clock"></i> Cancelado
-                  {% else %}
-                    {{ c.situacao_ultimo_pedido }}
-                  {% endif %}
-                </small>
-                {% endif %}
-              {% else %}
-              <span class="text-muted">-</span>
+              <div class="fw-bold text-success">R$ {{ "%.2f"|format(c.valor_ultimo_pedido) | replace('.', ',') }}</div>
               {% endif %}
             </td>
             <td>
               <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-info"
+                        onclick="detalhesClienteOracle({{ c.id }})"
+                        title="Ver Detalhes Oracle">
+                  <i class="bi bi-eye"></i>
+                </button>
                 <button class="btn btn-sm btn-primary"
                         onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
                         title="Registrar Ligação">
@@ -660,6 +652,34 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 🆕 MODAL: DETALHES CLIENTE ORACLE -->
+<!-- ====================================================== -->
+<div class="modal fade" id="modalDetalhesOracle" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title"><i class="bi bi-eye"></i> Detalhes do Cliente Oracle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detalhesOracleContent">
+        <div class="text-center">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+          </div>
+          <p class="mt-2">Carregando dados do Oracle...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button type="button" class="btn btn-primary" onclick="registrarLigacaoDesdeDetalhes()">
+          <i class="bi bi-telephone-plus"></i> Registrar Ligação
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -1441,9 +1461,9 @@ function sincronizarOracle() {
   })
   .then(response => response.json())
   .then(data => {
-    if (data.ok) {
+    if (data.success) {
       // Mostrar sucesso
-      alert('✅ ' + data.mensagem + '\n\nA página será recarregada em alguns segundos para mostrar os resultados atualizados.');
+      alert('✅ ' + data.message + '\n\nA página será recarregada em alguns segundos para mostrar os resultados atualizados.');
       
       // Recarregar página após 3 segundos
       setTimeout(() => {
@@ -1451,7 +1471,7 @@ function sincronizarOracle() {
       }, 3000);
     } else {
       // Mostrar erro
-      alert('❌ ' + data.mensagem);
+      alert('❌ ' + data.message);
     }
   })
   .catch(error => {
@@ -1463,6 +1483,270 @@ function sincronizarOracle() {
     btn.disabled = false;
     btn.innerHTML = originalText;
   });
+}
+
+// FUNÇÃO DE DETALHES CLIENTE ORACLE
+function detalhesClienteOracle(clienteId) {
+  // Mostrar modal
+  const modal = new bootstrap.Modal(document.getElementById('modalDetalhesOracle'));
+  modal.show();
+  
+  // Resetar conteúdo
+  document.getElementById('detalhesOracleContent').innerHTML = `
+    <div class="text-center">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Carregando...</span>
+      </div>
+      <p class="mt-2">Carregando dados do Oracle...</p>
+    </div>
+  `;
+  
+  // Buscar dados do cliente
+  fetch(`/detalhes-cliente-oracle/${clienteId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        renderizarDetalhesOracle(data);
+      } else {
+        document.getElementById('detalhesOracleContent').innerHTML = `
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> 
+            Erro: ${data.message}
+          </div>
+        `;
+      }
+    })
+    .catch(error => {
+      console.error('Erro ao buscar detalhes:', error);
+      document.getElementById('detalhesOracleContent').innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle"></i> 
+          Erro ao carregar detalhes do cliente.
+        </div>
+      `;
+    });
+}
+
+// FUNÇÃO PARA RENDERIZAR DETALHES ORACLE
+function renderizarDetalhesOracle(data) {
+  const cliente = data.cliente;
+  const pedidos = data.pedidos_oracle || [];
+  const itens = data.itens_oracle || [];
+  
+  let html = `
+    <div class="row">
+      <!-- DADOS PRINCIPAIS -->
+      <div class="col-md-6">
+        <div class="card border-info">
+          <div class="card-header bg-info text-white">
+            <i class="bi bi-person"></i> Dados do Cliente
+          </div>
+          <div class="card-body">
+            <table class="table table-sm table-borderless">
+              <tr>
+                <td><strong>Nome:</strong></td>
+                <td>${cliente.nome}</td>
+              </tr>
+              <tr>
+                <td><strong>CNPJ:</strong></td>
+                <td><code>${cliente.cnpj || '-'}</code></td>
+              </tr>
+              <tr>
+                <td><strong>Telefone:</strong></td>
+                <td>
+                  ${cliente.telefone ? 
+                    `<a href="tel:${cliente.telefone}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-telephone"></i> ${cliente.telefone}
+                    </a>` : 
+                    '-'
+                  }
+                </td>
+              </tr>
+              ${cliente.cd_cliente_oracle ? `
+              <tr>
+                <td><strong>Código Oracle:</strong></td>
+                <td><code>${cliente.cd_cliente_oracle}</code></td>
+              </tr>
+              ` : ''}
+              ${cliente.representante_oracle ? `
+              <tr>
+                <td><strong>Representante Oracle:</strong></td>
+                <td>${cliente.representante_oracle}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- DADOS DE CRÉDITO -->
+      <div class="col-md-6">
+        <div class="card border-warning">
+          <div class="card-header bg-warning text-dark">
+            <i class="bi bi-shield-check"></i> Dados de Crédito
+          </div>
+          <div class="card-body">
+            <table class="table table-sm table-borderless">
+              <tr>
+                <td><strong>Conceito:</strong></td>
+                <td>
+                  <span class="badge ${
+                    cliente.conceito === 'LIBERADO' ? 'bg-success' : 
+                    cliente.conceito === 'INADIMPLENTE' ? 'bg-danger' : 
+                    'bg-secondary'
+                  }">
+                    ${cliente.conceito || 'SEM CONCEITO'}
+                  </span>
+                </td>
+              </tr>
+              ${cliente.categoria_consultor ? `
+              <tr>
+                <td><strong>Consultor Oracle:</strong></td>
+                <td><small>${cliente.categoria_consultor}</small></td>
+              </tr>
+              ` : ''}
+              ${cliente.ultimo_pedido_oracle ? `
+              <tr>
+                <td><strong>Último Pedido:</strong></td>
+                <td>${cliente.ultimo_pedido_oracle}</td>
+              </tr>
+              ` : ''}
+              ${cliente.valor_ultimo_pedido ? `
+              <tr>
+                <td><strong>Valor Último Pedido:</strong></td>
+                <td class="fw-bold text-success">R$ ${parseFloat(cliente.valor_ultimo_pedido).toFixed(2).replace('.', ',')}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+        </div>
+      </div>
+  `;
+
+  // Adicionar itens dos pedidos se houver
+  if (itens.length > 0) {
+    // Deduplicação simples
+    const itensUnicos = [];
+    const vistos = new Set();
+    
+    itens.forEach(item => {
+      const chave = `${item.idproduto}_${item.quantidade}_${item.precounitario}`;
+      if (!vistos.has(chave)) {
+        vistos.add(chave);
+        itensUnicos.push(item);
+      }
+    });
+    
+    // Agrupar por pedido
+    const itensPorPedido = {};
+    itensUnicos.forEach(item => {
+      const pedido = item.cd_pedido || 'sem-pedido';
+      if (!itensPorPedido[pedido]) {
+        itensPorPedido[pedido] = {
+          dt_pedido: item.dt_pedido,
+          cd_pedido: item.cd_pedido,
+          itens: []
+        };
+      }
+      itensPorPedido[pedido].itens.push(item);
+    });
+    
+    html += `
+      <div class="row mt-3">
+        <div class="col-12">
+          <div class="card border-success">
+            <div class="card-header bg-success text-white">
+              <i class="bi bi-cart"></i> Itens dos Pedidos (últimos 365 dias)
+              <span class="badge bg-light text-dark float-end">${Object.keys(itensPorPedido).length} pedidos</span>
+            </div>
+            <div class="card-body">
+    `;
+    
+    // Renderizar cada pedido
+    Object.values(itensPorPedido).forEach(pedido => {
+      const data = pedido.dt_pedido ? new Date(pedido.dt_pedido).toLocaleDateString('pt-BR') : '-';
+      const numeroPedido = pedido.cd_pedido || '-';
+      
+      html += `
+        <div class="mb-4 p-3 border rounded bg-light">
+          <h6 class="mb-3 text-primary">
+            <i class="bi bi-receipt"></i> Pedido #${numeroPedido} - ${data}
+          </h6>
+          <div class="row">
+      `;
+      
+      pedido.itens.forEach(item => {
+        const nomeProduto = item.nome_produto || item.idproduto || '-';
+        const quantidade = item.quantidade || 0;
+        const preco = item.precounitario ? `R$ ${parseFloat(item.precounitario).toFixed(2).replace('.', ',')}` : '-';
+        
+        html += `
+          <div class="col-md-6 col-lg-4 mb-2">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-box-seam text-success me-2"></i>
+              <div>
+                <strong>${nomeProduto}</strong><br>
+                <small class="text-muted">${quantidade} unid - ${preco}</small>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `
+          </div>
+        </div>
+      `;
+    });
+    
+    html += `
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Adicionar informações de sincronização
+  if (cliente.data_ultima_sincronizacao) {
+    html += `
+      <div class="row mt-3">
+        <div class="col-12">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            <strong>Informações:</strong> 
+            Dados sincronizados com Oracle em ${cliente.data_ultima_sincronizacao}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Atualizar o conteúdo do modal
+  document.getElementById('detalhesOracleContent').innerHTML = html;
+  
+  // Guardar ID do cliente para usar no botão de ligação
+  window.clienteDetalhesAtual = cliente.id;
+}
+
+// FUNÇÃO PARA REGISTRAR LIGAÇÃO DESDE DETALHES
+function registrarLigacaoDesdeDetalhes() {
+  if (window.clienteDetalhesAtual) {
+    // Fechar modal de detalhes
+    const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalDetalhesOracle'));
+    modalDetalhes.hide();
+    
+    // Abrir modal de ligação
+    const cliente = window.clienteDetalhesAtual;
+    // Buscar nome e telefone do cliente (poderia ser passado via global)
+    fetch(`/detalhes-cliente-oracle/${cliente}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          abrirForm(data.cliente.id, data.cliente.nome, data.cliente.telefone);
+        }
+      });
+  }
 }
 
 // Helper para obter cookie CSRF (se necessário)

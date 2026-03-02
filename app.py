@@ -86,6 +86,15 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# Registrar filtro Jinja2 para formatação de dinheiro
+@app.template_filter('formatar_dinheiro')
+def formatar_dinheiro_filter(valor):
+    try:
+        v = float(valor or 0)
+        return f"{v:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except (ValueError, TypeError):
+        return "R$ 0,00"
+
 # =============================================================================
 # MODELOS
 # =============================================================================
@@ -313,26 +322,24 @@ def meus_clientes():
         conceito_filtro = request.args.get('conceito_filtro')
         consultor_filtro = request.args.get('consultor_filtro')
         
-        # Debug - mostrar parâmetros recebidos
-        print(f"🔍 DEBUG - Filtros Oracle: periodo={periodo_oracle}, conceito={conceito_filtro}, consultor={consultor_filtro}")
-        
         # Filtro por período sem compra
         if periodo_oracle:
             try:
                 dias = int(periodo_oracle)
                 data_limite = datetime.now() - timedelta(days=dias)
                 q = q.filter(Cliente.ultimo_pedido_oracle <= data_limite)
-                print(f"📅 Filtro período: {dias} dias (data limite: {data_limite})")
+                app.logger.info(f"Filtro período aplicado: {dias} dias (data limite: {data_limite})")
             except ValueError:
+                app.logger.warning(f"Valor inválido para período: {periodo_oracle}")
                 pass  # Ignora se o valor não for válido
         
         if conceito_filtro:
             q = q.filter(Cliente.conceito == conceito_filtro)
-            print(f"🏷️ Filtro conceito: {conceito_filtro}")
+            app.logger.info(f"Filtro conceito aplicado: {conceito_filtro}")
         
         if consultor_filtro:
             q = q.filter(Cliente.categoria_consultor.like(f'%{consultor_filtro}%'))
-            print(f"👤 Filtro consultor: {consultor_filtro}")
+            app.logger.info(f"Filtro consultor aplicado: {consultor_filtro}")
         
         termo = s(request.args.get('q'))
         if termo:
@@ -1029,6 +1036,10 @@ def importar_clientes_view():
 
         total_inseridos, pulados = 0, 0
         erros = []
+        batch_size = 100  # Processar em lotes para melhor performance
+        batch_clientes = []
+        
+        app.logger.info(f"Iniciando importação de {len(df)} registros")
 
         for i, row in df.iterrows():
             try:
@@ -1050,6 +1061,25 @@ def importar_clientes_view():
                 telefone = so_digits(raw_tel)
                 telefone = telefone if telefone else None
 
+                # Validação de dados
+                if nome_cliente and len(nome_cliente.strip()) < 2:
+                    app.logger.warning(f"Linha {i+2}: Nome do cliente muito curto: '{nome_cliente}'")
+                    erros.append(f"Linha {i+2}: Nome muito curto (mínimo 2 caracteres)")
+                    pulados += 1
+                    continue
+                
+                if empresa_cnpj and len(empresa_cnpj) < 11:
+                    app.logger.warning(f"Linha {i+2}: CNPJ inválido: {empresa_cnpj}")
+                    erros.append(f"Linha {i+2}: CNPJ inválido (mínimo 11 dígitos)")
+                    pulados += 1
+                    continue
+                
+                if telefone and (len(telefone) < 10 or len(telefone) > 11):
+                    app.logger.warning(f"Linha {i+2}: Telefone com formato inválido: {telefone}")
+                    erros.append(f"Linha {i+2}: Telefone inválido (10-11 dígitos)")
+                    # Não pular, apenas limpar o telefone
+                    telefone = None
+
                 if not any([tipo, empresa_cnpj, consultor_txt, representante, nome_cliente, telefone]):
                     continue
 
@@ -1058,56 +1088,114 @@ def importar_clientes_view():
                     continue
 
                 if empresa_cnpj:
-                    existente_ativo = Cliente.query.filter_by(cnpj=empresa_cnpj, ativo=True).first()
-                    if existente_ativo:
-                        mudou = False
-                        if telefone and (not existente_ativo.telefone or existente_ativo.telefone != telefone):
-                            existente_ativo.telefone = telefone
-                            mudou = True
-                        if nome_cliente and nome_cliente != existente_ativo.nome:
-                            existente_ativo.nome = nome_cliente[:200]
-                            mudou = True
-                        if representante and representante != existente_ativo.representante_nome:
-                            existente_ativo.representante_nome = representante[:200]
-                            mudou = True
-                        if consultor_id and existente_ativo.consultor_id != consultor_id:
-                            existente_ativo.consultor_id = consultor_id
-                            mudou = True
-                        if existente_ativo.origem != 'importado_csv':
-                            existente_ativo.origem = 'importado_csv'
-                            mudou = True
+                    try:
+                        existente_ativo = Cliente.query.filter_by(cnpj=empresa_cnpj, ativo=True).first()
+                        if existente_ativo:
+                            mudou = False
+                            if telefone and (not existente_ativo.telefone or existente_ativo.telefone != telefone):
+                                existente_ativo.telefone = telefone
+                                mudou = True
+                            if nome_cliente and nome_cliente != existente_ativo.nome:
+                                existente_ativo.nome = nome_cliente[:200]
+                                mudou = True
+                            if representante and representante != existente_ativo.representante_nome:
+                                existente_ativo.representante_nome = representante[:200]
+                                mudou = True
+                            if consultor_id and existente_ativo.consultor_id != consultor_id:
+                                existente_ativo.consultor_id = consultor_id
+                                mudou = True
+                            if existente_ativo.origem != 'importado_csv':
+                                existente_ativo.origem = 'importado_csv'
+                                mudou = True
 
-                        if mudou:
+                            if mudou:
+                                total_inseridos += 1
+                            else:
+                                pulados += 1
+                            continue
+
+                        existente_inativo = Cliente.query.filter_by(cnpj=empresa_cnpj, ativo=False).first()
+                        if existente_inativo:
+                            existente_inativo.nome = nome_cliente[:200] or existente_inativo.nome
+                            existente_inativo.telefone = telefone
+                            existente_inativo.representante_nome = (representante[:200] or None)
+                            existente_inativo.consultor_id = consultor_id
+                            existente_inativo.ativo = True
+                            existente_inativo.origem = 'importado_csv'
                             total_inseridos += 1
-                        else:
-                            pulados += 1
+                            continue
+                    except Exception as db_error:
+                        app.logger.error(f"Erro de banco ao processar linha {i+2}: {str(db_error)}")
+                        erros.append(f"Linha {i+2}: Erro de banco - {str(db_error)}")
                         continue
 
-                    existente_inativo = Cliente.query.filter_by(cnpj=empresa_cnpj, ativo=False).first()
-                    if existente_inativo:
-                        existente_inativo.nome = nome_cliente[:200] or existente_inativo.nome
-                        existente_inativo.telefone = telefone
-                        existente_inativo.representante_nome = (representante[:200] or None)
-                        existente_inativo.consultor_id = consultor_id
-                        existente_inativo.ativo = True
-                        existente_inativo.origem = 'importado_csv'
-                        total_inseridos += 1
-                        continue
+                # Adicionar ao batch em vez de inserir imediatamente
+                try:
+                    novo = Cliente(
+                        nome=nome_cliente[:200],
+                        cnpj=(empresa_cnpj[:18] or None),
+                        telefone=telefone,
+                        representante_nome=(representante[:200] or None),
+                        consultor_id=consultor_id,
+                        ativo=True,
+                        origem='importado_csv'
+                    )
+                    batch_clientes.append(novo)
+                    total_inseridos += 1
+                    
+                    # Processar batch quando atingir o tamanho limite
+                    if len(batch_clientes) >= batch_size:
+                        try:
+                            db.session.add_all(batch_clientes)
+                            db.session.flush()  # Flush sem commit para manter transação
+                            app.logger.info(f"Processado batch de {len(batch_clientes)} clientes")
+                            batch_clientes = []  # Limpar batch
+                        except Exception as batch_error:
+                            app.logger.error(f"Erro no batch processing: {str(batch_error)}")
+                            db.session.rollback()
+                            # Tentar inserir um por um se batch falhar
+                            for cliente in batch_clientes:
+                                try:
+                                    db.session.add(cliente)
+                                    db.session.flush()
+                                except Exception as single_error:
+                                    app.logger.warning(f"Erro em cliente individual: {str(single_error)}")
+                                    erros.append(f"Erro ao inserir cliente: {str(single_error)}")
+                            batch_clientes = []
+                            
+                except ValueError as val_error:
+                    app.logger.warning(f"Valor inválido na linha {i+2}: {str(val_error)}")
+                    erros.append(f"Linha {i+2}: Valor inválido - {str(val_error)}")
+                    continue
+                except Exception as create_error:
+                    app.logger.error(f"Erro ao criar cliente linha {i+2}: {str(create_error)}")
+                    erros.append(f"Linha {i+2}: Erro criação - {str(create_error)}")
+                    continue
 
-                novo = Cliente(
-                    nome=nome_cliente[:200],
-                    cnpj=(empresa_cnpj[:18] or None),
-                    telefone=telefone,
-                    representante_nome=(representante[:200] or None),
-                    consultor_id=consultor_id,
-                    ativo=True,
-                    origem='importado_csv'
-                )
-                db.session.add(novo)
-                total_inseridos += 1
-
+            except IndexError as idx_error:
+                app.logger.warning(f"Linha {i+2} com formato inválido: {str(idx_error)}")
+                erros.append(f"Linha {i+2}: Formato inválido - colunas insuficientes")
+                continue
             except Exception as e:
-                erros.append(f"Linha {i+2}: {e}")
+                app.logger.error(f"Erro inesperado na linha {i+2}: {str(e)}")
+                erros.append(f"Linha {i+2}: {str(e)}")
+                continue
+
+        # Processar batch restante
+        if batch_clientes:
+            try:
+                db.session.add_all(batch_clientes)
+                app.logger.info(f"Processado batch final de {len(batch_clientes)} clientes")
+            except Exception as final_batch_error:
+                app.logger.error(f"Erro no batch final: {str(final_batch_error)}")
+                db.session.rollback()
+                for cliente in batch_clientes:
+                    try:
+                        db.session.add(cliente)
+                        db.session.flush()
+                    except Exception as single_error:
+                        app.logger.warning(f"Erro em cliente individual final: {str(single_error)}")
+                        erros.append(f"Erro ao inserir cliente final: {str(single_error)}")
 
         try:
             imp_nome = filename or "upload"
@@ -1116,10 +1204,17 @@ def importar_clientes_view():
                      "VALUES (:n, :c, :r, :d)"),
                 {"n": imp_nome, "c": consultor_id, "r": total_inseridos, "d": datetime.now()}
             )
-        except Exception:
-            pass
+        except Exception as import_error:
+            app.logger.warning(f"Erro ao registrar importação: {str(import_error)}")
 
-        db.session.commit()
+        try:
+            db.session.commit()
+            app.logger.info(f"Importação concluída: {total_inseridos} inseridos, {pulados} pulados, {len(erros)} erros")
+        except Exception as commit_error:
+            app.logger.error(f"Erro no commit final: {str(commit_error)}")
+            db.session.rollback()
+            flash('Erro ao salvar dados no banco. Nenhum dado foi importado.', 'danger')
+            return redirect(url_for('importar_clientes_view'))
 
         msg = f'Importação concluída! Inseridos/Atualizados/Reativados: {total_inseridos} • Pulados: {pulados}'
         if erros:
@@ -1137,6 +1232,7 @@ def importar_clientes_view():
 # LIMPAR (INATIVAR) CLIENTES DE UM CONSULTOR
 # =============================================================================
 @app.route('/limpar-clientes-consultor', methods=['POST'])
+@login_required
 def limpar_clientes_consultor():
     if not current_user.is_authenticated:
         return jsonify({"ok": False, "mensagem": "Não autenticado"}), 401
@@ -2179,7 +2275,7 @@ def api_busca_clientes():
         return jsonify({"erro": "Não autenticado"}), 401
     
     try:
-        termo = s(request.args.get('q', ''))
+        termo = s(request.args.get('q'))
         aba = request.args.get('aba', 'pendentes')
         apenas_meus = True if current_user.tipo == 'consultor' else (request.args.get('meus') == '1')
         
@@ -2188,7 +2284,6 @@ def api_busca_clientes():
         if apenas_meus:
             q = q.filter(Cliente.consultor_id == current_user.id)
         
-        # Aplicar filtro de busca
         if termo:
             like = f"%{termo}%"
             q = q.filter(or_(
@@ -2427,10 +2522,73 @@ def sincronizar_oracle():
         })
         
     except Exception as e:
-        db.session.rollback()
         return jsonify({
             "success": False,
-            "message": f"Erro na sincronização: {str(e)}"
+            "message": f"Erro ao buscar detalhes: {str(e)}"
+        }), 500
+
+@app.route('/detalhes-cliente-oracle/<int:cliente_id>')
+@login_required
+def detalhes_cliente_oracle(cliente_id: int):
+    """Busca detalhes completos do cliente Oracle"""
+    try:
+        # Buscar cliente no MySQL
+        cliente = db.session.get(Cliente, cliente_id)
+        if not cliente:
+            return jsonify({"success": False, "message": "Cliente não encontrado"}), 404
+        
+        # Verificar permissão
+        if current_user.tipo == 'consultor' and cliente.consultor_id != current_user.id:
+            return jsonify({"success": False, "message": "Sem permissão para este cliente"}), 403
+        
+        # Se não tiver cd_cliente_oracle, retorna dados básicos
+        if not cliente.cd_cliente_oracle:
+            return jsonify({
+                "success": True,
+                "cliente": {
+                    "id": cliente.id,
+                    "nome": cliente.nome,
+                    "cnpj": cliente.cnpj,
+                    "telefone": cliente.telefone,
+                    "representante_nome": cliente.representante_nome,
+                    "origem": "manual"
+                },
+                "pedidos_oracle": [],
+                "mensagem": "Cliente não possui dados Oracle"
+            })
+        
+        # Buscar pedidos no Oracle
+        from oracle_service import get_pedidos_cliente_oracle, get_itens_cliente_oracle
+        pedidos_oracle = get_pedidos_cliente_oracle(cliente.cd_cliente_oracle)
+        itens_oracle = get_itens_cliente_oracle(cliente.cd_cliente_oracle)
+        
+        # Retornar dados completos
+        return jsonify({
+            "success": True,
+            "cliente": {
+                "id": cliente.id,
+                "nome": cliente.nome,
+                "cnpj": cliente.cnpj,
+                "telefone": cliente.telefone,
+                "cd_cliente_oracle": cliente.cd_cliente_oracle,
+                "categoria_consultor": cliente.categoria_consultor,
+                "conceito": cliente.conceito,
+                "ultimo_pedido_oracle": cliente.ultimo_pedido_oracle.strftime('%d/%m/%Y') if cliente.ultimo_pedido_oracle else None,
+                "valor_ultimo_pedido": float(cliente.valor_ultimo_pedido) if cliente.valor_ultimo_pedido else None,
+                "situacao_ultimo_pedido": cliente.situacao_ultimo_pedido,
+                "representante_oracle": cliente.representante_oracle,
+                "data_ultima_sincronizacao": cliente.data_ultima_sincronizacao.strftime('%d/%m/%Y %H:%M') if cliente.data_ultima_sincronizacao else None
+            },
+            "pedidos_oracle": pedidos_oracle,
+            "itens_oracle": itens_oracle,
+            "total_pedidos": len(pedidos_oracle),
+            "total_itens": len(itens_oracle)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Erro ao buscar detalhes: {str(e)}"
         }), 500
 
 # =============================================================================

@@ -32,3 +32,9 @@ python-dotenv==1.0.1
 
 # Front-end opcional (gráficos)
 plotly==5.24.1
+
+# Conexão com banco Oracle para integração CRM
+# cx-oracle==8.3.0  # Problema com Python 3.13
+# oracledb==2.1.0  # Precisa Visual C++ Build Tools
+# Usando versão mais recente que pode ter wheels pré-compilados
+oracledb>=2.0.0

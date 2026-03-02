@@ -7,24 +7,25 @@ import os
 import logging
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
+from database_utils import retry_oracle_connection, retry_database
+
+# Configuração de logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Tentar importar oracledb primeiro, se não funcionar, usar cx_Oracle
 try:
     import oracledb
     ORACLE_LIB = 'oracledb'
-    print("✅ Usando oracledb (biblioteca moderna)")
+    logger.info("Usando oracledb (biblioteca moderna)")
 except ImportError:
     try:
         import cx_Oracle
         ORACLE_LIB = 'cx_Oracle'
-        print("✅ Usando cx_Oracle (biblioteca legada)")
+        logger.info("Usando cx_Oracle (biblioteca legada)")
     except ImportError:
         ORACLE_LIB = None
-        print("❌ Nenhuma biblioteca Oracle encontrada")
-
-# Configuração de logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+        logger.error("Nenhuma biblioteca Oracle encontrada")
 
 class OracleService:
     """Serviço para conexão e operações com banco Oracle"""
@@ -63,12 +64,19 @@ class OracleService:
             version = conn.version
             conn.close()
             return True, f"Conexão bem sucedida! Oracle version: {version} (usando {ORACLE_LIB})"
+        except oracledb.DatabaseError as e:
+            logger.error(f"Erro de banco Oracle: {str(e)}")
+            return False, f"Erro de banco de dados: {str(e)}"
+        except oracledb.InterfaceError as e:
+            logger.error(f"Erro de interface Oracle: {str(e)}")
+            return False, f"Erro de conexão/interface: {str(e)}"
         except Exception as e:
-            logger.error(f"Erro ao conectar Oracle: {str(e)}")
+            logger.error(f"Erro inesperado ao conectar Oracle: {str(e)}")
             return False, f"Erro de conexão: {str(e)}"
     
+    @retry_oracle_connection(max_attempts=3, delay=2.0)
     def get_connection(self):
-        """Obtém conexão com o banco Oracle (singleton)"""
+        """Obtém conexão com o banco Oracle (singleton) com retry"""
         if not ORACLE_LIB:
             raise ImportError("Nenhuma biblioteca Oracle instalada")
             
@@ -79,8 +87,14 @@ class OracleService:
                 else:  # cx_Oracle
                     self.connection = cx_Oracle.connect(**self.config)
                 logger.info(f"Conexão Oracle estabelecida com sucesso (usando {ORACLE_LIB})")
+            except oracledb.DatabaseError as e:
+                logger.error(f"Erro de banco Oracle ao estabelecer conexão: {str(e)}")
+                raise ConnectionError(f"Erro de banco de dados Oracle: {str(e)}")
+            except oracledb.InterfaceError as e:
+                logger.error(f"Erro de interface Oracle ao estabelecer conexão: {str(e)}")
+                raise ConnectionError(f"Erro de interface/conexão Oracle: {str(e)}")
             except Exception as e:
-                logger.error(f"Erro ao estabelecer conexão Oracle: {str(e)}")
+                logger.error(f"Erro inesperado ao estabelecer conexão Oracle: {str(e)}")
                 raise
         return self.connection
     
@@ -94,6 +108,7 @@ class OracleService:
             except Exception as e:
                 logger.error(f"Erro ao fechar conexão Oracle: {str(e)}")
     
+    @retry_database(max_attempts=3, delay=1.0)
     def execute_query(self, query: str, params: Optional[Dict] = None) -> List[Dict]:
         """
         Executa query SQL e retorna resultados como lista de dicionários
@@ -222,6 +237,49 @@ class OracleService:
         except Exception as e:
             logger.error(f"Erro ao buscar pedidos do cliente {cd_cliente}: {str(e)}")
             raise
+    
+    def get_itens_pedido_oracle(self, cd_cliente: str) -> List[Dict]:
+        """
+        Busca itens dos pedidos de um cliente específico com nomes dos produtos
+        
+        Args:
+            cd_cliente: Código do cliente no Oracle
+            
+        Returns:
+            Lista com itens dos pedidos incluindo nomes dos produtos
+        """
+        query = """
+        SELECT 
+            i.cd_material as idproduto,
+            i.quantidade,
+            i.pr_unitario as precounitario,
+            i.vl_total_item_l as valorliquidoitem,
+            i.sequencia as ordenacao,
+            i.dt_item,
+            p.dt_pedido,
+            p.cd_pedido,
+            COALESCE(m.descricao, i.cd_material) as nome_produto
+        FROM fapedido p
+        JOIN FAITEMPE i ON i.cd_pedido = p.cd_pedido
+        LEFT JOIN esmateri m ON m.cd_material = i.cd_material
+        WHERE p.cd_cliente = :cd_cliente
+          AND i.ROWID = (
+            SELECT MIN(i2.ROWID)
+            FROM FAITEMPE i2
+            WHERE i2.cd_pedido = i.cd_pedido
+              AND i2.cd_material = i.cd_material
+              AND i2.sequencia = i.sequencia
+          )
+        ORDER BY p.dt_pedido DESC, i.sequencia
+        """
+        
+        try:
+            results = self.execute_query(query, {'cd_cliente': cd_cliente})
+            logger.info(f"Buscados {len(results)} itens para cliente {cd_cliente}")
+            return results
+        except Exception as e:
+            logger.error(f"Erro ao buscar itens do cliente {cd_cliente}: {str(e)}")
+            raise
 
 
 # Instância global do serviço
@@ -239,3 +297,7 @@ def get_clientes_oracle():
 def get_pedidos_cliente_oracle(cd_cliente: str):
     """Busca pedidos de um cliente específico no Oracle"""
     return oracle_service.get_resumo_pedidos_cliente(cd_cliente)
+
+def get_itens_cliente_oracle(cd_cliente: str):
+    """Busca itens de pedidos de um cliente específico no Oracle"""
+    return oracle_service.get_itens_pedido_oracle(cd_cliente)

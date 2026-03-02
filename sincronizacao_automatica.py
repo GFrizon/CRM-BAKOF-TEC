@@ -4,11 +4,17 @@ Scheduler para sincronização automática diária com Oracle
 
 import os
 import sys
+import logging
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from sqlalchemy.exc import IntegrityError
 
 # Carregar .env
 load_dotenv('.env')
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Adicionar diretório atual ao path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -16,34 +22,34 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 def sincronizacao_automatica_diaria():
     """Sincronização automática diária com Oracle"""
     
-    print("=" * 60)
-    print("🔄 SINCRONIZAÇÃO AUTOMÁTICA DIÁRIA ORACLE")
-    print("=" * 60)
-    print(f"📅 Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    logger.info("=" * 60)
+    logger.info("🔄 SINCRONIZAÇÃO AUTOMÁTICA DIÁRIA ORACLE")
+    logger.info("=" * 60)
+    logger.info(f"📅 Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     
     try:
         from app import app, db, Cliente, Usuario
         from oracle_service import get_clientes_oracle
         
         with app.app_context():
-            print("\n🔍 1. Buscando clientes alvo no Oracle...")
+            logger.info("\n🔍 1. Buscando clientes alvo no Oracle...")
             clientes_oracle = get_clientes_oracle()
-            print(f"✅ {len(clientes_oracle)} clientes alvo encontrados no Oracle")
+            logger.info(f"✅ {len(clientes_oracle)} clientes alvo encontrados no Oracle")
             
-            print("\n📊 2. Analisando clientes atuais no MySQL...")
+            logger.info("\n📊 2. Analisando clientes atuais no MySQL...")
             todos_clientes_mysql = Cliente.query.filter_by(ativo=True).all()
-            print(f"✅ {len(todos_clientes_mysql)} clientes totais no MySQL")
+            logger.info(f"✅ {len(todos_clientes_mysql)} clientes totais no MySQL")
             
             # Separar clientes por origem
             clientes_oracle_mysql = Cliente.query.filter(
                 Cliente.cd_cliente_oracle.isnot(None),
                 Cliente.ativo == True
             ).all()
-            print(f"✅ {len(clientes_oracle_mysql)} clientes vindos do Oracle")
+            logger.info(f" {len(clientes_oracle_mysql)} clientes vindos do Oracle")
             
-            print("\n👥 3. Verificando consultores disponíveis...")
+            logger.info("\n Verificando consultores disponíveis...")
             consultores = Usuario.query.filter_by(tipo='consultor', ativo=True).all()
-            print(f"✅ {len(consultores)} consultores disponíveis")
+            logger.info(f" {len(consultores)} consultores ativos encontrados")
             
             # Criar mapa de códigos Oracle para consultores
             mapa_consultores = {
@@ -57,7 +63,7 @@ def sincronizacao_automatica_diaria():
                 '006': 26,  # Sibele Froner
             }
             
-            print("\n🔄 4. Processando sincronização...")
+            logger.info("\n Processando sincronização...")
             
             # Conjuntos para controle
             codigos_oracle_atuais = {str(c.get('cd_cliente', '')) for c in clientes_oracle}
@@ -65,15 +71,16 @@ def sincronizacao_automatica_diaria():
             
             # Clientes para adicionar (estão no Oracle mas não no MySQL)
             codigos_para_adicionar = codigos_oracle_atuais - codigos_mysql_atuais
-            print(f"📈 Clientes para adicionar: {len(codigos_para_adicionar)}")
+            logger.info(f" Análise de sincronização:")
+            logger.info(f"   Novos clientes: {len(codigos_para_adicionar)}")
             
             # Clientes para remover (estão no MySQL mas não no Oracle)
             codigos_para_remover = codigos_mysql_atuais - codigos_oracle_atuais
-            print(f"📉 Clientes para remover: {len(codigos_para_remover)}")
+            logger.info(f"   Clientes para remover: {len(codigos_para_remover)}")
             
             # Clientes para atualizar (continuam na lista)
             codigos_para_atualizar = codigos_oracle_atuais & codigos_mysql_atuais
-            print(f"🔄 Clientes para atualizar: {len(codigos_para_atualizar)}")
+            logger.info(f"   Clientes para atualizar: {len(codigos_para_atualizar)}")
             
             adicionados = 0
             removidos = 0
@@ -82,7 +89,7 @@ def sincronizacao_automatica_diaria():
             
             # Adicionar novos clientes
             if codigos_para_adicionar:
-                print(f"\n➕ Adicionando {len(codigos_para_adicionar)} novos clientes...")
+                logger.info(f"\n➕ Adicionando {len(codigos_para_adicionar)} novos clientes...")
                 for cliente_oracle in clientes_oracle:
                     cd_cliente = str(cliente_oracle.get('cd_cliente', ''))
                     if cd_cliente in codigos_para_adicionar:
@@ -116,12 +123,18 @@ def sincronizacao_automatica_diaria():
                             db.session.add(novo_cliente)
                             adicionados += 1
                             
+                        except ValueError as e:
+                            erros.append(f"Erro de dados ao adicionar {cd_cliente}: {str(e)}")
+                        except IntegrityError as e:
+                            db.session.rollback()
+                            erros.append(f"Erro de integridade ao adicionar {cd_cliente}: {str(e)}")
                         except Exception as e:
+                            db.session.rollback()
                             erros.append(f"Erro ao adicionar {cd_cliente}: {str(e)}")
             
             # Remover clientes que sairam da lista
             if codigos_para_remover:
-                print(f"\n➖ Removendo {len(codigos_para_remover)} clientes que sairam da lista...")
+                logger.info(f"\n➖ Removendo {len(codigos_para_remover)} clientes que sairam da lista...")
                 for cliente_mysql in clientes_oracle_mysql:
                     if cliente_mysql.cd_cliente_oracle in codigos_para_remover:
                         try:
@@ -129,12 +142,15 @@ def sincronizacao_automatica_diaria():
                             cliente_mysql.ativo = False
                             cliente_mysql.data_ultima_sincronizacao = datetime.now()
                             removidos += 1
+                        except ValueError as e:
+                            erros.append(f"Erro de dados ao remover {cliente_mysql.cd_cliente_oracle}: {str(e)}")
                         except Exception as e:
+                            db.session.rollback()
                             erros.append(f"Erro ao remover {cliente_mysql.cd_cliente_oracle}: {str(e)}")
             
             # Atualizar dados dos clientes existentes
             if codigos_para_atualizar:
-                print(f"\n🔄 Atualizando {len(codigos_para_atualizar)} clientes existentes...")
+                logger.info(f"\n🔄 Atualizando {len(codigos_para_atualizar)} clientes existentes...")
                 for cliente_oracle in clientes_oracle:
                     cd_cliente = str(cliente_oracle.get('cd_cliente', ''))
                     if cd_cliente in codigos_para_atualizar:
@@ -154,22 +170,34 @@ def sincronizacao_automatica_diaria():
                                 
                                 cliente_mysql.data_ultima_sincronizacao = datetime.now()
                                 atualizados += 1
+                        except ValueError as e:
+                            erros.append(f"Erro de dados ao atualizar {cd_cliente}: {str(e)}")
                         except Exception as e:
+                            db.session.rollback()
                             erros.append(f"Erro ao atualizar {cd_cliente}: {str(e)}")
             
             # Salvar todas as alterações
-            print(f"\n💾 Salvando alterações no banco...")
-            db.session.commit()
+            logger.info(f"\n💾 Salvando alterações no banco...")
+            try:
+                db.session.commit()
+            except IntegrityError as e:
+                db.session.rollback()
+                logger.error(f"❌ Erro de integridade ao salvar: {str(e)}")
+                return False
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"❌ Erro ao salvar alterações: {str(e)}")
+                return False
             
             # Estatísticas finais
-            print("\n" + "=" * 60)
-            print("📊 RESULTADO DA SINCRONIZAÇÃO AUTOMÁTICA")
-            print("=" * 60)
-            print(f"📈 Clientes adicionados: {adicionados}")
-            print(f"📉 Clientes removidos: {removidos}")
-            print(f"🔄 Clientes atualizados: {atualizados}")
-            print(f"❌ Erros: {len(erros)}")
-            print(f"📊 Total processado: {adicionados + removidos + atualizados}")
+            logger.info("\n" + "=" * 60)
+            logger.info("📊 RESULTADO DA SINCRONIZAÇÃO AUTOMÁTICA")
+            logger.info("=" * 60)
+            logger.info(f"📈 Clientes adicionados: {adicionados}")
+            logger.info(f"📉 Clientes removidos: {removidos}")
+            logger.info(f"🔄 Clientes atualizados: {atualizados}")
+            logger.info(f"❌ Erros: {len(erros)}")
+            logger.info(f"📊 Total processado: {adicionados + removidos + atualizados}")
             
             # Verificar totais finais
             clientes_oracle_final = Cliente.query.filter(
@@ -177,20 +205,20 @@ def sincronizacao_automatica_diaria():
                 Cliente.ativo == True
             ).count()
             
-            print(f"\n📈 Estatísticas finais:")
-            print(f"   Clientes Oracle ativos: {clientes_oracle_final}")
-            print(f"   Clientes Oracle esperados: {len(clientes_oracle)}")
-            print(f"   Diferença: {clientes_oracle_final - len(clientes_oracle)}")
+            logger.info(f"\n📈 Estatísticas finais:")
+            logger.info(f"   Clientes Oracle ativos: {clientes_oracle_final}")
+            logger.info(f"   Clientes Oracle esperados: {len(clientes_oracle)}")
+            logger.info(f"   Diferença: {clientes_oracle_final - len(clientes_oracle)}")
             
             if erros:
-                print(f"\n⚠️ Primeiros 5 erros:")
+                logger.warning(f"\n⚠️ Primeiros 5 erros:")
                 for erro in erros[:5]:
-                    print(f"   - {erro}")
+                    logger.warning(f"   - {erro}")
             
             return True
             
     except Exception as e:
-        print(f"\n❌ Erro na sincronização automática: {e}")
+        logger.error(f"\n❌ Erro na sincronização automática: {e}")
         return False
 
 if __name__ == "__main__":
@@ -198,15 +226,15 @@ if __name__ == "__main__":
         resultado = sincronizacao_automatica_diaria()
         
         if resultado:
-            print("\n🎉 SINCRONIZAÇÃO AUTOMÁTICA CONCLUÍDA!")
-            print("\n📌 Este script será executado automaticamente todos os dias")
+            logger.info("\n🎉 SINCRONIZAÇÃO AUTOMÁTICA CONCLUÍDA!")
+            logger.info("\n📌 Este script será executado automaticamente todos os dias")
         else:
-            print("\n❌ Falha na sincronização automática")
+            logger.error("\n❌ Falha na sincronização automática")
         
     except KeyboardInterrupt:
-        print("\n\n⏹️ Sincronização interrompida")
+        logger.warning("\n\n⏹️ Sincronização interrompida")
     except Exception as e:
-        print(f"\n❌ Erro geral: {e}")
+        logger.error(f"\n❌ Erro geral: {e}")
     finally:
-        print("\n🏁 Fim da sincronização automática")
+        logger.info("\n🏁 Fim da sincronização automática")
         input("Pressione Enter para sair...")
