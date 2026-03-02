@@ -27,6 +27,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flask_mail import Mail, Message
 from apscheduler.schedulers.background import BackgroundScheduler
 
+# Importar serviço Oracle
+from oracle_service import test_oracle_connection, get_clientes_oracle
+
 # Fuso horário São Paulo
 os.environ['TZ'] = 'America/Sao_Paulo'
 try:
@@ -111,6 +114,16 @@ class Cliente(db.Model):
     ativo = db.Column(db.Boolean, default=True)
     proxima_ligacao = db.Column(db.DateTime, nullable=True)
     origem = db.Column(db.Enum('importado_csv', 'manual'), default='manual', nullable=False)
+    
+    # 🆕 CAMPOS ORACLE PARA INTEGRACAO CRM
+    cd_cliente_oracle = db.Column(db.String(50))  # PK do Oracle
+    categoria_consultor = db.Column(db.String(100))  # Consultor vinculado
+    conceito = db.Column(db.String(20))  # LIBERADO/INADIMPLENTE/SEM_CONCEITO
+    ultimo_pedido_oracle = db.Column(db.DateTime)  # Data último pedido
+    valor_ultimo_pedido = db.Column(db.Numeric(12, 2))  # Valor último pedido
+    situacao_ultimo_pedido = db.Column(db.String(50))  # Situação pedido
+    representante_oracle = db.Column(db.String(200))  # Representante Oracle
+    data_ultima_sincronizacao = db.Column(db.DateTime)  # Controle sincronização
 
     consultor = db.relationship('Usuario', backref='meus_clientes', foreign_keys=[consultor_id])
 
@@ -284,6 +297,165 @@ def meus_clientes():
 
     aba = request.args.get('aba', 'pendentes')
     apenas_meus = True if current_user.tipo == 'consultor' else (request.args.get('meus') == '1')
+    
+    # Tratar aba Oracle
+    if aba == 'oracle':
+        # Para aba Oracle, mostrar apenas clientes com cd_cliente_oracle
+        q = Cliente.query.options(joinedload(Cliente.ligacoes)).filter(
+            Cliente.cd_cliente_oracle.isnot(None),
+            Cliente.ativo == True
+        )
+        if apenas_meus:
+            q = q.filter(Cliente.consultor_id == current_user.id)
+        
+        # Aplicar filtros Oracle
+        periodo_oracle = request.args.get('periodo_oracle')
+        conceito_filtro = request.args.get('conceito_filtro')
+        consultor_filtro = request.args.get('consultor_filtro')
+        
+        # Debug - mostrar parâmetros recebidos
+        print(f"🔍 DEBUG - Filtros Oracle: periodo={periodo_oracle}, conceito={conceito_filtro}, consultor={consultor_filtro}")
+        
+        # Filtro por período sem compra
+        if periodo_oracle:
+            try:
+                dias = int(periodo_oracle)
+                data_limite = datetime.now() - timedelta(days=dias)
+                q = q.filter(Cliente.ultimo_pedido_oracle <= data_limite)
+                print(f"📅 Filtro período: {dias} dias (data limite: {data_limite})")
+            except ValueError:
+                pass  # Ignora se o valor não for válido
+        
+        if conceito_filtro:
+            q = q.filter(Cliente.conceito == conceito_filtro)
+            print(f"🏷️ Filtro conceito: {conceito_filtro}")
+        
+        if consultor_filtro:
+            q = q.filter(Cliente.categoria_consultor.like(f'%{consultor_filtro}%'))
+            print(f"👤 Filtro consultor: {consultor_filtro}")
+        
+        termo = s(request.args.get('q'))
+        if termo:
+            like = f"%{termo}%"
+            q = q.filter(or_(
+                Cliente.nome.like(like),
+                Cliente.cnpj.like(like),
+                Cliente.telefone.like(like),
+                Cliente.representante_nome.like(like),
+                Cliente.categoria_consultor.like(like),
+                Cliente.conceito.like(like)
+            ))
+        
+        clientes_oracle = q.order_by(Cliente.nome.asc()).all()
+        
+        # Converter para formato esperado pelo template
+        clientes = []
+        for c in clientes_oracle:
+            ligs = sorted(c.ligacoes, key=lambda x: x.data_hora, reverse=True)
+            ultima = ligs[0] if ligs else None
+            total = len(ligs)
+            
+            dados = {
+                "id": c.id,
+                "nome": c.nome,
+                "cnpj": c.cnpj,
+                "telefone": c.telefone,
+                "representante_nome": c.representante_nome,
+                "ultima_ligacao": ultima.data_hora if ultima else None,
+                "total_ligacoes": total,
+                "proxima_ligacao": c.proxima_ligacao,
+                "origem": getattr(c, 'origem', None),
+                "cd_cliente_oracle": c.cd_cliente_oracle,
+                "categoria_consultor": c.categoria_consultor,
+                "conceito": c.conceito,
+                "ultimo_pedido_oracle": c.ultimo_pedido_oracle,
+                "valor_ultimo_pedido": c.valor_ultimo_pedido,
+                "situacao_ultimo_pedido": c.situacao_ultimo_pedido,
+                "representante_oracle": c.representante_oracle,
+            }
+            clientes.append(dados)
+        
+        # Obter lista de consultores únicos para filtro
+        consultores_oracle = []
+        if clientes:
+            consultores_set = set()
+            for c in clientes:
+                if c.get('categoria_consultor'):
+                    consultores_set.add(c.get('categoria_consultor'))
+            
+            # Criar objetos de consultor para o template
+            for nome in sorted(consultores_set):
+                consultores_oracle.append({'nome': nome})
+        
+        # Calcular totais para as outras abas
+        todos_clientes = Cliente.query.filter_by(ativo=True)
+        if apenas_meus:
+            todos_clientes = todos_clientes.filter(Cliente.consultor_id == current_user.id)
+        
+        total_pendentes = todos_clientes.filter(Cliente.id.notin_(
+            db.session.query(Ligacao.cliente_id).filter(
+                Ligacao.consultor_id == current_user.id if apenas_meus else True
+            )
+        )).count()
+        
+        total_contatados = todos_clientes.filter(Cliente.id.in_(
+            db.session.query(Ligacao.cliente_id).filter(
+                Ligacao.consultor_id == current_user.id if apenas_meus else True
+            )
+        )).filter(Cliente.proxima_ligacao.is_(None)).count()
+        
+        total_retornar = todos_clientes.filter(Cliente.proxima_ligacao.isnot(None)).count()
+        total_oracle = len(clientes)
+        
+        # Calcular estatísticas Oracle
+        stats_oracle = {}
+        if clientes:
+            liberados = sum(1 for c in clientes if c.get('conceito') == 'LIBERADO')
+            inadimplentes = sum(1 for c in clientes if c.get('conceito') == 'INADIMPLENTE')
+            sem_conceito = sum(1 for c in clientes if c.get('conceito') in ['SEM CONCEITO', None])
+            
+            # Calcular ticket médio
+            valores = [c.get('valor_ultimo_pedido', 0) for c in clientes if c.get('valor_ultimo_pedido')]
+            ticket_medio = sum(valores) / len(valores) if valores else 0
+            
+            # Calcular dias médio sem pedido
+            hoje = datetime.now()
+            dias_sem_pedido = []
+            for c in clientes:
+                if c.get('ultimo_pedido_oracle'):
+                    dias = (hoje - c['ultimo_pedido_oracle']).days
+                    dias_sem_pedido.append(dias)
+            dias_medio = sum(dias_sem_pedido) / len(dias_sem_pedido) if dias_sem_pedido else 0
+            
+            total_clientes_oracle = len(clientes)
+            
+            stats_oracle = {
+                'liberados': liberados,
+                'inadimplentes': inadimplentes,
+                'sem_conceito': sem_conceito,
+                'ticket_medio': ticket_medio,
+                'dias_sem_pedido': int(dias_medio),
+                'perc_liberados': round((liberados / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0,
+                'perc_inadimplentes': round((inadimplentes / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0,
+                'perc_sem_conceito': round((sem_conceito / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0
+            }
+        
+        # Renderizar template com dados Oracle
+        return render_template('meus_clientes.html',
+                             clientes=clientes,
+                             aba=aba,
+                             total_pendentes=total_pendentes,
+                             total_contatados=total_contatados,
+                             total_retornar=total_retornar,
+                             total_oracle=total_oracle,
+                             is_supervisor=current_user.tipo == 'supervisor',
+                             stats={},
+                             stats_oracle=stats_oracle,
+                             consultores_oracle=consultores_oracle,
+                             q=request.args.get('q', ''),
+                             meses_disponiveis_consultor=[],
+                             mes_filtro=None,
+                             ano_filtro=None)
     
     # Parâmetros de filtro mensal para consultores
     mes_filtro = None
@@ -2111,6 +2283,157 @@ def remover_cliente(cliente_id):
         return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
 
 # =============================================================================
+# ROTAS DE TESTE ORACLE - FASE 1
+# =============================================================================
+@app.route('/test-oracle')
+@login_required
+def test_oracle_route():
+    """Rota de teste para conexão Oracle"""
+    if current_user.tipo != 'supervisor':
+        return jsonify({"erro": "Acesso permitido somente para supervisores"}), 403
+    
+    try:
+        success, message = test_oracle_connection()
+        return jsonify({
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Erro ao testar conexão: {str(e)}"
+        }), 500
+
+@app.route('/oracle-clientes-alvo')
+@login_required
+def oracle_clientes_alvo_route():
+    """Rota para testar busca de clientes alvo no Oracle"""
+    if current_user.tipo != 'supervisor':
+        return jsonify({"erro": "Acesso permitido somente para supervisores"}), 403
+    
+    try:
+        clientes = get_clientes_oracle()
+        return jsonify({
+            "success": True,
+            "total": len(clientes),
+            "clientes": clientes[:5],  # Mostra só os 5 primeiros para teste
+            "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Erro ao buscar clientes: {str(e)}"
+        }), 500
+
+@app.route('/sincronizar-oracle', methods=['POST'])
+@login_required
+def sincronizar_oracle():
+    """Rota para sincronizar clientes do Oracle com o MySQL"""
+    if current_user.tipo != 'supervisor':
+        return jsonify({"erro": "Acesso permitido somente para supervisores"}), 403
+    
+    try:
+        # Buscar clientes do Oracle
+        clientes_oracle = get_clientes_oracle()
+        
+        sincronizados = 0
+        atualizados = 0
+        erros = []
+        
+        for cliente_oracle in clientes_oracle:
+            try:
+                cd_cliente = str(cliente_oracle.get('cd_cliente', ''))
+                if not cd_cliente:
+                    continue
+                
+                # Verificar se cliente já existe no MySQL
+                cliente_mysql = Cliente.query.filter_by(cd_cliente_oracle=cd_cliente).first()
+                
+                if cliente_mysql:
+                    # Atualizar cliente existente
+                    cliente_mysql.categoria_consultor = cliente_oracle.get('consultor')
+                    cliente_mysql.conceito = cliente_oracle.get('conceito')
+                    cliente_mysql.representante_oracle = cliente_oracle.get('representante')
+                    cliente_mysql.valor_ultimo_pedido = cliente_oracle.get('total_pedido')
+                    cliente_mysql.situacao_ultimo_pedido = cliente_oracle.get('situacao')
+                    
+                    # Converter data do pedido
+                    dt_pedido = cliente_oracle.get('dt_pedido')
+                    if dt_pedido:
+                        cliente_mysql.ultimo_pedido_oracle = dt_pedido
+                    
+                    cliente_mysql.data_ultima_sincronizacao = datetime.now()
+                    atualizados += 1
+                else:
+                    # Criar novo cliente
+                    # Tentar encontrar consultor pelo nome na categoria_consultor
+                    nome_consultor = cliente_oracle.get('consultor', '')
+                    consultor = None
+                    
+                    if nome_consultor:
+                        # Extrair nome do consultor (formato: "NUM - NOME")
+                        if ' - ' in nome_consultor:
+                            nome_consultor = nome_consultor.split(' - ', 1)[1]
+                        
+                        consultor = Usuario.query.filter_by(
+                            nome=nome_consultor.strip(),
+                            tipo='consultor',
+                            ativo=True
+                        ).first()
+                    
+                    # Se não encontrar consultor, usar o supervisor atual
+                    if not consultor:
+                        consultor = current_user
+                    
+                    novo_cliente = Cliente(
+                        nome=cliente_oracle.get('cliente', '')[:200],
+                        cd_cliente_oracle=cd_cliente,
+                        categoria_consultor=cliente_oracle.get('consultor'),
+                        conceito=cliente_oracle.get('conceito'),
+                        representante_oracle=cliente_oracle.get('representante'),
+                        valor_ultimo_pedido=cliente_oracle.get('total_pedido'),
+                        situacao_ultimo_pedido=cliente_oracle.get('situacao'),
+                        consultor_id=consultor.id,
+                        origem='importado_csv',  # Marcado como importado
+                        ativo=True
+                    )
+                    
+                    # Converter data do pedido
+                    dt_pedido = cliente_oracle.get('dt_pedido')
+                    if dt_pedido:
+                        novo_cliente.ultimo_pedido_oracle = dt_pedido
+                    
+                    novo_cliente.data_ultima_sincronizacao = datetime.now()
+                    db.session.add(novo_cliente)
+                    sincronizados += 1
+                
+            except Exception as e:
+                erros.append(f"Cliente {cd_cliente}: {str(e)}")
+                continue
+        
+        # Commit de todas as alterações
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Sincronização concluída com sucesso!",
+            "total_oracle": len(clientes_oracle),
+            "sincronizados": sincronizados,
+            "atualizados": atualizados,
+            "erros": len(erros),
+            "detalhes_erros": erros[:5],  # Mostra só os 5 primeiros erros
+            "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "message": f"Erro na sincronização: {str(e)}"
+        }), 500
+
+# =============================================================================
 # ERROR HANDLERS
 # =============================================================================
 @app.errorhandler(404)
@@ -2184,6 +2507,28 @@ with app.app_context():
     except Exception:
         db.session.rollback()
 
+    # MIGRAÇÕES ORACLE - FASE 2
+    # Adicionar campos Oracle na tabela clientes
+    campos_oracle = [
+        "ALTER TABLE clientes ADD COLUMN cd_cliente_oracle VARCHAR(50)",
+        "ALTER TABLE clientes ADD COLUMN categoria_consultor VARCHAR(100)",
+        "ALTER TABLE clientes ADD COLUMN conceito VARCHAR(20)",
+        "ALTER TABLE clientes ADD COLUMN ultimo_pedido_oracle DATETIME",
+        "ALTER TABLE clientes ADD COLUMN valor_ultimo_pedido DECIMAL(12,2)",
+        "ALTER TABLE clientes ADD COLUMN situacao_ultimo_pedido VARCHAR(50)",
+        "ALTER TABLE clientes ADD COLUMN representante_oracle VARCHAR(200)",
+        "ALTER TABLE clientes ADD COLUMN data_ultima_sincronizacao DATETIME"
+    ]
+    
+    for campo_sql in campos_oracle:
+        try:
+            db.session.execute(text(campo_sql))
+            db.session.commit()
+            print(f"✅ Campo Oracle adicionado: {campo_sql}")
+        except Exception as e:
+            db.session.rollback()
+            print(f"⚠️ Campo Oracle já existe ou erro: {campo_sql} - {str(e)}")
+
     if not MAIL_PASSWORD:
         print("AVISO: MAIL_PASSWORD não configurado! Email não funcionará.")
         print("   Configure a variável MAIL_PASSWORD no .env")
@@ -2216,6 +2561,22 @@ def start_scheduler_once():
             except Exception as e:
                 print(f"Erro no relatório automático: {e}")
     
+    def job_sincronizacao_oracle():
+        """Job diário de sincronização com Oracle"""
+        with app.app_context():
+            try:
+                from sincronizacao_automatica import sincronizacao_automatica_diaria
+                
+                print("🔄 Iniciando sincronização automática com Oracle...")
+                # Usar a função completa de sincronização que já mapeia consultores
+                sincronizacao_automatica_diaria()
+                print("✅ Sincronização automática concluída com sucesso!")
+                
+            except Exception as e:
+                print(f"❌ Erro na sincronização Oracle: {e}")
+                import traceback
+                traceback.print_exc()
+    
     _scheduler.add_job(
         job_relatorio,
         trigger='cron',
@@ -2226,9 +2587,125 @@ def start_scheduler_once():
         replace_existing=True
     )
     
+    # Adicionar sincronização Oracle - todo dia às 6:00
+    _scheduler.add_job(
+        job_sincronizacao_oracle,
+        trigger='cron',
+        hour=6,
+        minute=0,
+        id='sincronizacao_oracle_diaria',
+        replace_existing=True
+    )
     _scheduler.start()
     app._scheduler_started = True
     print("Scheduler configurado: envio diário às 18:00 (America/Sao_Paulo)")
+
+# =============================================================================
+# ROTA DE TESTE PARA DEBUG DE FILTROS ORACLE
+# =============================================================================
+@app.route('/test-filtros-oracle')
+@login_required
+def test_filtros_oracle():
+    """Rota de teste para verificar filtros Oracle"""
+    if current_user.tipo != 'supervisor':
+        return "Acesso apenas para supervisores", 403
+    
+    # Testar filtros manualmente
+    periodo_oracle = request.args.get('periodo_oracle')
+    conceito_filtro = request.args.get('conceito_filtro')
+    consultor_filtro = request.args.get('consultor_filtro')
+    
+    # Query base
+    q = Cliente.query.filter(
+        Cliente.cd_cliente_oracle.isnot(None),
+        Cliente.ativo == True
+    )
+    
+    # Aplicar filtros
+    if periodo_oracle:
+        try:
+            dias = int(periodo_oracle)
+            data_limite = datetime.now() - timedelta(days=dias)
+            q = q.filter(Cliente.ultimo_pedido_oracle <= data_limite)
+        except ValueError:
+            pass
+    
+    if conceito_filtro:
+        q = q.filter(Cliente.conceito == conceito_filtro)
+    
+    if consultor_filtro:
+        q = q.filter(Cliente.categoria_consultor.like(f'%{consultor_filtro}%'))
+    
+    clientes = q.all()
+    
+    # Retornar resultado em HTML simples
+    html = f"""
+    <h2>Teste de Filtros Oracle</h2>
+    <p><strong>Filtros aplicados:</strong></p>
+    <ul>
+        <li>Período: {periodo_oracle or 'Todos'}</li>
+        <li>Conceito: {conceito_filtro or 'Todos'}</li>
+        <li>Consultor: {consultor_filtro or 'Todos'}</li>
+    </ul>
+    <p><strong>Resultados: {len(clientes)} clientes</strong></p>
+    <table border="1" style="border-collapse: collapse; width: 100%;">
+        <tr>
+            <th>Nome</th>
+            <th>Conceito</th>
+            <th>Consultor</th>
+            <th>Último Pedido</th>
+        </tr>
+    """
+    
+    for c in clientes[:10]:  # Limitar a 10 para não sobrecarregar
+        html += f"""
+        <tr>
+            <td>{c.nome}</td>
+            <td>{c.conceito or '-'}</td>
+            <td>{c.categoria_consultor or '-'}</td>
+            <td>{c.ultimo_pedido_oracle or '-'}</td>
+        </tr>
+        """
+    
+    html += "</table>"
+    
+    if len(clientes) > 10:
+        html += f"<p><em>Mostrando 10 de {len(clientes)} resultados</em></p>"
+    
+    return html
+
+# =============================================================================
+# ROTA DE SINCRONIZAÇÃO MANUAL ORACLE
+# =============================================================================
+@app.route('/sincronizar-oracle', methods=['POST'])
+@login_required
+def sincronizar_oracle_manual():
+    """Sincronização manual dos clientes Oracle"""
+    if current_user.tipo != 'supervisor':
+        return jsonify({"ok": False, "mensagem": "Acesso permitido apenas para supervisores"}), 403
+    
+    try:
+        from sincronizacao_automatica import sincronizacao_automatica_diaria
+        
+        # Executar sincronização em thread separada para não bloquear
+        import threading
+        def sincronizar_background():
+            try:
+                sincronizacao_automatica_diaria()
+            except Exception as e:
+                print(f"Erro na sincronização background: {e}")
+        
+        thread = threading.Thread(target=sincronizar_background)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            "ok": True, 
+            "mensagem": "Sincronização iniciada com sucesso! Aguarde alguns minutos para ver os resultados."
+        })
+        
+    except Exception as e:
+        return jsonify({"ok": False, "mensagem": f"Erro ao iniciar sincronização: {str(e)}"}), 500
 
 # =============================================================================
 # MAIN
@@ -2242,10 +2719,6 @@ if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "5000"))
     debug = os.getenv("FLASK_DEBUG", "0") == "1"
-
-    @app.get("/health")
-    def health():
-        return jsonify(status="ok"), 200
 
     print(f"Servidor de produção iniciado, Controle de Ligações em http://{host}:{port}")
     serve(app, host=host, port=port, threads=32)
