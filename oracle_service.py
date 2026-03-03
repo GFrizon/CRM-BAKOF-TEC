@@ -263,6 +263,7 @@ class OracleService:
         JOIN FAITEMPE i ON i.cd_pedido = p.cd_pedido
         LEFT JOIN esmateri m ON m.cd_material = i.cd_material
         WHERE p.cd_cliente = :cd_cliente
+          AND p.dt_pedido between (sysdate - 365) and sysdate
           AND i.ROWID = (
             SELECT MIN(i2.ROWID)
             FROM FAITEMPE i2
