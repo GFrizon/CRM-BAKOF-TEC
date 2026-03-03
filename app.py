@@ -355,14 +355,32 @@ def meus_clientes():
         
         clientes_oracle = q.order_by(Cliente.nome.asc()).all()
         
-        # Converter para formato esperado pelo template
-        clientes = []
+        # Agrupar clientes por representante_oracle
+        representantes_data = {}
         for c in clientes_oracle:
+            # Obter nome do representante Oracle
+            representante = c.representante_oracle or 'SEM REPRESENTANTE'
+            
+            # Criar entrada para o representante se não existir
+            if representante not in representantes_data:
+                representantes_data[representante] = {
+                    'nome': representante,
+                    'clientes': [],
+                    'total_clientes': 0,
+                    'liberados': 0,
+                    'inadimplentes': 0,
+                    'sem_conceito': 0,
+                    'ticket_medio': 0,
+                    'dias_medio': 0,
+                    'consultores_internos': {}  # Mantém sincronização com consultores
+                }
+            
+            # Preparar dados do cliente mantendo sincronização
             ligs = sorted(c.ligacoes, key=lambda x: x.data_hora, reverse=True)
             ultima = ligs[0] if ligs else None
             total = len(ligs)
             
-            dados = {
+            dados_cliente = {
                 "id": c.id,
                 "nome": c.nome,
                 "cnpj": c.cnpj,
@@ -373,22 +391,63 @@ def meus_clientes():
                 "proxima_ligacao": c.proxima_ligacao,
                 "origem": getattr(c, 'origem', None),
                 "cd_cliente_oracle": c.cd_cliente_oracle,
-                "categoria_consultor": c.categoria_consultor,
+                "categoria_consultor": c.categoria_consultor,  # Mantido!
+                "consultor_id": c.consultor_id,  # Mantido!
                 "conceito": c.conceito,
                 "ultimo_pedido_oracle": c.ultimo_pedido_oracle,
                 "valor_ultimo_pedido": c.valor_ultimo_pedido,
                 "situacao_ultimo_pedido": c.situacao_ultimo_pedido,
                 "representante_oracle": c.representante_oracle,
             }
-            clientes.append(dados)
+            
+            # Adicionar cliente ao representante
+            representantes_data[representante]['clientes'].append(dados_cliente)
+            
+            # Agrupar por consultor interno (opcional, para estatísticas)
+            if c.consultor:
+                nome_consultor = c.consultor.nome
+                if nome_consultor not in representantes_data[representante]['consultores_internos']:
+                    representantes_data[representante]['consultores_internos'][nome_consultor] = 0
+                representantes_data[representante]['consultores_internos'][nome_consultor] += 1
+        
+        # Calcular estatísticas por representante
+        for representante, dados in representantes_data.items():
+            clientes_rep = dados['clientes']
+            
+            # Estatísticas básicas
+            dados['total_clientes'] = len(clientes_rep)
+            dados['liberados'] = sum(1 for c in clientes_rep if c.get('conceito') == 'LIBERADO')
+            dados['inadimplentes'] = sum(1 for c in clientes_rep if c.get('conceito') == 'INADIMPLENTE')
+            dados['sem_conceito'] = sum(1 for c in clientes_rep if c.get('conceito') in ['SEM CONCEITO', None])
+            
+            # Ticket médio
+            valores = [c.get('valor_ultimo_pedido', 0) for c in clientes_rep if c.get('valor_ultimo_pedido')]
+            dados['ticket_medio'] = sum(valores) / len(valores) if valores else 0
+            
+            # Dias médio sem pedido
+            hoje = datetime.now()
+            dias_sem_pedido = []
+            for c in clientes_rep:
+                if c.get('ultimo_pedido_oracle'):
+                    dias = (hoje - c['ultimo_pedido_oracle']).days
+                    dias_sem_pedido.append(dias)
+            dados['dias_medio'] = sum(dias_sem_pedido) / len(dias_sem_pedido) if dias_sem_pedido else 0
+        
+        # Converter para lista ordenada por número de clientes (maior para menor)
+        representantes_ordenados = sorted(
+            representantes_data.items(), 
+            key=lambda x: x[1]['total_clientes'], 
+            reverse=True
+        )
         
         # Obter lista de consultores únicos para filtro
         consultores_oracle = []
-        if clientes:
+        if representantes_data:
             consultores_set = set()
-            for c in clientes:
-                if c.get('categoria_consultor'):
-                    consultores_set.add(c.get('categoria_consultor'))
+            for representante, dados in representantes_data.items():
+                for c in dados['clientes']:
+                    if c.get('categoria_consultor'):
+                        consultores_set.add(c.get('categoria_consultor'))
             
             # Criar objetos de consultor para o template
             for nome in sorted(consultores_set):
@@ -412,44 +471,50 @@ def meus_clientes():
         )).filter(Cliente.proxima_ligacao.is_(None)).count()
         
         total_retornar = todos_clientes.filter(Cliente.proxima_ligacao.isnot(None)).count()
-        total_oracle = len(clientes)
+        total_oracle = sum(len(dados['clientes']) for dados in representantes_data.values())
         
-        # Calcular estatísticas Oracle
+        # Calcular estatísticas Oracle gerais (de todos os representantes)
         stats_oracle = {}
-        if clientes:
-            liberados = sum(1 for c in clientes if c.get('conceito') == 'LIBERADO')
-            inadimplentes = sum(1 for c in clientes if c.get('conceito') == 'INADIMPLENTE')
-            sem_conceito = sum(1 for c in clientes if c.get('conceito') in ['SEM CONCEITO', None])
+        total_clientes_oracle = 0
+        total_liberados = 0
+        total_inadimplentes = 0
+        total_sem_conceito = 0
+        todos_valores = []
+        todos_dias = []
+        
+        for representante, dados in representantes_data.items():
+            clientes_rep = dados['clientes']
+            total_clientes_oracle += len(clientes_rep)
+            total_liberados += dados['liberados']
+            total_inadimplentes += dados['inadimplentes']
+            total_sem_conceito += dados['sem_conceito']
             
-            # Calcular ticket médio
-            valores = [c.get('valor_ultimo_pedido', 0) for c in clientes if c.get('valor_ultimo_pedido')]
-            ticket_medio = sum(valores) / len(valores) if valores else 0
-            
-            # Calcular dias médio sem pedido
-            hoje = datetime.now()
-            dias_sem_pedido = []
-            for c in clientes:
+            # Coletar valores e dias para cálculos gerais
+            for c in clientes_rep:
+                if c.get('valor_ultimo_pedido'):
+                    todos_valores.append(c.get('valor_ultimo_pedido'))
                 if c.get('ultimo_pedido_oracle'):
-                    dias = (hoje - c['ultimo_pedido_oracle']).days
-                    dias_sem_pedido.append(dias)
-            dias_medio = sum(dias_sem_pedido) / len(dias_sem_pedido) if dias_sem_pedido else 0
-            
-            total_clientes_oracle = len(clientes)
-            
-            stats_oracle = {
-                'liberados': liberados,
-                'inadimplentes': inadimplentes,
-                'sem_conceito': sem_conceito,
-                'ticket_medio': ticket_medio,
-                'dias_sem_pedido': int(dias_medio),
-                'perc_liberados': round((liberados / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0,
-                'perc_inadimplentes': round((inadimplentes / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0,
-                'perc_sem_conceito': round((sem_conceito / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0
-            }
+                    dias = (datetime.now() - c['ultimo_pedido_oracle']).days
+                    todos_dias.append(dias)
+        
+        # Calcular estatísticas gerais
+        ticket_medio_geral = sum(todos_valores) / len(todos_valores) if todos_valores else 0
+        dias_medio_geral = sum(todos_dias) / len(todos_dias) if todos_dias else 0
+        
+        stats_oracle = {
+            'liberados': total_liberados,
+            'inadimplentes': total_inadimplentes,
+            'sem_conceito': total_sem_conceito,
+            'ticket_medio': ticket_medio_geral,
+            'dias_sem_pedido': int(dias_medio_geral),
+            'perc_liberados': round((total_liberados / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0,
+            'perc_inadimplentes': round((total_inadimplentes / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0,
+            'perc_sem_conceito': round((total_sem_conceito / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0
+        }
         
         # Renderizar template com dados Oracle
         return render_template('meus_clientes.html',
-                             clientes=clientes,
+                             representantes=representantes_ordenados,  # Nova variável
                              aba=aba,
                              total_pendentes=total_pendentes,
                              total_contatados=total_contatados,

@@ -360,107 +360,187 @@
   </div>
 </form>
 
-<!-- TABELA ORACLE OTIMIZADA -->
+<!-- 🆕 TABELA ORACLE POR REPRESENTANTES -->
 {% if aba == 'oracle' %}
 <div class="card mt-3">
   <div class="card-body">
-    <div class="table-responsive">
-      <table class="table table-striped table-hover">
-        <thead class="table-dark">
-          <tr>
-            <th style="width: 25%">Cliente</th>
-            <th style="width: 12%">CNPJ</th>
-            <th style="width: 12%">Telefone</th>
-            <th style="width: 10%">Status</th>
-            <th style="width: 15%">Consultor Oracle</th>
-            <th style="width: 10%">Último Pedido</th>
-            <th style="width: 8%">Valor</th>
-            <th style="width: 8%">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if clientes %}
-          {% for c in clientes %}
-          <tr class="{% if c.conceito == 'INADIMPLENTE' %}table-danger{% elif c.conceito == 'LIBERADO' %}table-success{% endif %}">
-            <td>
-              <div class="fw-bold">{{ c.nome }}</div>
-              <small class="text-muted">
-                {% if c.ultimo_pedido_oracle %}
-                📅 {{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}
-                {% endif %}
-              </small>
-            </td>
-            <td><code>{{ c.cnpj or '-' }}</code></td>
-            <td>
-              {% if c.telefone %}
-              <a href="tel:{{ c.telefone }}" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-telephone"></i> {{ c.telefone }}
-              </a>
-              {% else %}
-              <span class="text-muted">-</span>
-              {% endif %}
-            </td>
-            <td>
-              <span class="badge {% if c.conceito == 'LIBERADO' %}bg-success{% elif c.conceito == 'INADIMPLENTE' %}bg-danger{% else %}bg-secondary{% endif %}">
-                {% if c.conceito == 'LIBERADO' %}
-                  <i class="bi bi-check-circle"></i> LIBERADO
-                {% elif c.conceito == 'INADIMPLENTE' %}
-                  <i class="bi bi-exclamation-triangle"></i> INADIMPLENTE
-                {% else %}
-                  <i class="bi bi-question-circle"></i> SEM CONCEITO
-                {% endif %}
-              </span>
-            </td>
-            <td>
-              <small class="text-muted">{{ c.categoria_consultor or '-' }}</small>
-            </td>
-            <td>
-              {% if c.ultimo_pedido_oracle %}
-              {{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}
-              {% else %}
-              <span class="text-muted">-</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if c.valor_ultimo_pedido %}
-              <div class="fw-bold text-success">R$ {{ "%.2f"|format(c.valor_ultimo_pedido) | replace('.', ',') }}</div>
-              {% endif %}
-            </td>
-            <td>
-              <div class="btn-group" role="group">
-                <button class="btn btn-sm btn-info"
-                        onclick="detalhesClienteOracle({{ c.id }})"
-                        title="Ver Detalhes Oracle">
-                  <i class="bi bi-eye"></i>
-                </button>
-                <button class="btn btn-sm btn-primary"
-                        onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
-                        title="Registrar Ligação">
-                  <i class="bi bi-telephone-plus"></i>
-                </button>
-                {% if c.total_ligacoes > 0 %}
-                <button class="btn btn-sm btn-outline-secondary"
-                        onclick="historico({{ c.id }})"
-                        title="Ver Histórico">
-                  <i class="bi bi-clock-history"></i>
-                </button>
-                {% endif %}
+    {% if representantes %}
+      {% for representante_nome, dados in representantes %}
+      <div class="card mb-3 border-light">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="toggleRepresentante('{{ representante_nome|replace(' ', '-') }}')">
+          <div class="d-flex align-items-center">
+            <i class="bi bi-person-workspace me-2"></i>
+            <strong>{{ representante_nome }}</strong>
+            <span class="badge bg-light text-primary ms-2">{{ dados.total_clientes }} clientes</span>
+          </div>
+          <i class="bi bi-chevron-down" id="icone-{{ representante_nome|replace(' ', '-') }}"></i>
+        </div>
+        
+        <div class="card-body" id="representante-{{ representante_nome|replace(' ', '-') }}" style="display: none;">
+          <!-- 📊 Estatísticas do Representante -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="bi bi-check-circle"></i>
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <div class="fw-bold text-success">Liberados</div>
+                  <div class="h5 mb-0">{{ dados.liberados }}</div>
+                </div>
               </div>
-            </td>
-          </tr>
-          {% endfor %}
-          {% else %}
-          <tr>
-            <td colspan="8" class="text-center text-muted py-4">
-              <i class="bi bi-inbox fs-1"></i>
-              <div class="mt-2">Nenhum cliente Oracle encontrado</div>
-              <small>Verifique os filtros ou a sincronização com Oracle</small>
-            </td>
-          </tr>
+            </div>
+            <div class="col-md-3">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="bi bi-exclamation-triangle"></i>
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <div class="fw-bold text-danger">Inadimplentes</div>
+                  <div class="h5 mb-0">{{ dados.inadimplentes }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="bi bi-currency-dollar"></i>
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <div class="fw-bold text-info">Ticket Médio</div>
+                  <div class="h5 mb-0">R$ {{ "%.0f"|format(dados.ticket_medio) | replace('.', ',') }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="bi bi-calendar3"></i>
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <div class="fw-bold text-primary">Dias Médio</div>
+                  <div class="h5 mb-0">{{ dados.dias_medio }} dias</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 👥 Consultores Internos (Opcional) -->
+          {% if dados.consultores_internos %}
+          <div class="alert alert-info mb-3">
+            <i class="bi bi-people"></i> <strong>Distribuição por Consultor:</strong>
+            {% for consultor, qtd in dados.consultores_internos.items() %}
+              <span class="badge bg-secondary me-1">{{ consultor }} ({{ qtd }})</span>
+            {% endfor %}
+          </div>
           {% endif %}
-        </tbody>
-      </table>
-    </div>
+          
+          <!-- 📋 Lista de Clientes do Representante -->
+          <div class="table-responsive">
+            <table class="table table-striped table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th style="width: 25%">Cliente</th>
+                  <th style="width: 12%">CNPJ</th>
+                  <th style="width: 12%">Telefone</th>
+                  <th style="width: 10%">Status</th>
+                  <th style="width: 15%">Consultor Oracle</th>
+                  <th style="width: 10%">Último Pedido</th>
+                  <th style="width: 8%">Valor</th>
+                  <th style="width: 8%">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in dados.clientes %}
+                <tr class="{% if c.conceito == 'INADIMPLENTE' %}table-danger{% elif c.conceito == 'LIBERADO' %}table-success{% endif %}">
+                  <td>
+                    <div class="fw-bold">{{ c.nome }}</div>
+                    <small class="text-muted">
+                      {% if c.ultimo_pedido_oracle %}
+                      📅 {{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}
+                      {% endif %}
+                    </small>
+                  </td>
+                  <td><code>{{ c.cnpj or '-' }}</code></td>
+                  <td>
+                    {% if c.telefone %}
+                    <a href="tel:{{ c.telefone }}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-telephone"></i> {{ c.telefone }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge {% if c.conceito == 'LIBERADO' %}bg-success{% elif c.conceito == 'INADIMPLENTE' %}bg-danger{% else %}bg-secondary{% endif %}">
+                      {% if c.conceito == 'LIBERADO' %}
+                        <i class="bi bi-check-circle"></i> LIBERADO
+                      {% elif c.conceito == 'INADIMPLENTE' %}
+                        <i class="bi bi-exclamation-triangle"></i> INADIMPLENTE
+                      {% else %}
+                        <i class="bi bi-question-circle"></i> SEM CONCEITO
+                      {% endif %}
+                    </span>
+                  </td>
+                  <td>
+                    <small class="text-muted">{{ c.categoria_consultor or '-' }}</small>
+                  </td>
+                  <td>
+                    {% if c.ultimo_pedido_oracle %}
+                    {{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if c.valor_ultimo_pedido %}
+                    <div class="fw-bold text-success">R$ {{ "%.2f"|format(c.valor_ultimo_pedido) | replace('.', ',') }}</div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="btn-group" role="group">
+                      <button class="btn btn-sm btn-info"
+                              onclick="detalhesClienteOracle({{ c.id }})"
+                              title="Ver Detalhes Oracle">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                      <button class="btn btn-sm btn-primary"
+                              onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
+                              title="Registrar Ligação">
+                        <i class="bi bi-telephone-plus"></i>
+                      </button>
+                      {% if c.total_ligacoes > 0 %}
+                      <button class="btn btn-sm btn-outline-secondary"
+                              onclick="historico({{ c.id }})"
+                              title="Ver Histórico">
+                        <i class="bi bi-clock-history"></i>
+                      </button>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="text-center text-muted py-4">
+        <i class="bi bi-inbox fs-1"></i>
+        <div class="mt-2">Nenhum cliente Oracle encontrado</div>
+        <small>Verifique os filtros ou a sincronização com Oracle</small>
+      </div>
+    {% endif %}
   </div>
 </div>
 {% else %}
@@ -1763,6 +1843,42 @@ function getCookie(name) {
     }
   }
   return cookieValue;
+}
+
+// FUNÇÃO PARA EXPANDIR/RETRAIR REPRESENTANTES ORACLE
+function toggleRepresentante(nomeRepresentante) {
+  const div = document.getElementById(`representante-${nomeRepresentante}`);
+  const icone = document.getElementById(`icone-${nomeRepresentante}`);
+  
+  if (div.style.display === 'none') {
+    div.style.display = 'block';
+    icone.className = 'bi bi-chevron-up';
+  } else {
+    div.style.display = 'none';
+    icone.className = 'bi bi-chevron-down';
+  }
+}
+
+// FUNÇÃO PARA ABRIR TODOS OS REPRESENTANTES (OPCIONAL)
+function expandirTodosRepresentantes() {
+  const representantes = document.querySelectorAll('[id^="representante-"]');
+  const icones = document.querySelectorAll('[id^="icone-"]');
+  
+  representantes.forEach((div, index) => {
+    div.style.display = 'block';
+    icones[index].className = 'bi bi-chevron-up';
+  });
+}
+
+// FUNÇÃO PARA RECOLHER TODOS OS REPRESENTANTES (OPCIONAL)
+function recolherTodosRepresentantes() {
+  const representantes = document.querySelectorAll('[id^="representante-"]');
+  const icones = document.querySelectorAll('[id^="icone-"]');
+  
+  representantes.forEach((div, index) => {
+    div.style.display = 'none';
+    icones[index].className = 'bi bi-chevron-down';
+  });
 }
 
 </script>
