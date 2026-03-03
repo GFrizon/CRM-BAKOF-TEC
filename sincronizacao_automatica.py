@@ -58,9 +58,10 @@ def sincronizacao_automatica_diaria():
                 '012': 25,  # SANDRA → Sandra Vendruscolo da Silva
                 '001': 19,  # Elisabete Haus
                 '003': 20,  # Janine de Mello
-                '004': 21,  # Iara Sponchiado
+                '004': 21,  # Iara Sponchiado (exceto ODETE)
                 '005': 22,  # Carla Siduoski
                 '006': 26,  # Sibele Froner
+                '010': 26,  # SIBELE → Sibele Froner
             }
             
             logger.info("\n Processando sincronização...")
@@ -97,7 +98,16 @@ def sincronizacao_automatica_diaria():
                             # Determinar consultor
                             consultor_oracle = cliente_oracle.get('consultor', '')
                             codigo_consultor = consultor_oracle.split(' - ')[0] if ' - ' in consultor_oracle else ''
-                            consultor_id = mapa_consultores.get(codigo_consultor, consultores[0].id)
+                            
+                            # Regras especiais
+                            if 'ODETE' in consultor_oracle:
+                                consultor_id = 27  # Odete Luza
+                            elif 'IARA' in consultor_oracle:
+                                consultor_id = 21  # Iara Sponchiado
+                            elif 'JANINE' in consultor_oracle:
+                                consultor_id = 20  # Janine de Mello
+                            else:
+                                consultor_id = mapa_consultores.get(codigo_consultor, consultores[0].id)
                             
                             # Criar novo cliente
                             novo_cliente = Cliente(
@@ -157,12 +167,27 @@ def sincronizacao_automatica_diaria():
                         try:
                             cliente_mysql = Cliente.query.filter_by(cd_cliente_oracle=cd_cliente).first()
                             if cliente_mysql:
+                                # Determinar consultor atualizado
+                                consultor_oracle = cliente_oracle.get('consultor', '')
+                                codigo_consultor = consultor_oracle.split(' - ')[0] if ' - ' in consultor_oracle else ''
+                                
+                                # Regras especiais
+                                if 'ODETE' in consultor_oracle:
+                                    consultor_id = 27  # Odete Luza
+                                elif 'IARA' in consultor_oracle:
+                                    consultor_id = 21  # Iara Sponchiado
+                                elif 'JANINE' in consultor_oracle:
+                                    consultor_id = 20  # Janine de Mello
+                                else:
+                                    consultor_id = mapa_consultores.get(codigo_consultor, cliente_mysql.consultor_id)
+                                
                                 # Atualizar dados
                                 cliente_mysql.categoria_consultor = cliente_oracle.get('consultor')
                                 cliente_mysql.conceito = cliente_oracle.get('conceito')
                                 cliente_mysql.representante_oracle = cliente_oracle.get('representante')
                                 cliente_mysql.valor_ultimo_pedido = cliente_oracle.get('total_pedido')
                                 cliente_mysql.situacao_ultimo_pedido = cliente_oracle.get('situacao')
+                                cliente_mysql.consultor_id = consultor_id  # ATUALIZAR CONSULTOR
                                 
                                 dt_pedido = cliente_oracle.get('dt_pedido')
                                 if dt_pedido:
