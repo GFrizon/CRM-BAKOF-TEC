@@ -124,7 +124,7 @@ class Cliente(db.Model):
     proxima_ligacao = db.Column(db.DateTime, nullable=True)
     origem = db.Column(db.Enum('importado_csv', 'manual'), default='manual', nullable=False)
     
-    # 🆕 CAMPOS ORACLE PARA INTEGRACAO CRM
+    # CAMPOS ORACLE PARA INTEGRACAO CRM
     cd_cliente_oracle = db.Column(db.String(50))  # PK do Oracle
     categoria_consultor = db.Column(db.String(100))  # Consultor vinculado
     conceito = db.Column(db.String(20))  # LIBERADO/INADIMPLENTE/SEM_CONCEITO
@@ -132,6 +132,7 @@ class Cliente(db.Model):
     valor_ultimo_pedido = db.Column(db.Numeric(12, 2))  # Valor último pedido
     situacao_ultimo_pedido = db.Column(db.String(50))  # Situação pedido
     representante_oracle = db.Column(db.String(200))  # Representante Oracle
+    valor_total_365dias = db.Column(db.Numeric(12, 2))  # Valor total últimos 365 dias
     data_ultima_sincronizacao = db.Column(db.DateTime)  # Controle sincronização
 
     consultor = db.relationship('Usuario', backref='meus_clientes', foreign_keys=[consultor_id])
@@ -353,6 +354,7 @@ def meus_clientes():
                 Cliente.conceito.like(like)
             ))
         
+        # Manter ordenação original por nome (será feita após cálculo)
         clientes_oracle = q.order_by(Cliente.nome.asc()).all()
         
         # Agrupar clientes por representante_oracle
@@ -396,6 +398,7 @@ def meus_clientes():
                 "conceito": c.conceito,
                 "ultimo_pedido_oracle": c.ultimo_pedido_oracle,
                 "valor_ultimo_pedido": c.valor_ultimo_pedido,
+                "valor_total_365dias": c.valor_total_365dias,  # NOVO: Valor total 365 dias
                 "situacao_ultimo_pedido": c.situacao_ultimo_pedido,
                 "representante_oracle": c.representante_oracle,
             }
@@ -410,7 +413,7 @@ def meus_clientes():
                     representantes_data[representante]['consultores_internos'][nome_consultor] = 0
                 representantes_data[representante]['consultores_internos'][nome_consultor] += 1
         
-        # Calcular estatísticas por representante
+        # Calcular estatísticas por representante e ordenar clientes por valor
         for representante, dados in representantes_data.items():
             clientes_rep = dados['clientes']
             
@@ -432,6 +435,16 @@ def meus_clientes():
                     dias = (hoje - c['ultimo_pedido_oracle']).days
                     dias_sem_pedido.append(dias)
             dados['dias_medio'] = sum(dias_sem_pedido) / len(dias_sem_pedido) if dias_sem_pedido else 0
+            
+            # 🎯 ORDENAR CLIENTES POR VALOR TOTAL 365 DIAS (maior para menor)
+            dados['clientes'] = sorted(
+                clientes_rep, 
+                key=lambda x: (
+                    float(x.get('valor_total_365dias') or 0),  # Valor 365 dias
+                    float(x.get('valor_ultimo_pedido') or 0)  # Backup: último pedido
+                ), 
+                reverse=True
+            )
         
         # Converter para lista ordenada por número de clientes (maior para menor)
         representantes_ordenados = sorted(
@@ -2740,6 +2753,7 @@ with app.app_context():
         "ALTER TABLE clientes ADD COLUMN valor_ultimo_pedido DECIMAL(12,2)",
         "ALTER TABLE clientes ADD COLUMN situacao_ultimo_pedido VARCHAR(50)",
         "ALTER TABLE clientes ADD COLUMN representante_oracle VARCHAR(200)",
+        "ALTER TABLE clientes ADD COLUMN valor_total_365dias DECIMAL(12,2)",
         "ALTER TABLE clientes ADD COLUMN data_ultima_sincronizacao DATETIME"
     ]
     

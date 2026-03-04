@@ -226,7 +226,8 @@ class OracleService:
             cd_unid_de_neg
         from fapedido
         where cd_cliente = :cd_cliente
-          and dt_pedido between (sysdate - 365) and sysdate
+          and dt_pedido >= ADD_MONTHS(SYSDATE, -12)
+          and situacao NOT IN ('CANCELADO', 'DEVOLVIDO')
         order by dt_pedido desc
         """
         
@@ -282,6 +283,27 @@ class OracleService:
             logger.error(f"Erro ao buscar itens do cliente {cd_cliente}: {str(e)}")
             raise
 
+    def get_valor_total_365dias(self, cd_cliente: str) -> float:
+        """Busca valor total dos pedidos dos últimos 365 dias de um cliente"""
+        from datetime import datetime, timedelta
+        
+        query = """
+        SELECT COALESCE(SUM(p.total_pedido), 0) as valor_total_365dias
+        FROM fapedido p
+        WHERE p.cd_cliente = :cd_cliente
+          AND p.dt_pedido >= ADD_MONTHS(SYSDATE, -12)
+          AND p.situacao NOT IN ('CANCELADO', 'DEVOLVIDO')
+        """
+        
+        try:
+            results = self.execute_query(query, {'cd_cliente': cd_cliente})
+            valor_total = float(results[0]['valor_total_365dias']) if results else 0.0
+            logger.info(f"Valor total 365 dias para cliente {cd_cliente}: R$ {valor_total:.2f}")
+            return valor_total
+        except Exception as e:
+            logger.error(f"Erro ao buscar valor total 365 dias do cliente {cd_cliente}: {str(e)}")
+            return 0.0
+
 
 # Instância global do serviço
 oracle_service = OracleService()
@@ -302,3 +324,11 @@ def get_pedidos_cliente_oracle(cd_cliente: str):
 def get_itens_cliente_oracle(cd_cliente: str):
     """Busca itens de pedidos de um cliente específico no Oracle"""
     return oracle_service.get_itens_pedido_oracle(cd_cliente)
+
+def get_valor_total_365dias(cd_cliente: str):
+    """Busca valor total dos pedidos dos últimos 365 dias de um cliente"""
+    try:
+        return oracle_service.get_valor_total_365dias(cd_cliente)
+    except Exception as e:
+        logger.error(f"Erro ao buscar valor total 365 dias do cliente {cd_cliente}: {str(e)}")
+        return 0.0

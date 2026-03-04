@@ -3,71 +3,588 @@
 {% block content %}
 
 <style>
-/* CSS específico para cabeçalhos Oracle - fundo azul com letras brancas */
+/* ============================================================
+   VARIÁVEIS DA MARCA — ajuste aqui para mudar tudo de uma vez
+   ============================================================ */
+:root {
+  --brand-50:  #eff6ff;
+  --brand-100: #dbeafe;
+  --brand-200: #bfdbfe;
+  --brand-400: #60a5fa;
+  --brand-500: #3b82f6;
+  --brand-600: #2563eb;
+  --brand-700: #1d4ed8;
+  --brand-800: #1e40af;
+  --brand-900: #1e3a8a;
+
+  --surface:   #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #f1f5f9;
+  --border:    #e2e8f0;
+  --border-2:  #cbd5e1;
+  --text-1:    #0f172a;
+  --text-2:    #475569;
+  --text-3:    #94a3b8;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,.12);
+  --shadow-brand: 0 4px 14px rgba(37,99,235,.25);
+}
+
+/* ============================================================
+   RESET / BASE
+   ============================================================ */
+body { background: #f0f4f8 !important; }
+
+/* ============================================================
+   CABEÇALHO DA PÁGINA
+   ============================================================ */
+.page-header {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+.page-header h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: -.02em;
+}
+.page-header p { color: var(--text-2); font-size: .875rem; }
+
+/* ============================================================
+   STAT CARDS (topo)
+   ============================================================ */
+.stat-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: box-shadow .2s, transform .2s;
+}
+.stat-card:hover {
+  box-shadow: var(--shadow-md) !important;
+  transform: translateY(-2px);
+}
+.stat-card .card-body { padding: 18px 20px !important; }
+.stat-card .text-muted { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3) !important; }
+.stat-card .stat-value { font-size: 1.9rem; font-weight: 800; color: var(--brand-700); line-height: 1.1; margin-top: 4px; }
+.stat-card .bi { font-size: 1.2rem; color: var(--brand-400); }
+.stat-card .progress { height: 5px; border-radius: 99px; margin-top: 8px; background: var(--brand-100); }
+.stat-card .progress-bar { background: linear-gradient(90deg, var(--brand-500), var(--brand-400)); border-radius: 99px; }
+
+/* ============================================================
+   PAINÉIS DE FILTRO / ESTATÍSTICAS (substitui bg-warning feio)
+   ============================================================ */
+.panel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.panel-header {
+  background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-600) 100%);
+  padding: 13px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-weight: 600;
+  font-size: .9rem;
+}
+.panel-header i { font-size: 1rem; opacity: .85; }
+.panel-header small { font-weight: 400; opacity: .75; font-size: .78rem; margin-left: 4px; }
+.panel-body { padding: 20px; }
+
+/* Forçar override nos antigos bg-warning Oracle */
 .card-header.bg-warning {
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+  background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-600) 100%) !important;
   color: #fff !important;
+  border-bottom: none !important;
 }
-
-.card-header.bg-warning .text-dark {
-  color: #fff !important;
-}
-
+.card-header.bg-warning .text-dark,
 .card-header.bg-warning strong,
-.card-header.bg-warning .text-dark strong {
+.card-header.bg-warning .text-muted {
   color: #fff !important;
-  font-weight: 700;
+  opacity: .85;
+}
+.card.border-warning { border-color: var(--brand-200) !important; }
+.card.border-primary { border-color: var(--brand-200) !important; }
+
+/* ============================================================
+   BUSCA E FILTROS
+   ============================================================ */
+.search-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.search-bar .input-group-text {
+  background: var(--brand-50);
+  border-color: var(--brand-200);
+  color: var(--brand-600);
+}
+.search-bar .form-control {
+  border-color: var(--brand-200);
+  font-size: .875rem;
+}
+.search-bar .form-control:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+}
+.search-bar .form-select {
+  border-color: var(--border);
+  font-size: .875rem;
+}
+.search-bar .form-select:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.15);
 }
 
-/* Labels dos filtros Oracle */
-.card-header.bg-warning + .card-body .form-label.text-dark {
-  color: #374151 !important;
+/* ============================================================
+   TABS MODERNAS
+   ============================================================ */
+.modern-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.modern-tabs .nav-link {
+  border-radius: 5px;
+  padding: 7px 14px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text-2);
+  border: none !important;
+  background: transparent;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.modern-tabs .nav-link:hover { background: var(--surface); color: var(--brand-700); }
+.modern-tabs .nav-link.active {
+  background: var(--surface) !important;
+  color: var(--brand-700) !important;
+  box-shadow: var(--shadow-sm);
+}
+.modern-tabs .nav-link.oracle-tab.active {
+  background: linear-gradient(135deg, var(--brand-700), var(--brand-600)) !important;
+  color: #fff !important;
+}
+
+/* ============================================================
+   TABELA GERAL (abas padrão)
+   ============================================================ */
+.crm-table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.crm-table .table { margin: 0; font-size: .855rem; }
+.crm-table .table thead tr {
+  background: linear-gradient(135deg, var(--brand-800) 0%, var(--brand-700) 100%);
+}
+.crm-table .table thead th {
+  color: #fff !important;
+  font-size: .75rem !important;
+  font-weight: 600 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase;
+  padding: 12px 14px !important;
+  border: none !important;
+  background: transparent !important;
+}
+.crm-table .table tbody tr { transition: background .12s; }
+.crm-table .table tbody tr:hover { background: var(--brand-50) !important; }
+.crm-table .table tbody td {
+  padding: 11px 14px !important;
+  border-bottom: 1px solid var(--border) !important;
+  border-top: none !important;
+  vertical-align: middle !important;
+  color: var(--text-1);
+  font-size: .855rem !important;
+}
+.crm-table .table tbody tr:last-child td { border-bottom: none !important; }
+
+/* ============================================================
+   CARDS DE REPRESENTANTES
+   ============================================================ */
+.rep-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: box-shadow .2s;
+}
+.rep-card:hover { box-shadow: var(--shadow-md); }
+
+.rep-header {
+  background: linear-gradient(135deg, var(--brand-800) 0%, var(--brand-700) 100%);
+  padding: 13px 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  transition: background .15s;
+}
+.rep-header:hover { background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-800) 100%); }
+
+.rep-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+.rep-avatar i { color: #fff; font-size: 15px; }
+
+.rep-name {
+  font-size: .9rem;
   font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+.rep-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+.rep-badge {
+  background: rgba(255,255,255,.22);
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 99px;
+  border: 1px solid rgba(255,255,255,.25);
+}
+.rep-chevron {
+  color: rgba(255,255,255,.7);
+  font-size: 13px;
+  transition: transform .25s ease;
+}
+.rep-chevron.open { transform: rotate(180deg); }
+
+/* ============================================================
+   MÉTRICAS DENTRO DO REPRESENTANTE
+   ============================================================ */
+.rep-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+@media (max-width: 768px) { .rep-metrics { grid-template-columns: repeat(2, 1fr); } }
+
+.metric-item {
+  padding: 14px 16px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  background: var(--surface-2);
+  transition: background .15s;
+}
+.metric-item:last-child { border-right: none; }
+.metric-item:hover { background: var(--brand-50); }
+
+.metric-icon {
+  font-size: .9rem;
+  margin-bottom: 4px;
+  line-height: 1;
+}
+.metric-label {
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-3);
+}
+.metric-value {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-top: 2px;
+}
+
+/* Tags consultores */
+.rep-consultores {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.rep-consultores .label { font-size: .72rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; margin-right: 4px; }
+.consultor-chip {
+  font-size: .74rem;
+  font-weight: 500;
+  background: var(--brand-50);
+  color: var(--brand-700);
+  border: 1px solid var(--brand-200);
+  border-radius: 99px;
+  padding: 2px 10px;
+}
+
+/* ============================================================
+   TABELA DENTRO DO REPRESENTANTE
+   ============================================================ */
+.rep-table-wrap { overflow-x: auto; }
+.rep-table { margin: 0; font-size: .83rem; }
+.rep-table thead th {
+  background: var(--surface-3) !important;
+  color: var(--text-2) !important;
+  font-size: .72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase;
+  padding: 10px 14px !important;
+  border-bottom: 2px solid var(--border-2) !important;
+  border-top: none !important;
+}
+.rep-table tbody td {
+  padding: 10px 14px !important;
+  border-bottom: 1px solid var(--border) !important;
+  border-top: none !important;
+  vertical-align: middle !important;
+  font-size: .83rem !important;
+}
+.rep-table tbody tr { transition: background .12s; }
+.rep-table tbody tr:hover td { background: var(--brand-50) !important; }
+.rep-table tbody tr:last-child td { border-bottom: none !important; }
+
+/* Status row highlight */
+.rep-table tbody tr.row-inadimplente td { background: #fef2f2 !important; }
+.rep-table tbody tr.row-inadimplente:hover td { background: #fee2e2 !important; }
+.rep-table tbody tr.row-liberado td { background: #f0fdf4 !important; }
+.rep-table tbody tr.row-liberado:hover td { background: #dcfce7 !important; }
+
+/* ============================================================
+   BADGES MODERNOS
+   ============================================================ */
+.badge-liberado   { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-size: .7rem !important; font-weight: 600 !important; padding: 3px 9px !important; border-radius: 99px !important; }
+.badge-inadimplente { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; font-size: .7rem !important; font-weight: 600 !important; padding: 3px 9px !important; border-radius: 99px !important; }
+.badge-semconceito  { background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border); font-size: .7rem !important; font-weight: 600 !important; padding: 3px 9px !important; border-radius: 99px !important; }
+.badge-manual    { background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border); font-size: .7rem !important; font-weight: 600 !important; padding: 3px 9px !important; border-radius: 99px !important; }
+.badge-importado { background: var(--brand-50); color: var(--brand-700); border: 1px solid var(--brand-200); font-size: .7rem !important; font-weight: 600 !important; padding: 3px 9px !important; border-radius: 99px !important; }
+.badge-count     { background: var(--brand-600); color: #fff; font-size: .7rem !important; font-weight: 600 !important; padding: 3px 9px !important; border-radius: 99px !important; }
+
+/* ============================================================
+   BOTÕES DE AÇÃO NAS TABELAS
+   ============================================================ */
+.action-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-size: .8rem;
+  transition: all .15s;
+  border-width: 1px;
+}
+.action-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+
+/* ============================================================
+   STAT ORACLE (dentro do painel)
+   ============================================================ */
+.oracle-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.oracle-stat-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.oracle-stat-label { font-size: .78rem; font-weight: 600; }
+.oracle-stat-val { font-size: 1.15rem; font-weight: 800; line-height: 1; }
+
+/* ============================================================
+   PROGRESS BAR DISTRIBUIÇÃO
+   ============================================================ */
+.dist-bar { height: 22px; border-radius: 99px; overflow: hidden; display: flex; }
+.dist-bar .segment { display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 600; color: #fff; min-width: 40px; }
+
+/* ============================================================
+   MODAIS MODERNOS
+   ============================================================ */
+.modal-content { border: none !important; border-radius: var(--radius-lg) !important; box-shadow: var(--shadow-lg) !important; }
+.modal-header  { border-bottom: 1px solid var(--border) !important; padding: 18px 22px !important; }
+.modal-header .modal-title { font-weight: 700; font-size: .95rem; color: var(--text-1); }
+.modal-footer  { border-top: 1px solid var(--border) !important; padding: 14px 22px !important; }
+.modal-body    { padding: 22px !important; }
+.modal-header.brand-header {
+  background: linear-gradient(135deg, var(--brand-800), var(--brand-600));
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+}
+.modal-header.brand-header .modal-title,
+.modal-header.brand-header .btn-close { color: #fff; filter: invert(1); }
+
+/* ============================================================
+   FORMULÁRIOS NOS MODAIS
+   ============================================================ */
+.form-label { font-size: .8rem; font-weight: 600; color: var(--text-2); margin-bottom: 5px; }
+.form-control, .form-select {
+  border-color: var(--border);
+  border-radius: var(--radius-sm);
+  font-size: .875rem;
+  padding: 8px 12px;
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+
+/* ============================================================
+   BOTÕES PRINCIPAIS
+   ============================================================ */
+.btn-brand {
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-500));
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  font-size: .83rem;
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  transition: all .15s;
+  box-shadow: var(--shadow-brand);
+}
+.btn-brand:hover { background: linear-gradient(135deg, var(--brand-700), var(--brand-600)); color: #fff; transform: translateY(-1px); }
+.btn.btn-primary { background: linear-gradient(135deg, var(--brand-600), var(--brand-500)) !important; border-color: var(--brand-600) !important; font-weight: 600 !important; }
+.btn.btn-primary:hover { background: linear-gradient(135deg, var(--brand-700), var(--brand-600)) !important; }
+.btn.btn-info    { background: #0ea5e9 !important; border-color: #0ea5e9 !important; font-weight: 600 !important; }
+
+/* ============================================================
+   TELEFONE LINK
+   ============================================================ */
+.tel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .78rem;
+  color: var(--brand-600);
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--brand-50);
+  border: 1px solid var(--brand-200);
+  border-radius: 99px;
+  padding: 2px 10px;
+  transition: all .15s;
+}
+.tel-link:hover { background: var(--brand-600); color: #fff; border-color: var(--brand-600); }
+
+/* ============================================================
+   ESPAÇO VAZIO
+   ============================================================ */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-3);
+}
+.empty-state i { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+.empty-state p { font-size: .88rem; }
+
+/* ============================================================
+   ANIMAÇÃO SPIN (sincronizar)
+   ============================================================ */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: spin .8s linear infinite; }
+
+/* ============================================================
+   CÓDIGO (cnpj, oracle id)
+   ============================================================ */
+code {
+  font-size: .78rem;
+  background: var(--surface-3);
+  color: var(--brand-700);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
 }
 </style>
 
-<!-- 🆕 POP-UP DE NOVIDADES -->
+<!-- ============================================================
+     MODAL: NOVIDADES
+     ============================================================ -->
 {% if mostrar_novidades %}
-<div class="modal fade show" id="modalNovidades" tabindex="-1" style="display: block; background: rgba(0,0,0,0.5);">
+<div class="modal fade show" id="modalNovidades" tabindex="-1" style="display:block;background:rgba(0,0,0,.5);">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title">
-          <i class="bi bi-stars"></i> 🎉 Novidades da Atualização!
-        </h5>
+    <div class="modal-content">
+      <div class="modal-header brand-header">
+        <h5 class="modal-title"><i class="bi bi-stars me-2"></i>🎉 Novidades da Atualização!</h5>
       </div>
       <div class="modal-body">
-        <div class="alert alert-info mb-3">
-          <i class="bi bi-info-circle"></i> <strong>Versão 2.0</strong> - Confira as novidades!
+        <div class="alert alert-primary mb-4" style="border-radius:8px;">
+          <i class="bi bi-info-circle me-2"></i><strong>Versão 2.0</strong> — Confira as novidades!
         </div>
-        
-        <ul class="list-unstyled">
-          <li class="mb-3">
-            <i class="bi bi-pencil-square text-success fs-5"></i>
-            <strong>Editar observações</strong><br>
-            <small class="text-muted">Agora você pode editar as observações das ligações já registradas! Clique no ícone de lápis no histórico.</small>
+        <ul class="list-unstyled" style="display:flex;flex-direction:column;gap:16px;">
+          <li class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:10px;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="bi bi-pencil-square text-success"></i>
+            </div>
+            <div>
+              <strong style="font-size:.9rem;">Editar observações</strong><br>
+              <small class="text-muted">Agora você pode editar as observações das ligações já registradas. Clique no ícone de lápis no histórico.</small>
+            </div>
           </li>
-          
-          <li class="mb-3">
-            <i class="bi bi-calendar-range text-primary fs-5"></i>
-            <strong>Filtro por mês (Supervisor)</strong><br>
-            <small class="text-muted">Supervisores podem visualizar o desempenho dos consultores mês a mês.</small>
+          <li class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--brand-50);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="bi bi-calendar-range" style="color:var(--brand-600);"></i>
+            </div>
+            <div>
+              <strong style="font-size:.9rem;">Filtro por mês (Supervisor)</strong><br>
+              <small class="text-muted">Supervisores podem visualizar o desempenho dos consultores mês a mês.</small>
+            </div>
           </li>
-          
-          <li class="mb-3">
-            <i class="bi bi-bell text-warning fs-5"></i>
-            <strong>Sistema de notificações</strong><br>
-            <small class="text-muted">Fique por dentro das atualizações do sistema!</small>
+          <li class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:10px;background:#fef9c3;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="bi bi-bell text-warning"></i>
+            </div>
+            <div>
+              <strong style="font-size:.9rem;">Sistema de notificações</strong><br>
+              <small class="text-muted">Fique por dentro das atualizações do sistema!</small>
+            </div>
           </li>
         </ul>
-        
-        <div class="alert alert-success mb-0">
-          <i class="bi bi-check-circle"></i> Todas as funcionalidades anteriores continuam funcionando normalmente!
+        <div class="alert alert-success mt-4 mb-0" style="border-radius:8px;">
+          <i class="bi bi-check-circle me-2"></i>Todas as funcionalidades anteriores continuam funcionando normalmente!
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" onclick="fecharNovidades()">
-          <i class="bi bi-check-lg"></i> Entendi!
+          <i class="bi bi-check-lg me-1"></i> Entendi!
         </button>
       </div>
     </div>
@@ -75,34 +592,43 @@
 </div>
 {% endif %}
 
-<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between mb-4 gap-3">
+<!-- ============================================================
+     CABEÇALHO DA PÁGINA
+     ============================================================ -->
+<div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
   <div>
-    <h2 class="m-0 fw-bold text-dark">
-      <i class="bi bi-people-fill text-primary"></i> Meus Clientes
+    <h2 class="m-0">
+      <i class="bi bi-people-fill me-2" style="color:var(--brand-600);"></i>Meus Clientes
     </h2>
-    <p class="text-muted mb-0 mt-1">Gerencie e registre ligações facilmente</p>
+    {% if aba != 'oracle' %}
+    <p class="mb-0 mt-1">Gerencie representantes, clientes e registre ligações</p>
+    {% else %}
+    <p class="mb-0 mt-1">Clientes sem pedidos há 90-120 dias (Oracle)</p>
+    {% endif %}
   </div>
-  <div class="d-flex gap-2">
-
-    <!-- NOVO: Adicionar cliente manual -->
-    <button class="btn btn-primary" onclick="abrirModalAdicionar()">
-      <i class="bi bi-person-plus"></i> Adicionar Cliente
+  <div class="d-flex flex-wrap gap-2">
+ {% if aba != 'oracle' %}
+    <button class="btn btn-primary btn-sm" onclick="abrirModalAdicionar()">
+      <i class="bi bi-person-plus me-1"></i> Adicionar Cliente
     </button>
-
+    {% endif %}
     {% if is_supervisor %}
-    <button class="btn btn-warning" onclick="abrirModalLimpar()">
-      <i class="bi bi-trash"></i> Limpar Clientes
+    <button class="btn btn-outline-danger btn-sm" onclick="abrirModalLimpar()">
+      <i class="bi bi-trash me-1"></i> Limpar Clientes
     </button>
-    <a href="{{ url_for('importar_clientes_view') }}" class="btn btn-success">
-      <i class="bi bi-cloud-upload"></i> Importar CSV
+    <a href="{{ url_for('importar_clientes_view') }}" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-cloud-upload me-1"></i> Importar CSV
     </a>
-    <button class="btn btn-info" onclick="sincronizarOracle()" id="btnSincronizarOracle">
-      <i class="bi bi-arrow-clockwise"></i> Sincronizar Oracle
+    <button class="btn btn-outline-secondary btn-sm" onclick="sincronizarOracle()" id="btnSincronizarOracle">
+      <i class="bi bi-arrow-clockwise me-1"></i> Sincronizar Oracle
     </button>
     {% endif %}
   </div>
 </div>
 
+<!-- ============================================================
+     STAT CARDS (consultor)
+     ============================================================ -->
 {% if current_user.tipo == 'consultor' and stats %}
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
@@ -124,8 +650,8 @@
           <i class="bi bi-telephone-outbound"></i>
         </div>
         <div class="stat-value">{{ stats.ligacoes_hoje }}</div>
-        <div class="progress" style="height: 6px;"><div class="progress-bar" style="width: {{ stats.progresso_meta }}%"></div></div>
-        <small class="text-muted">Meta {{ stats.meta_diaria }} ({{ stats.progresso_meta }}%)</small>
+        <div class="progress mt-2"><div class="progress-bar" style="width:{{ stats.progresso_meta }}%"></div></div>
+        <small class="text-muted" style="font-size:.7rem;">Meta {{ stats.meta_diaria }} — {{ stats.progresso_meta }}%</small>
       </div>
     </div>
   </div>
@@ -154,16 +680,19 @@
 </div>
 {% endif %}
 
-<!-- 🆕 FILTRO MENSAL PARA CONSULTORES -->
+<!-- ============================================================
+     FILTRO MENSAL PARA CONSULTORES
+     ============================================================ -->
 {% if current_user.tipo == 'consultor' and meses_disponiveis_consultor %}
-<div class="card mb-4 border-primary">
-  <div class="card-header bg-primary text-white">
-    <i class="bi bi-calendar-range"></i> <strong>Filtro de Ligações por Mês</strong>
+<div class="panel-card">
+  <div class="panel-header">
+    <i class="bi bi-calendar-range"></i>
+    <span>Filtro de Ligações por Mês</span>
   </div>
-  <div class="card-body">
+  <div class="panel-body">
     <div class="row g-3 align-items-end">
       <div class="col-md-8">
-        <label for="filtroMesConsultor" class="form-label">Selecione o mês para visualizar suas ligações:</label>
+        <label class="form-label">Selecione o mês para visualizar suas ligações:</label>
         <select class="form-select" id="filtroMesConsultor" onchange="aplicarFiltroMesConsultor()">
           <option value="">Todos (sem filtro)</option>
           {% for m in meses_disponiveis_consultor %}
@@ -173,59 +702,58 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-4">
-        <button class="btn btn-primary w-100" onclick="aplicarFiltroMesConsultor()">
-          <i class="bi bi-search"></i> Filtrar
+      <div class="col-md-4 d-flex flex-column gap-2">
+        <button class="btn btn-primary" onclick="aplicarFiltroMesConsultor()">
+          <i class="bi bi-search me-1"></i> Filtrar
         </button>
         {% if mes_filtro and ano_filtro %}
-        <button class="btn btn-outline-secondary w-100 mt-2" onclick="limparFiltroMesConsultor()">
-          <i class="bi bi-x-circle"></i> Limpar Filtro
+        <button class="btn btn-outline-secondary" onclick="limparFiltroMesConsultor()">
+          <i class="bi bi-x-circle me-1"></i> Limpar Filtro
         </button>
         {% endif %}
       </div>
     </div>
-    
-    <!-- 🆕 RESULTADOS DO MÊS SELECIONADO -->
     {% if mes_filtro and ano_filtro %}
-    <div id="resultadosMesSelecionado" class="mt-3" style="display: none;">
-      <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> Carregando dados do mês selecionado...
-      </div>
+    <div id="resultadosMesSelecionado" class="mt-3" style="display:none;">
+      <div class="alert alert-primary mb-0"><i class="bi bi-hourglass-split me-2"></i>Carregando dados do mês selecionado...</div>
     </div>
     {% endif %}
   </div>
 </div>
 {% endif %}
 
-<!-- 🆕 FILTRO POR PERÍODO ORACLE -->
+<!-- ============================================================
+     FILTRO ORACLE POR PERÍODO
+     ============================================================ -->
 {% if aba == 'oracle' %}
-<div class="card mb-4 border-warning">
-  <div class="card-header bg-warning text-dark">
-    <i class="bi bi-funnel"></i> <strong class="text-dark">Filtrar por Período</strong>
+<div class="panel-card">
+  <div class="panel-header">
+    <i class="bi bi-funnel"></i>
+    <span>Filtrar por Período</span>
   </div>
-  <div class="card-body">
+  <div class="panel-body" style="padding-bottom:16px;">
     <form method="get" action="{{ url_for('meus_clientes') }}" class="row g-3">
       <input type="hidden" name="aba" value="oracle">
       <div class="col-md-4">
-        <label class="form-label text-dark fw-bold">Período sem Compra:</label>
+        <label class="form-label">Período sem Compra:</label>
         <select class="form-select" name="periodo_oracle" onchange="this.form.submit()">
           <option value="">Todos os períodos</option>
-          <option value="90" {% if request.args.get('periodo_oracle') == '90' %}selected{% endif %}>90 dias</option>
+          <option value="90"  {% if request.args.get('periodo_oracle') == '90'  %}selected{% endif %}>90 dias</option>
           <option value="120" {% if request.args.get('periodo_oracle') == '120' %}selected{% endif %}>120 dias</option>
           <option value="180" {% if request.args.get('periodo_oracle') == '180' %}selected{% endif %}>180 dias</option>
         </select>
       </div>
       <div class="col-md-4">
-        <label class="form-label text-dark fw-bold">Status de Crédito:</label>
+        <label class="form-label">Status de Crédito:</label>
         <select class="form-select" name="conceito_filtro" onchange="this.form.submit()">
           <option value="">Todos os status</option>
-          <option value="LIBERADO" {% if request.args.get('conceito_filtro') == 'LIBERADO' %}selected{% endif %}>✅ Liberados</option>
+          <option value="LIBERADO"     {% if request.args.get('conceito_filtro') == 'LIBERADO'     %}selected{% endif %}>✅ Liberados</option>
           <option value="INADIMPLENTE" {% if request.args.get('conceito_filtro') == 'INADIMPLENTE' %}selected{% endif %}>❌ Inadimplentes</option>
           <option value="SEM_CONCEITO" {% if request.args.get('conceito_filtro') == 'SEM_CONCEITO' %}selected{% endif %}>❓ Sem Conceito</option>
         </select>
       </div>
       <div class="col-md-4">
-        <label class="form-label text-dark fw-bold">Consultor:</label>
+        <label class="form-label">Consultor:</label>
         <select class="form-select" name="consultor_filtro" onchange="this.form.submit()">
           <option value="">Todos os consultores</option>
           {% for consultor in consultores_oracle %}
@@ -240,452 +768,435 @@
 </div>
 {% endif %}
 
-<!-- 🆕 PAINEL DE ESTATÍSTICAS ORACLE -->
+<!-- ============================================================
+     PAINEL DE ESTATÍSTICAS ORACLE
+     ============================================================ -->
 {% if aba == 'oracle' %}
-<div class="card mb-4 border-warning">
-  <div class="card-header bg-warning text-dark">
-    <i class="bi bi-database"></i> <strong class="text-dark">Estatísticas dos Clientes sem pedidos 90-120</strong>
+<div class="panel-card">
+  <div class="panel-header">
+    <i class="bi bi-database"></i>
+    <span>Estatísticas — Clientes sem pedidos 90–120 dias</span>
+    <small><i class="bi bi-arrow-clockwise"></i> Atualizado diariamente do banco Oracle</small>
   </div>
-  <div class="card-body">
-    <div class="row g-3">
+  <div class="panel-body">
+    <div class="row g-4">
       <div class="col-6 col-md-3">
-        <div class="d-flex align-items-center">
-          <div class="flex-shrink-0">
-            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-              <i class="bi bi-check-circle"></i>
-            </div>
-          </div>
-          <div class="flex-grow-1 ms-3">
-            <div class="fw-bold text-success">Liberados</div>
-            <div class="h5 mb-0">{{ stats_oracle.liberados or 0 }}</div>
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#dcfce7;"><i class="bi bi-check-circle" style="color:#16a34a;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#16a34a;">Liberados</div>
+            <div class="oracle-stat-val">{{ stats_oracle.liberados or 0 }}</div>
           </div>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="d-flex align-items-center">
-          <div class="flex-shrink-0">
-            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-              <i class="bi bi-exclamation-triangle"></i>
-            </div>
-          </div>
-          <div class="flex-grow-1 ms-3">
-            <div class="fw-bold text-danger">Inadimplentes</div>
-            <div class="h5 mb-0">{{ stats_oracle.inadimplentes or 0 }}</div>
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#fee2e2;"><i class="bi bi-exclamation-triangle" style="color:#dc2626;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#dc2626;">Inadimplentes</div>
+            <div class="oracle-stat-val">{{ stats_oracle.inadimplentes or 0 }}</div>
           </div>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="d-flex align-items-center">
-          <div class="flex-shrink-0">
-            <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-              <i class="bi bi-currency-dollar"></i>
-            </div>
-          </div>
-          <div class="flex-grow-1 ms-3">
-            <div class="fw-bold text-info">Ticket Médio</div>
-            <div class="h5 mb-0">R$ {{ "%.0f"|format(stats_oracle.ticket_medio or 0) | replace('.', ',') }}</div>
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:var(--brand-50);"><i class="bi bi-currency-dollar" style="color:var(--brand-600);"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:var(--brand-600);">Ticket Médio</div>
+            <div class="oracle-stat-val" style="font-size:.85rem;">R$ {{ "%.0f"|format(stats_oracle.ticket_medio or 0) | replace('.', ',') }}</div>
           </div>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="d-flex align-items-center">
-          <div class="flex-shrink-0">
-            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-              <i class="bi bi-calendar3"></i>
-            </div>
-          </div>
-          <div class="flex-grow-1 ms-3">
-            <div class="fw-bold text-primary">Dias Médio</div>
-            <div class="h5 mb-0">{{ stats_oracle.dias_sem_pedido or 0 }} dias</div>
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#f0fdf4;"><i class="bi bi-calendar3" style="color:#15803d;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#15803d;">Média Dias</div>
+            <div class="oracle-stat-val">{{ "%.0f"|format(stats_oracle.dias_sem_pedido or 0) }}d</div>
           </div>
         </div>
       </div>
     </div>
-    
-    <!-- 📊 Distribuição por Conceito -->
-    <div class="mt-3">
-      <div class="progress" style="height: 25px;">
-        <div class="progress-bar bg-success" style="width: {{ stats_oracle.perc_liberados or 0 }}%">
-          Liberados: {{ stats_oracle.perc_liberados or 0 }}%
+    <div class="mt-4">
+      <div class="dist-bar">
+        <div class="segment" style="background:#16a34a;width:{{ stats_oracle.perc_liberados or 0 }}%;">
+          {{ stats_oracle.perc_liberados or 0 }}%
         </div>
-        <div class="progress-bar bg-danger" style="width: {{ stats_oracle.perc_inadimplentes or 0 }}%">
-          Inadimplentes: {{ stats_oracle.perc_inadimplentes or 0 }}%
+        <div class="segment" style="background:#dc2626;width:{{ stats_oracle.perc_inadimplentes or 0 }}%;">
+          {{ stats_oracle.perc_inadimplentes or 0 }}%
         </div>
-        <div class="progress-bar bg-secondary" style="width: {{ stats_oracle.perc_sem_conceito or 0 }}%">
-          Sem Conceito: {{ stats_oracle.perc_sem_conceito or 0 }}%
+        <div class="segment" style="background:#94a3b8;width:{{ stats_oracle.perc_sem_conceito or 0 }}%;">
+          {{ stats_oracle.perc_sem_conceito or 0 }}%
         </div>
+      </div>
+      <div class="d-flex gap-4 mt-2" style="font-size:.72rem;color:var(--text-2);">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#16a34a;margin-right:4px;"></span>Liberados</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#dc2626;margin-right:4px;"></span>Inadimplentes</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#94a3b8;margin-right:4px;"></span>Sem Conceito</span>
       </div>
     </div>
   </div>
 </div>
 {% endif %}
 
-<!-- BUSCA + FILTROS -->
-<form method="get" action="{{ url_for('meus_clientes') }}" class="row g-3">
-  <input type="hidden" name="aba" value="{{ aba }}">
-  <div class="col-md-6">
-    <div class="input-group">
-      <span class="input-group-text"><i class="bi bi-search"></i></span>
-      <input type="text" class="form-control" name="q"
-             placeholder="Buscar por nome, CNPJ, telefone ou representante..."
-             value="{{ request.args.get('q','') }}"
-             id="buscaRapida"
-             autocomplete="off">
+<!-- ============================================================
+     BUSCA + FILTROS
+     ============================================================ -->
+<form method="get" action="{{ url_for('meus_clientes') }}" class="search-bar">
+  <div class="row g-3 align-items-center">
+    <input type="hidden" name="aba" value="{{ aba }}">
+    <div class="col-md-6">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" name="q"
+               placeholder="Buscar por nome, CNPJ, telefone ou representante..."
+               value="{{ request.args.get('q','') }}"
+               id="buscaRapida"
+               autocomplete="off">
+      </div>
     </div>
-  </div>
 
-  {% if aba == 'contatados' %}
-  <div class="col-md-3">
-    <select class="form-select" name="filtro" onchange="this.form.submit()">
-      <option value="">Todos</option>
-      <option value="antigos" {% if request.args.get('filtro') == 'antigos' %}selected{% endif %}>+30 dias sem contato</option>
-      <option value="recentes" {% if request.args.get('filtro') == 'recentes' %}selected{% endif %}>Contatos recentes (≤7 dias)</option>
-    </select>
-  </div>
-  {% endif %}
+    {% if aba == 'contatados' %}
+    <div class="col-md-3">
+      <select class="form-select" name="filtro" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        <option value="antigos"  {% if request.args.get('filtro') == 'antigos'  %}selected{% endif %}>+30 dias sem contato</option>
+        <option value="recentes" {% if request.args.get('filtro') == 'recentes' %}selected{% endif %}>Recentes (≤7 dias)</option>
+      </select>
+    </div>
+    {% endif %}
 
-  <!-- NOVO: Filtro por origem -->
-  <div class="col-md-3">
-    <select id="filtroOrigem" class="form-select" onchange="filtrarPorOrigem()">
-      <option value="">Origem: todas</option>
-      <option value="manual">Origem: manual</option>
-      <option value="importado_csv">Origem: importado</option>
-    </select>
-  </div>
+    <div class="col-md-3">
+      <select id="filtroOrigem" class="form-select" onchange="filtrarPorOrigem()">
+        <option value="">Origem: todas</option>
+        <option value="manual">Origem: manual</option>
+        <option value="importado_csv">Origem: importado</option>
+      </select>
+    </div>
 
-  <div class="col-12 text-end">
-    <button type="submit" class="btn btn-outline-primary">
-      <i class="bi bi-funnel"></i> Aplicar filtros
-    </button>
+    <div class="col-12 text-end">
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="bi bi-funnel me-1"></i> Aplicar filtros
+      </button>
+    </div>
   </div>
 </form>
 
-<!-- 🆕 TABELA ORACLE POR REPRESENTANTES -->
+<!-- ============================================================
+     LISTA DE REPRESENTANTES (aba oracle)
+     ============================================================ -->
 {% if aba == 'oracle' %}
-<div class="card mt-3">
-  <div class="card-body">
-    {% if representantes %}
-      {% for representante_nome, dados in representantes %}
-      <div class="card mb-3 border-light">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="toggleRepresentante('{{ representante_nome|replace(' ', '-') }}')">
-          <div class="d-flex align-items-center">
-            <i class="bi bi-person-workspace me-2"></i>
-            <strong>{{ representante_nome }}</strong>
-            <span class="badge bg-light text-primary ms-2">{{ dados.total_clientes }} clientes</span>
+<div class="mt-2">
+  {% if representantes %}
+    {% for representante_nome, dados in representantes %}
+    <div class="rep-card">
+
+      <!-- Cabeçalho clicável -->
+      <div class="rep-header" onclick="toggleRepresentante('{{ loop.index0 }}')">
+        <div class="d-flex align-items-center">
+          <div class="rep-avatar">
+            <i class="bi bi-person-workspace"></i>
           </div>
-          <i class="bi bi-chevron-down" id="icone-{{ representante_nome|replace(' ', '-') }}"></i>
-        </div>
-        
-        <div class="card-body" id="representante-{{ representante_nome|replace(' ', '-') }}" style="display: none;">
-          <!-- 📊 Estatísticas do Representante -->
-          <div class="row g-3 mb-3">
-            <div class="col-md-3">
-              <div class="d-flex align-items-center">
-                <div class="flex-shrink-0">
-                  <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                    <i class="bi bi-check-circle"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <div class="fw-bold text-success">Liberados</div>
-                  <div class="h5 mb-0">{{ dados.liberados }}</div>
-                </div>
-              </div>
+          <div>
+            <div class="rep-name">{{ representante_nome }}</div>
+            <div class="rep-meta">
+              <span class="rep-badge">{{ dados.total_clientes }} cliente{% if dados.total_clientes != 1 %}s{% endif %}</span>
+              {% if dados.consultores_internos %}
+              <span class="rep-badge">
+                <i class="bi bi-people me-1"></i>{{ dados.consultores_internos|length }} consultor{% if dados.consultores_internos|length != 1 %}es{% endif %}
+              </span>
+              {% endif %}
             </div>
-            <div class="col-md-3">
-              <div class="d-flex align-items-center">
-                <div class="flex-shrink-0">
-                  <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                    <i class="bi bi-exclamation-triangle"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <div class="fw-bold text-danger">Inadimplentes</div>
-                  <div class="h5 mb-0">{{ dados.inadimplentes }}</div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="d-flex align-items-center">
-                <div class="flex-shrink-0">
-                  <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                    <i class="bi bi-currency-dollar"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <div class="fw-bold text-info">Ticket Médio</div>
-                  <div class="h5 mb-0">R$ {{ "%.0f"|format(dados.ticket_medio) | replace('.', ',') }}</div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="d-flex align-items-center">
-                <div class="flex-shrink-0">
-                  <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                    <i class="bi bi-calendar3"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <div class="fw-bold text-primary">Dias Médio</div>
-                  <div class="h5 mb-0">{{ dados.dias_medio }} dias</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 👥 Consultores Internos (Opcional) -->
-          {% if dados.consultores_internos %}
-          <div class="alert alert-info mb-3">
-            <i class="bi bi-people"></i> <strong>Distribuição por Consultor:</strong>
-            {% for consultor, qtd in dados.consultores_internos.items() %}
-              <span class="badge bg-secondary me-1">{{ consultor }} ({{ qtd }})</span>
-            {% endfor %}
-          </div>
-          {% endif %}
-          
-          <!-- 📋 Lista de Clientes do Representante -->
-          <div class="table-responsive">
-            <table class="table table-striped table-hover">
-              <thead class="table-dark">
-                <tr>
-                  <th style="width: 25%">Cliente</th>
-                  <th style="width: 12%">CNPJ</th>
-                  <th style="width: 12%">Telefone</th>
-                  <th style="width: 10%">Status</th>
-                  <th style="width: 15%">Consultor Oracle</th>
-                  <th style="width: 10%">Último Pedido</th>
-                  <th style="width: 8%">Valor</th>
-                  <th style="width: 8%">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for c in dados.clientes %}
-                <tr class="{% if c.conceito == 'INADIMPLENTE' %}table-danger{% elif c.conceito == 'LIBERADO' %}table-success{% endif %}">
-                  <td>
-                    <div class="fw-bold">{{ c.nome }}</div>
-                    <small class="text-muted">
-                      {% if c.ultimo_pedido_oracle %}
-                      📅 {{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}
-                      {% endif %}
-                    </small>
-                  </td>
-                  <td><code>{{ c.cnpj or '-' }}</code></td>
-                  <td>
-                    {% if c.telefone %}
-                    <a href="tel:{{ c.telefone }}" class="btn btn-sm btn-outline-primary">
-                      <i class="bi bi-telephone"></i> {{ c.telefone }}
-                    </a>
-                    {% else %}
-                    <span class="text-muted">-</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    <span class="badge {% if c.conceito == 'LIBERADO' %}bg-success{% elif c.conceito == 'INADIMPLENTE' %}bg-danger{% else %}bg-secondary{% endif %}">
-                      {% if c.conceito == 'LIBERADO' %}
-                        <i class="bi bi-check-circle"></i> LIBERADO
-                      {% elif c.conceito == 'INADIMPLENTE' %}
-                        <i class="bi bi-exclamation-triangle"></i> INADIMPLENTE
-                      {% else %}
-                        <i class="bi bi-question-circle"></i> SEM CONCEITO
-                      {% endif %}
-                    </span>
-                  </td>
-                  <td>
-                    <small class="text-muted">{{ c.categoria_consultor or '-' }}</small>
-                  </td>
-                  <td>
-                    {% if c.ultimo_pedido_oracle %}
-                    {{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}
-                    {% else %}
-                    <span class="text-muted">-</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    {% if c.valor_ultimo_pedido %}
-                    <div class="fw-bold text-success">R$ {{ "%.2f"|format(c.valor_ultimo_pedido) | replace('.', ',') }}</div>
-                    {% endif %}
-                  </td>
-                  <td>
-                    <div class="btn-group" role="group">
-                      <button class="btn btn-sm btn-info"
-                              onclick="detalhesClienteOracle({{ c.id }})"
-                              title="Ver Detalhes Oracle">
-                        <i class="bi bi-eye"></i>
-                      </button>
-                      <button class="btn btn-sm btn-primary"
-                              onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
-                              title="Registrar Ligação">
-                        <i class="bi bi-telephone-plus"></i>
-                      </button>
-                      {% if c.total_ligacoes > 0 %}
-                      <button class="btn btn-sm btn-outline-secondary"
-                              onclick="historico({{ c.id }})"
-                              title="Ver Histórico">
-                        <i class="bi bi-clock-history"></i>
-                      </button>
-                      {% endif %}
-                    </div>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
           </div>
         </div>
+        <i class="bi bi-chevron-down rep-chevron" id="icone-{{ loop.index0 }}"></i>
       </div>
-      {% endfor %}
-    {% else %}
-      <div class="text-center text-muted py-4">
-        <i class="bi bi-inbox fs-1"></i>
-        <div class="mt-2">Nenhum cliente Oracle encontrado</div>
-        <small>Verifique os filtros ou a sincronização com Oracle</small>
+
+      <!-- Conteúdo expandível -->
+      <div id="representante-{{ loop.index0 }}" style="display:none;">
+
+        <!-- Métricas rápidas -->
+        <div class="rep-metrics">
+          <div class="metric-item">
+            <div class="metric-icon">✅</div>
+            <div class="metric-label">Liberados</div>
+            <div class="metric-value" style="color:#16a34a;">{{ dados.liberados }}</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-icon">❌</div>
+            <div class="metric-label">Inadimplentes</div>
+            <div class="metric-value" style="color:#dc2626;">{{ dados.inadimplentes }}</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-icon" style="color:var(--brand-600);">R$</div>
+            <div class="metric-label">Ticket Médio</div>
+            <div class="metric-value">R$ {{ "%.0f"|format(dados.ticket_medio) | replace('.', ',') }}</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-icon">📅</div>
+            <div class="metric-label">Dias Médios</div>
+            <div class="metric-value">{{ "%.0f"|format(dados.dias_medio) }}d</div>
+          </div>
+        </div>
+
+        <!-- Consultores internos -->
+        {% if dados.consultores_internos %}
+        <div class="rep-consultores">
+          <span class="label">Consultores:</span>
+          {% for consultor, qtd in dados.consultores_internos.items() %}
+          <span class="consultor-chip">{{ consultor }} ({{ qtd }})</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Tabela de clientes -->
+        <div class="rep-table-wrap">
+          <table class="table rep-table">
+            <thead>
+              <tr>
+                <th style="width:24%">Cliente</th>
+                <th style="width:13%">CNPJ</th>
+                <th style="width:13%">Telefone</th>
+                <th style="width:10%">Status</th>
+                <th style="width:13%">Consultor Oracle</th>
+                <th style="width:10%">Último Pedido</th>
+                <th style="width:9%">Valor (365d)</th>
+                <th style="width:8%">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in dados.clientes %}
+              <tr class="{% if c.conceito == 'INADIMPLENTE' %}row-inadimplente{% elif c.conceito == 'LIBERADO' %}row-liberado{% endif %}">
+                <td>
+                  <div class="fw-bold" style="font-size:.84rem;color:var(--text-1);">{{ c.nome }}</div>
+                  {% if c.ultimo_pedido_oracle %}
+                  <small style="color:var(--text-3);font-size:.72rem;">
+                    <i class="bi bi-calendar2-check me-1"></i>{{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}
+                  </small>
+                  {% endif %}
+                </td>
+                <td><code>{{ c.cnpj or '—' }}</code></td>
+                <td>
+                  {% if c.telefone %}
+                  <a href="tel:{{ c.telefone }}" class="tel-link">
+                    <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
+                  </a>
+                  {% else %}
+                  <span style="color:var(--text-3);">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if c.conceito == 'LIBERADO' %}
+                  <span class="badge-liberado">✓ Liberado</span>
+                  {% elif c.conceito == 'INADIMPLENTE' %}
+                  <span class="badge-inadimplente">! Inad.</span>
+                  {% else %}
+                  <span class="badge-semconceito">? S/C</span>
+                  {% endif %}
+                </td>
+                <td><small style="color:var(--text-2);">{{ c.categoria_consultor or '—' }}</small></td>
+                <td>
+                  {% if c.ultimo_pedido_oracle %}
+                  <span style="font-size:.8rem;">{{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}</span>
+                  {% else %}
+                  <span style="color:var(--text-3);">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if c.valor_total_365dias %}
+                  <div style="font-weight:700;color:var(--brand-700);font-size:.8rem;">R$ {{ "%.2f"|format(c.valor_total_365dias) | replace('.', ',') }}</div>
+                  {% elif c.valor_ultimo_pedido %}
+                  <div style="font-weight:700;color:#16a34a;font-size:.8rem;">R$ {{ "%.2f"|format(c.valor_ultimo_pedido) | replace('.', ',') }}</div>
+                  {% else %}
+                  <span style="color:var(--text-3);">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <button class="action-btn btn btn-outline-secondary"
+                            onclick="detalhesClienteOracle({{ c.id }})"
+                            title="Ver Detalhes Oracle">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="action-btn btn btn-primary"
+                            onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
+                            title="Registrar Ligação">
+                      <i class="bi bi-telephone-plus"></i>
+                    </button>
+                    {% if c.total_ligacoes > 0 %}
+                    <button class="action-btn btn btn-outline-secondary"
+                            onclick="historico({{ c.id }})"
+                            title="Histórico">
+                      <i class="bi bi-clock-history"></i>
+                    </button>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
       </div>
-    {% endif %}
-  </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <i class="bi bi-inbox"></i>
+      <p class="fw-semibold">Nenhum cliente Oracle encontrado</p>
+      <small>Verifique os filtros ou a sincronização com Oracle</small>
+    </div>
+  {% endif %}
 </div>
+
 {% else %}
-<!-- TABELA PADRÃO OUTRAS ABAS -->
-<div class="card mt-3">
-  <div class="card-body">
-    <ul class="nav nav-tabs">
-      <li class="nav-item"><a class="nav-link {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">Pendentes ({{ total_pendentes }})</a></li>
-      <li class="nav-item"><a class="nav-link {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">Contatados ({{ total_contatados }})</a></li>
-      <li class="nav-item"><a class="nav-link {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">Retornar ({{ total_retornar }})</a></li>
-      <li class="nav-item">
-        <a class="nav-link {{ 'active' if aba == 'oracle' }} bg-warning text-dark" href="{{ url_for('meus_clientes', aba='oracle') }}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">
-          <i class="bi bi-database"></i> <span>Clientes sem pedidos 90-120 ({{ total_oracle }})</span>
-        </a>
-      </li>
-    </ul>
+<!-- ============================================================
+     TABELA PADRÃO (abas pendentes / contatados / retornar)
+     ============================================================ -->
+<div class="panel-card" style="overflow:visible;">
+  <div class="panel-body" style="padding-bottom:0;">
+    <!-- Tabs modernas -->
+    <div class="modern-tabs nav">
+      <a class="nav-link {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
+        <i class="bi bi-clock me-1"></i>Pendentes <span class="ms-1" style="font-size:.7rem;opacity:.7;">({{ total_pendentes }})</span>
+      </a>
+      <a class="nav-link {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+        <i class="bi bi-check2-circle me-1"></i>Contatados <span class="ms-1" style="font-size:.7rem;opacity:.7;">({{ total_contatados }})</span>
+      </a>
+      <a class="nav-link {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+        <i class="bi bi-arrow-return-right me-1"></i>Retornar <span class="ms-1" style="font-size:.7rem;opacity:.7;">({{ total_retornar }})</span>
+      </a>
+      <a class="nav-link oracle-tab {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
+        <i class="bi bi-database me-1"></i>Sem Pedido 90–120d <span class="ms-1" style="font-size:.7rem;opacity:.8;">({{ total_oracle }})</span>
+      </a>
+    </div>
+  </div>
 
-    <div class="table-responsive mt-3">
-      <table class="table align-middle">
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>CNPJ</th>
-            <th>Telefone</th>
-            <th>Representante</th>
-            {% if aba != 'pendentes' %}
-            <th>Última Ligação</th>
-            {% endif %}
-            {% if aba == 'retornar' %}
-            <th>Próxima Ligação</th>
-            {% endif %}
-            <th>Total Ligações</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tbodyClientes">
-
-        {% if clientes %}
+  <!-- Tabela de clientes -->
+  <div class="rep-table-wrap">
+    <table class="table rep-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>CNPJ</th>
+          <th>Telefone</th>
+          <th>Representante</th>
+          {% if aba != 'pendentes' %}
+          <th>Última Ligação</th>
+          {% endif %}
+          {% if aba == 'retornar' %}
+          <th>Próximo Contato</th>
+          {% endif %}
+          <th>Ligações</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyClientes">
+      {% if clientes %}
         {% for c in clientes %}
         <tr data-origem="{{ c.origem or '' }}">
           <td>
-            <div class="d-flex flex-column">
-              <strong>{{ c.nome }}</strong>
-              <div class="mt-1">
-                {% if c.origem == 'manual' %}
-                  <span class="badge bg-secondary">Manual</span>
-                {% elif c.origem == 'importado_csv' %}
-                  <span class="badge bg-info">Importado</span>
-                {% endif %}
-              </div>
+            <div class="fw-bold" style="font-size:.84rem;color:var(--text-1);">{{ c.nome }}</div>
+            <div class="mt-1 d-flex gap-1">
+              {% if c.origem == 'manual' %}
+              <span class="badge-manual">Manual</span>
+              {% elif c.origem == 'importado_csv' %}
+              <span class="badge-importado">Importado</span>
+              {% endif %}
             </div>
           </td>
-
-          <td>{{ c.cnpj or '-' }}</td>
-
+          <td><code>{{ c.cnpj or '—' }}</code></td>
           <td>
             {% if c.telefone %}
-              <a href="tel:{{ c.telefone }}">{{ c.telefone }}</a>
-            {% else %}-{% endif %}
+            <a href="tel:{{ c.telefone }}" class="tel-link">
+              <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
+            </a>
+            {% else %}—{% endif %}
           </td>
-
-          <td>{{ c.representante_nome or '-' }}</td>
-
+          <td><small style="color:var(--text-2);">{{ c.representante_nome or '—' }}</small></td>
           {% if aba != 'pendentes' %}
           <td>
             {% if c.ultima_ligacao %}
-              {{ c.ultima_ligacao.strftime('%d/%m/%Y %H:%M') }}
-            {% else %}-{% endif %}
+            <span style="font-size:.8rem;">{{ c.ultima_ligacao.strftime('%d/%m/%Y %H:%M') }}</span>
+            {% else %}—{% endif %}
           </td>
           {% endif %}
-
           {% if aba == 'retornar' %}
           <td>
             {% if c.proxima_ligacao %}
-              {{ c.proxima_ligacao.strftime('%d/%m/%Y %H:%M') }}
-            {% else %}-{% endif %}
+            <span style="font-size:.8rem;">{{ c.proxima_ligacao.strftime('%d/%m/%Y %H:%M') }}</span>
+            {% else %}—{% endif %}
           </td>
           {% endif %}
-
-          <td><span class="badge bg-info">{{ c.total_ligacoes }}</span></td>
-
           <td>
-            <button class="btn btn-sm btn-primary"
-                    onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')">
-              <i class="bi bi-telephone-plus"></i>
-            </button>
-
-            {% if aba != 'pendentes' %}
-            <button class="btn btn-sm btn-outline-secondary"
-                    onclick="historico({{ c.id }})">
-              <i class="bi bi-clock-history"></i>
-            </button>
-            {% endif %}
-
-            <button class="btn btn-sm btn-outline-danger"
-                    onclick="removerCliente({{ c.id }}, '{{ c.nome|e }}')">
-              <i class="bi bi-trash"></i>
-            </button>
+            <span class="badge-count">{{ c.total_ligacoes }}</span>
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <button class="action-btn btn btn-primary"
+                      onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
+                      title="Registrar Ligação">
+                <i class="bi bi-telephone-plus"></i>
+              </button>
+              {% if aba != 'pendentes' %}
+              <button class="action-btn btn btn-outline-secondary"
+                      onclick="historico({{ c.id }})"
+                      title="Histórico">
+                <i class="bi bi-clock-history"></i>
+              </button>
+              {% endif %}
+              <button class="action-btn btn btn-outline-danger"
+                      onclick="removerCliente({{ c.id }}, '{{ c.nome|e }}')"
+                      title="Remover">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
           </td>
         </tr>
         {% endfor %}
-        {% else %}
+      {% else %}
         <tr>
-          <td colspan="8" class="text-center text-muted py-4">Nenhum cliente encontrado.</td>
+          <td colspan="8">
+            <div class="empty-state">
+              <i class="bi bi-inbox"></i>
+              <p class="fw-semibold mb-0">Nenhum cliente encontrado.</p>
+            </div>
+          </td>
         </tr>
-        {% endif %}
-
-        </tbody>
-      </table>
-    </div>
+      {% endif %}
+      </tbody>
+    </table>
   </div>
 </div>
 {% endif %}
 
-<!-- ====================================================== -->
-<!-- MODAL: REGISTRAR LIGAÇÃO -->
-<!-- ====================================================== -->
+<!-- ============================================================
+     MODAL: REGISTRAR LIGAÇÃO
+     ============================================================ -->
 <div class="modal fade" id="modalLigacao" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <form onsubmit="salvarLigacao(event)">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-telephone-plus"></i> Registrar Ligação</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header brand-header">
+          <h5 class="modal-title" style="color:#fff;"><i class="bi bi-telephone-plus me-2"></i>Registrar Ligação</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-
         <div class="modal-body">
           <input type="hidden" id="cliId">
-
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label">Cliente</label>
               <input type="text" class="form-control" id="cliNome" disabled>
             </div>
-
             <div class="col-md-6">
               <label class="form-label">Nome de quem atendeu *</label>
               <input type="text" class="form-control" id="contato_nome" required>
             </div>
-
             <div class="col-md-6">
               <label class="form-label">Telefone</label>
               <input type="text" class="form-control" id="cliTelefone" disabled>
             </div>
-
             <div class="col-md-6">
               <label class="form-label">Resultado *</label>
               <select class="form-select" id="resultado" onchange="toggleCamposResultado()">
@@ -697,14 +1208,11 @@
                 <option value="cliente_inativo">Cliente Inativo</option>
               </select>
             </div>
-
             <div class="col-md-6" id="valorContainer" style="display:none;">
-              <label class="form-label">Valor da venda (R$)</label>
-              <input type="number" step="0.01" class="form-control" id="valor_venda">
+              <label class="form-label">Valor da Venda (R$) *</label>
+              <input type="text" class="form-control" id="valor_venda" placeholder="0,00">
             </div>
-
-            <!-- Campos para retorno -->
-            <div class="col-12" id="retornoContainer" style="display:none;">
+            <div id="retornoContainer" style="display:none;" class="col-12">
               <div class="row g-2">
                 <div class="col-md-6">
                   <label class="form-label">Retornar em (dias)</label>
@@ -717,18 +1225,16 @@
               </div>
               <small class="text-muted">Se selecionar data, os dias são ignorados.</small>
             </div>
-
             <div class="col-12">
               <label class="form-label">Observações</label>
               <textarea class="form-control" id="observacao" rows="3"></textarea>
             </div>
           </div>
         </div>
-
         <div class="modal-footer">
           <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">
-            <i class="bi bi-save"></i> Salvar
+            <i class="bi bi-save me-1"></i> Salvar
           </button>
         </div>
       </form>
@@ -736,42 +1242,40 @@
   </div>
 </div>
 
-<!-- ====================================================== -->
-<!-- 🆕 MODAL: DETALHES CLIENTE ORACLE -->
-<!-- ====================================================== -->
+<!-- ============================================================
+     MODAL: DETALHES CLIENTE ORACLE
+     ============================================================ -->
 <div class="modal fade" id="modalDetalhesOracle" tabindex="-1">
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
-      <div class="modal-header bg-info text-white">
-        <h5 class="modal-title"><i class="bi bi-eye"></i> Detalhes do Cliente Oracle</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      <div class="modal-header brand-header">
+        <h5 class="modal-title" style="color:#fff;"><i class="bi bi-eye me-2"></i>Detalhes do Cliente Oracle</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="detalhesOracleContent">
-        <div class="text-center">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Carregando...</span>
-          </div>
-          <p class="mt-2">Carregando dados do Oracle...</p>
+        <div class="text-center py-4">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="mt-2 text-muted">Carregando dados do Oracle...</p>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
         <button type="button" class="btn btn-primary" onclick="registrarLigacaoDesdeDetalhes()">
-          <i class="bi bi-telephone-plus"></i> Registrar Ligação
+          <i class="bi bi-telephone-plus me-1"></i> Registrar Ligação
         </button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ====================================================== -->
-<!-- 🆕 MODAL: HISTÓRICO COM EDIÇÃO -->
-<!-- ====================================================== -->
+<!-- ============================================================
+     MODAL: HISTÓRICO
+     ============================================================ -->
 <div class="modal fade" id="modalHistorico" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-clock-history"></i> Histórico</h5>
+        <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Histórico de Ligações</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="historicoContent">
@@ -781,12 +1285,14 @@
   </div>
 </div>
 
-<!-- 🆕 MODAL: EDITAR OBSERVAÇÃO -->
+<!-- ============================================================
+     MODAL: EDITAR OBSERVAÇÃO
+     ============================================================ -->
 <div class="modal fade" id="modalEditarObs" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Editar Observação</h5>
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Observação</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -797,24 +1303,25 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary" onclick="salvarEdicaoObs()">
-          <i class="bi bi-save"></i> Salvar
+          <i class="bi bi-save me-1"></i> Salvar
         </button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- 🆕 MODAL: EDITAR LIGAÇÃO COMPLETA -->
+<!-- ============================================================
+     MODAL: EDITAR LIGAÇÃO COMPLETA
+     ============================================================ -->
 <div class="modal fade" id="modalEditarLigacao" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Editar Ligação</h5>
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Ligação</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="editLigacaoId">
-        
         <div class="mb-3">
           <label class="form-label">Resultado</label>
           <select class="form-select" id="editResultado">
@@ -826,45 +1333,42 @@
             <option value="cliente_inativo">Cliente Inativo</option>
           </select>
         </div>
-        
-        <div class="mb-3" id="editValorContainer" style="display: none;">
+        <div class="mb-3" id="editValorContainer" style="display:none;">
           <label class="form-label">Valor da Venda</label>
           <input type="text" class="form-control" id="editValorVenda" placeholder="0,00">
         </div>
-        
         <div class="mb-3">
           <label class="form-label">Observação</label>
           <textarea class="form-control" id="editObservacao" rows="3"></textarea>
         </div>
-        
-        <div class="alert alert-info small">
-          <i class="bi bi-info-circle"></i> 
-          <strong>Data/Hora:</strong> <span id="editDataHora"></span><br>
+        <div class="alert alert-primary mb-0" style="border-radius:8px;font-size:.82rem;">
+          <i class="bi bi-info-circle me-1"></i>
+          <strong>Data/Hora:</strong> <span id="editDataHora"></span> &nbsp;|&nbsp;
           <strong>Contato:</strong> <span id="editContatoNome"></span>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary" onclick="salvarEdicaoLigacao()">
-          <i class="bi bi-save"></i> Salvar Alterações
+          <i class="bi bi-save me-1"></i> Salvar Alterações
         </button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ====================================================== -->
-<!-- MODAL: LIMPAR CLIENTES -->
-<!-- ====================================================== -->
+<!-- ============================================================
+     MODAL: LIMPAR CLIENTES
+     ============================================================ -->
 <div class="modal fade" id="modalLimpar" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Confirmar limpeza</h5>
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirmar limpeza</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <p>Isso irá inativar todos os clientes do consultor selecionado. Deseja continuar?</p>
+        <p class="text-muted">Isso irá inativar todos os clientes do consultor selecionado. Deseja continuar?</p>
         <select class="form-select" id="consultorLimpar">
           {% for u in consultores or [] %}
           <option value="{{ u.id }}">{{ u.nome }}</option>
@@ -873,50 +1377,44 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-warning" onclick="confirmarLimpeza()">Limpar</button>
+        <button type="button" class="btn btn-danger" onclick="confirmarLimpeza()">
+          <i class="bi bi-trash me-1"></i> Limpar
+        </button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ====================================================== -->
-<!-- NOVO: MODAL ADICIONAR CLIENTE -->
-<!-- ====================================================== -->
+<!-- ============================================================
+     MODAL: ADICIONAR CLIENTE
+     ============================================================ -->
 <div class="modal fade" id="modalAdicionar" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <form onsubmit="salvarCliente(event)">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-person-plus"></i> Adicionar Cliente</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header brand-header">
+          <h5 class="modal-title" style="color:#fff;"><i class="bi bi-person-plus me-2"></i>Adicionar Cliente</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-
         <div class="modal-body">
-
           <div class="mb-3">
             <label class="form-label">Nome *</label>
-            <input type="text" class="form-control text-uppercase" id="novo_nome" required 
-                   style="text-transform: uppercase;">
+            <input type="text" class="form-control text-uppercase" id="novo_nome" required style="text-transform:uppercase;">
           </div>
-
           <div class="row g-2">
             <div class="col-md-6">
               <label class="form-label">CNPJ</label>
               <input type="text" class="form-control" id="novo_cnpj" placeholder="00.000.000/0000-00">
             </div>
-
             <div class="col-md-6">
               <label class="form-label">Telefone</label>
               <input type="text" class="form-control" id="novo_telefone" placeholder="(00) 00000-0000">
             </div>
           </div>
-
           <div class="mt-3">
             <label class="form-label">Representante</label>
-            <input type="text" class="form-control text-uppercase" id="novo_representante" 
-                   style="text-transform: uppercase;">
+            <input type="text" class="form-control text-uppercase" id="novo_representante" style="text-transform:uppercase;">
           </div>
-
           {% if is_supervisor %}
           <div class="mt-3">
             <label class="form-label">Consultor</label>
@@ -928,18 +1426,16 @@
             </select>
           </div>
           {% endif %}
-
           <small class="text-muted mt-2 d-block">
             Origem será marcada como <strong>manual</strong>.
           </small>
-
         </div>
-
         <div class="modal-footer">
           <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Salvar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i> Salvar
+          </button>
         </div>
-
       </form>
     </div>
   </div>
@@ -949,17 +1445,16 @@
 
 {% block scripts %}
 {{ super() }}
-
 <script>
 
-let modalLigacao = new bootstrap.Modal(document.getElementById('modalLigacao'));
-let modalHistorico = new bootstrap.Modal(document.getElementById('modalHistorico'));
-let modalLimpar = new bootstrap.Modal(document.getElementById('modalLimpar'));
-let modalAdicionar = new bootstrap.Modal(document.getElementById('modalAdicionar'));
-let modalEditarObs = new bootstrap.Modal(document.getElementById('modalEditarObs')); // 🆕 NOVO
-let modalEditarLigacao = new bootstrap.Modal(document.getElementById('modalEditarLigacao')); // 🆕 NOVO
+let modalLigacao     = new bootstrap.Modal(document.getElementById('modalLigacao'));
+let modalHistorico   = new bootstrap.Modal(document.getElementById('modalHistorico'));
+let modalLimpar      = new bootstrap.Modal(document.getElementById('modalLimpar'));
+let modalAdicionar   = new bootstrap.Modal(document.getElementById('modalAdicionar'));
+let modalEditarObs   = new bootstrap.Modal(document.getElementById('modalEditarObs'));
+let modalEditarLigacao = new bootstrap.Modal(document.getElementById('modalEditarLigacao'));
 
-// 🆕 FECHAR POP-UP DE NOVIDADES
+// FECHAR POP-UP DE NOVIDADES
 async function fecharNovidades() {
   await fetch('/marcar-novidades-vistas', { method: 'POST' });
   document.getElementById('modalNovidades').style.display = 'none';
@@ -981,9 +1476,8 @@ function abrirForm(id, nome, telefone) {
 
 function toggleCamposResultado() {
   const r = document.getElementById('resultado').value;
-  const boxValor = document.getElementById('valorContainer');
+  const boxValor   = document.getElementById('valorContainer');
   const boxRetorno = document.getElementById('retornoContainer');
-
   if (r === 'comprou') {
     boxValor.style.display = 'block';
     document.getElementById('valor_venda').required = true;
@@ -992,17 +1486,14 @@ function toggleCamposResultado() {
     document.getElementById('valor_venda').required = false;
     document.getElementById('valor_venda').value = '';
   }
-
-  if (r === 'retornar') {
-    boxRetorno.style.display = 'block';
-  } else {
-    boxRetorno.style.display = 'none';
+  boxRetorno.style.display = (r === 'retornar') ? 'block' : 'none';
+  if (r !== 'retornar') {
     document.getElementById('dias_retorno').value = 30;
     document.getElementById('data_retorno').value = '';
   }
 }
 
-// 🆕 HISTÓRICO COM BOTÃO DE EDITAR
+// HISTÓRICO COM BOTÃO DE EDITAR
 function historico(id) {
   modalHistorico.show();
   fetch(`/historico-ligacoes/${id}`)
@@ -1010,32 +1501,34 @@ function historico(id) {
     .then(hist => {
       const div = document.getElementById('historicoContent');
       if (!hist || hist.length === 0) {
-        div.innerHTML = '<p class="text-muted text-center">Nenhum registro de ligação.</p>';
-      } else {
-        let html = '<ul class="list-group">';
-        hist.forEach(item => {
-          html += `
-            <li class="list-group-item">
-              <div class="d-flex justify-content-between align-items-start">
-                <div class="flex-grow-1">
-                  <strong>${item.data_hora}</strong> – ${item.consultor}<br>
-                  <span class="badge bg-light text-dark me-1">${item.resultado}</span>
-                  ${item.contato_nome ? 'Contato: '+item.contato_nome+'<br>' : ''}
-                  ${item.valor_venda !== '0,00' ? 'Valor: R$ '+item.valor_venda+'<br>' : ''}
-                  ${item.observacao ? '<div class="mt-2 p-2 bg-light rounded"><em>'+item.observacao+'</em></div>' : ''}
-                </div>
-                ${item.pode_editar ? `
-                  <button class="btn btn-sm btn-outline-primary" onclick="editarLigacaoCompleta(${item.id})">
-                    <i class="bi bi-pencil-square"></i>
-                  </button>
-                ` : ''}
-              </div>
-            </li>
-          `;
-        });
-        html += '</ul>';
-        div.innerHTML = html;
+        div.innerHTML = '<p class="text-muted text-center py-3">Nenhum registro de ligação.</p>';
+        return;
       }
+      let html = '<div style="display:flex;flex-direction:column;gap:10px;">';
+      hist.forEach(item => {
+        html += `
+          <div style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--surface-2);">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <div style="font-size:.82rem;font-weight:700;color:var(--text-1);">${item.data_hora}</div>
+                <div style="font-size:.78rem;color:var(--text-2);margin-top:2px;">${item.consultor}</div>
+                <div class="mt-2 d-flex gap-2 flex-wrap">
+                  <span class="badge-count" style="font-size:.7rem;">${item.resultado}</span>
+                  ${item.contato_nome ? `<span style="font-size:.75rem;color:var(--text-2);">Contato: ${item.contato_nome}</span>` : ''}
+                  ${item.valor_venda !== '0,00' ? `<span style="font-size:.75rem;font-weight:700;color:#16a34a;">R$ ${item.valor_venda}</span>` : ''}
+                </div>
+                ${item.observacao ? `<div style="margin-top:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:.8rem;color:var(--text-2);">${item.observacao}</div>` : ''}
+              </div>
+              ${item.pode_editar ? `
+                <button class="action-btn btn btn-outline-primary ms-2" onclick="editarLigacaoCompleta(${item.id})">
+                  <i class="bi bi-pencil-square"></i>
+                </button>` : ''}
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      div.innerHTML = html;
     })
     .catch(() => {
       document.getElementById('historicoContent').innerHTML =
@@ -1043,175 +1536,111 @@ function historico(id) {
     });
 }
 
-// 🆕 ABRIR MODAL DE EDIÇÃO COMPLETA
+// ABRIR MODAL DE EDIÇÃO COMPLETA
 async function editarLigacaoCompleta(ligacaoId) {
   try {
-    // Carregar dados atuais da ligação
     const r = await fetch(`/api/detalhes-ligacao/${ligacaoId}`);
     const data = await r.json();
-    
-    if (!r.ok) {
-      alert(data.erro || 'Erro ao carregar dados da ligação');
-      return;
-    }
-    
-    // Preencher formulário
-    document.getElementById('editLigacaoId').value = data.id;
-    document.getElementById('editResultado').value = data.resultado;
+    if (!r.ok) { alert(data.erro || 'Erro ao carregar dados da ligação'); return; }
+    document.getElementById('editLigacaoId').value  = data.id;
+    document.getElementById('editResultado').value  = data.resultado;
     document.getElementById('editValorVenda').value = data.valor_venda_fmt.replace('R$ ', '');
     document.getElementById('editObservacao').value = data.observacao || '';
-    document.getElementById('editDataHora').textContent = data.data_hora;
+    document.getElementById('editDataHora').textContent    = data.data_hora;
     document.getElementById('editContatoNome').textContent = data.contato_nome || 'N/A';
-    
-    // Mostrar/esconder campo de valor conforme resultado
     toggleEditValorContainer();
-    
-    // Adicionar listener para mudança no resultado
     document.getElementById('editResultado').onchange = toggleEditValorContainer;
-    
     modalHistorico.hide();
     modalEditarLigacao.show();
-    
   } catch (erro) {
     console.error('Erro:', erro);
     alert('Erro ao carregar dados da ligação');
   }
 }
 
-// 🆕 MOSTRAR/OCULTAR CAMPO DE VALOR NA EDIÇÃO
 function toggleEditValorContainer() {
   const resultado = document.getElementById('editResultado').value;
-  const valorContainer = document.getElementById('editValorContainer');
-  
-  if (resultado === 'comprou') {
-    valorContainer.style.display = 'block';
-  } else {
-    valorContainer.style.display = 'none';
-  }
+  document.getElementById('editValorContainer').style.display = (resultado === 'comprou') ? 'block' : 'none';
 }
 
-// 🆕 SALVAR EDIÇÃO COMPLETA DA LIGAÇÃO
 async function salvarEdicaoLigacao() {
   const ligacaoId = document.getElementById('editLigacaoId').value;
-  
   try {
     const r = await fetch(`/editar-ligacao/${ligacaoId}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        resultado: document.getElementById('editResultado').value,
+        resultado:   document.getElementById('editResultado').value,
         valor_venda: document.getElementById('editValorVenda').value,
-        observacao: document.getElementById('editObservacao').value
+        observacao:  document.getElementById('editObservacao').value
       })
     });
-    
     const j = await r.json();
-    
-    if (j.ok) {
-      modalEditarLigacao.hide();
-      alert(j.mensagem || 'Ligação atualizada com sucesso!');
-      location.reload();
-    } else {
-      alert(j.mensagem || 'Erro ao atualizar ligação');
-    }
-  } catch (erro) {
-    console.error('Erro:', erro);
-    alert('Erro ao atualizar ligação');
-  }
+    if (j.ok) { modalEditarLigacao.hide(); alert(j.mensagem || 'Ligação atualizada!'); location.reload(); }
+    else       { alert(j.mensagem || 'Erro ao atualizar ligação'); }
+  } catch (erro) { console.error('Erro:', erro); alert('Erro ao atualizar ligação'); }
 }
 
-// 🆕 ABRIR MODAL DE EDIÇÃO
 function editarObservacao(ligacaoId, obsAtual) {
-  document.getElementById('ligacaoIdEdit').value = ligacaoId;
+  document.getElementById('ligacaoIdEdit').value  = ligacaoId;
   document.getElementById('observacaoEdit').value = obsAtual;
   modalHistorico.hide();
   modalEditarObs.show();
 }
 
-// 🆕 SALVAR EDIÇÃO DA OBSERVAÇÃO
 async function salvarEdicaoObs() {
   const ligacaoId = document.getElementById('ligacaoIdEdit').value;
-  const novaObs = document.getElementById('observacaoEdit').value;
-  
+  const novaObs   = document.getElementById('observacaoEdit').value;
   try {
     const r = await fetch(`/editar-observacao/${ligacaoId}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ observacao: novaObs })
     });
-    
     const j = await r.json();
-    
-    if (j.ok) {
-      modalEditarObs.hide();
-      alert(j.mensagem || 'Observação atualizada!');
-      location.reload();
-    } else {
-      alert(j.mensagem || 'Erro ao atualizar');
-    }
-  } catch (erro) {
-    console.error('Erro:', erro);
-    alert('Erro ao atualizar observação');
-  }
+    if (j.ok) { modalEditarObs.hide(); alert(j.mensagem || 'Observação atualizada!'); location.reload(); }
+    else       { alert(j.mensagem || 'Erro ao atualizar'); }
+  } catch (erro) { console.error('Erro:', erro); alert('Erro ao atualizar observação'); }
 }
 
-function abrirModalLimpar() {
-  modalLimpar.show();
-}
+function abrirModalLimpar() { modalLimpar.show(); }
 
 async function confirmarLimpeza() {
   const id = document.getElementById('consultorLimpar').value;
-  const r = await fetch('/limpar-clientes-consultor', {
+  const r  = await fetch('/limpar-clientes-consultor', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({consultor_id: id})
   });
   const j = await r.json();
-  if (j.ok) {
-    modalLimpar.hide();
-    alert(j.mensagem);
-    location.reload();
-  } else {
-    alert(j.mensagem || 'Erro ao limpar');
-  }
+  if (j.ok) { modalLimpar.hide(); alert(j.mensagem); location.reload(); }
+  else       { alert(j.mensagem || 'Erro ao limpar'); }
 }
 
 // Salvar ligação
 async function salvarLigacao(e) {
   e.preventDefault();
   const id = document.getElementById('cliId').value;
-
   const payload = {
     contato_nome: document.getElementById('contato_nome').value,
-    resultado: document.getElementById('resultado').value,
-    valor_venda: document.getElementById('valor_venda').value,
-    observacao: document.getElementById('observacao').value
+    resultado:    document.getElementById('resultado').value,
+    valor_venda:  document.getElementById('valor_venda').value,
+    observacao:   document.getElementById('observacao').value
   };
-
   if (payload.resultado === 'retornar') {
     const dias = parseInt(document.getElementById('dias_retorno').value || '30', 10);
     const data = document.getElementById('data_retorno').value;
-    if (data) {
-      payload.data_retorno = data;
-    } else if (!isNaN(dias) && dias > 0) {
-      payload.dias_retorno = dias;
-    }
+    if (data)              { payload.data_retorno  = data; }
+    else if (!isNaN(dias)) { payload.dias_retorno = dias; }
   }
-
   const r = await fetch(`/registrar-ligacao/${id}`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
   });
-
   const j = await r.json();
-  if (j.ok) {
-    modalLigacao.hide();
-    alert(j.mensagem || 'Ligação registrada!');
-    location.reload();
-  } else {
-    alert(j.mensagem || 'Erro ao registrar ligação');
-  }
+  if (j.ok) { modalLigacao.hide(); alert(j.mensagem || 'Ligação registrada!'); location.reload(); }
+  else       { alert(j.mensagem || 'Erro ao registrar ligação'); }
 }
 
 // Modal novo cliente
@@ -1226,105 +1655,67 @@ function abrirModalAdicionar() {
   modalAdicionar.show();
 }
 
-function limpaDigitos(v) {
-  return (v || '').replace(/\D+/g, '');
-}
+function limpaDigitos(v) { return (v || '').replace(/\D+/g, ''); }
 
 async function salvarCliente(e) {
   e.preventDefault();
-
   const nome = document.getElementById('novo_nome').value.trim().toUpperCase();
   if (!nome) return alert("Informe o nome");
-
   const payload = {
     nome,
     cnpj: limpaDigitos(document.getElementById('novo_cnpj').value),
     telefone: limpaDigitos(document.getElementById('novo_telefone').value),
     representante_nome: document.getElementById('novo_representante').value.trim().toUpperCase()
   };
-
   {% if is_supervisor %}
   const cons = document.getElementById('novo_consultor').value;
   if (!cons) return alert("Selecione o consultor");
   payload.consultor_id = parseInt(cons);
   {% endif %}
-
   const r = await fetch('/clientes/criar', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
   });
-
   const j = await r.json();
-  if (j.ok) {
-    modalAdicionar.hide();
-    alert(j.mensagem || "Cliente criado!");
-    location.reload();
-  } else {
-    alert(j.mensagem || "Erro ao criar");
-  }
+  if (j.ok) { modalAdicionar.hide(); alert(j.mensagem || "Cliente criado!"); location.reload(); }
+  else       { alert(j.mensagem || "Erro ao criar"); }
 }
 
 function filtrarPorOrigem() {
-  const v = document.getElementById('filtroOrigem').value;
+  const v    = document.getElementById('filtroOrigem').value;
   const rows = document.querySelectorAll('#tbodyClientes tr');
-
   rows.forEach(tr => {
     const o = tr.getAttribute('data-origem') || '';
     tr.style.display = (!v || v === o) ? '' : 'none';
   });
 }
 
-// Remover cliente (inativar)
 async function removerCliente(id, nome) {
   const motivo = prompt(`Deseja realmente remover "${nome}"?\n\nMotivo (opcional):`);
-  
-  // Se cancelar, não faz nada
   if (motivo === null) return;
-
   try {
     const r = await fetch(`/remover-cliente/${id}`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ motivo: motivo || '' })
     });
-
     const j = await r.json();
-    
-    if (j.ok) {
-      alert(j.mensagem || 'Cliente removido com sucesso!');
-      location.reload();
-    } else {
-      alert(j.mensagem || 'Erro ao remover cliente');
-    }
-  } catch (erro) {
-    console.error('Erro:', erro);
-    alert('Erro ao remover cliente. Tente novamente.');
-  }
+    if (j.ok) { alert(j.mensagem || 'Cliente removido!'); location.reload(); }
+    else       { alert(j.mensagem || 'Erro ao remover cliente'); }
+  } catch (erro) { console.error('Erro:', erro); alert('Erro ao remover cliente.'); }
 }
 
-// 🆕 FUNÇÕES DO FILTRO MENSAL PARA CONSULTORES
+// FILTRO MENSAL CONSULTORES
 async function aplicarFiltroMesConsultor() {
   const select = document.getElementById('filtroMesConsultor');
-  const valor = select.value; // formato: "mes-ano"
-  
-  if (!valor) {
-    // Se não selecionou nada, limpa o filtro
-    limparFiltroMesConsultor();
-    return;
-  }
-  
+  const valor  = select.value;
+  if (!valor) { limparFiltroMesConsultor(); return; }
   const [mes, ano] = valor.split('-');
   const url = new URL(window.location);
-  
-  if (mes && ano) {
-    url.searchParams.set('mes', mes);
-    url.searchParams.set('ano', ano);
-  }
-  
+  if (mes && ano) { url.searchParams.set('mes', mes); url.searchParams.set('ano', ano); }
   window.location.href = url.toString();
 }
-
 function limparFiltroMesConsultor() {
   const url = new URL(window.location);
   url.searchParams.delete('mes');
@@ -1332,110 +1723,64 @@ function limparFiltroMesConsultor() {
   window.location.href = url.toString();
 }
 
-// 🆕 CARREGAR DADOS DO MÊS SELECIONADO (se houver)
+// CARREGAR DADOS DO MÊS SELECIONADO
 document.addEventListener('DOMContentLoaded', async function() {
   const mesFiltro = '{{ mes_filtro }}';
   const anoFiltro = '{{ ano_filtro }}';
-  
   if (mesFiltro && anoFiltro && mesFiltro !== 'None' && anoFiltro !== 'None') {
     const resultadosDiv = document.getElementById('resultadosMesSelecionado');
     if (resultadosDiv) {
       resultadosDiv.style.display = 'block';
-      
       try {
         const response = await fetch(`/api/minhas-ligacoes-por-mes?mes=${mesFiltro}&ano=${anoFiltro}`);
-        const data = await response.json();
-        
+        const data     = await response.json();
         if (data.ok) {
           const stats = data.estatisticas;
           resultadosDiv.innerHTML = `
             <div class="row g-3">
-              <div class="col-md-3">
-                <div class="card border-primary">
-                  <div class="card-body text-center">
-                    <h5 class="text-primary">${stats.total_ligacoes}</h5>
-                    <small class="text-muted">Total de Ligações</small>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="card border-success">
-                  <div class="card-body text-center">
-                    <h5 class="text-success">${stats.vendas}</h5>
-                    <small class="text-muted">Vendas</small>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="card border-info">
-                  <div class="card-body text-center">
-                    <h5 class="text-info">${stats.taxa_conversao}%</h5>
-                    <small class="text-muted">Taxa de Conversão</small>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="card border-warning">
-                  <div class="card-body text-center">
-                    <h5 class="text-warning">${stats.receita_fmt}</h5>
-                    <small class="text-muted">Receita Total</small>
-                  </div>
-                </div>
-              </div>
+              <div class="col-md-3"><div class="card stat-card"><div class="card-body"><div class="text-muted">Total Ligações</div><div class="stat-value">${stats.total_ligacoes}</div></div></div></div>
+              <div class="col-md-3"><div class="card stat-card"><div class="card-body"><div class="text-muted">Vendas</div><div class="stat-value" style="color:#16a34a;">${stats.vendas}</div></div></div></div>
+              <div class="col-md-3"><div class="card stat-card"><div class="card-body"><div class="text-muted">Conversão</div><div class="stat-value">${stats.taxa_conversao}%</div></div></div></div>
+              <div class="col-md-3"><div class="card stat-card"><div class="card-body"><div class="text-muted">Receita</div><div class="stat-value" style="font-size:1.1rem;">${stats.receita_fmt}</div></div></div></div>
             </div>
-            
             ${data.ligacoes.length > 0 ? `
               <div class="mt-3">
-                <h6><i class="bi bi-telephone"></i> Ligações do Período</h6>
-                <div class="table-responsive">
-                  <table class="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Data</th>
-                        <th>Cliente</th>
-                        <th>Resultado</th>
-                        <th>Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${data.ligacoes.map(lig => `
-                        <tr>
-                          <td>${lig.data_hora}</td>
-                          <td>${lig.cliente_nome}</td>
-                          <td><span class="badge bg-${lig.resultado === 'comprou' ? 'success' : 'secondary'}">${lig.resultado}</span></td>
-                          <td>${lig.valor_venda_fmt}</td>
-                        </tr>
-                      `).join('')}
-                    </tbody>
-                  </table>
+                <div style="font-size:.85rem;font-weight:700;color:var(--text-1);margin-bottom:10px;">
+                  <i class="bi bi-telephone me-1"></i>Ligações do Período
                 </div>
-              </div>
-            ` : '<div class="alert alert-warning mt-3"><i class="bi bi-exclamation-triangle"></i> Nenhuma ligação encontrada no período selecionado.</div>'}
+                <div class="rep-table-wrap"><table class="table rep-table">
+                  <thead><tr><th>Data</th><th>Cliente</th><th>Resultado</th><th>Valor</th></tr></thead>
+                  <tbody>
+                    ${data.ligacoes.map(lig => `
+                      <tr>
+                        <td style="font-size:.8rem;">${lig.data_hora}</td>
+                        <td style="font-size:.8rem;">${lig.cliente_nome}</td>
+                        <td><span class="${lig.resultado === 'comprou' ? 'badge-liberado' : 'badge-semconceito'}">${lig.resultado}</span></td>
+                        <td style="font-size:.8rem;">${lig.valor_venda_fmt}</td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table></div>
+              </div>` : '<div class="alert alert-warning mt-3">Nenhuma ligação encontrada no período.</div>'}
           `;
         } else {
-          resultadosDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-circle"></i> Erro: ${data.erro}</div>`;
+          resultadosDiv.innerHTML = `<div class="alert alert-danger">Erro: ${data.erro}</div>`;
         }
       } catch (error) {
-        console.error('Erro ao carregar dados do mês:', error);
-        resultadosDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-circle"></i> Erro ao carregar dados do mês selecionado.</div>`;
+        resultadosDiv.innerHTML = `<div class="alert alert-danger">Erro ao carregar dados do mês.</div>`;
       }
     }
   }
 });
 
-// 🆕 BUSCA EM TEMPO REAL SEM ENTER
+// BUSCA EM TEMPO REAL
 let buscaTimeout;
 const buscaInput = document.getElementById('buscaRapida');
 if (buscaInput) {
   buscaInput.addEventListener('input', function() {
     clearTimeout(buscaTimeout);
     const termo = this.value.trim();
-    
-    // Pequeno delay para não fazer muitas requisições
     buscaTimeout = setTimeout(() => {
-      if (termo.length >= 2 || termo.length === 0) {
-        buscarClientesTempoReal(termo);
-      }
+      if (termo.length >= 2 || termo.length === 0) buscarClientesTempoReal(termo);
     }, 300);
   });
 }
@@ -1444,392 +1789,234 @@ async function buscarClientesTempoReal(termo) {
   try {
     const aba = '{{ aba }}';
     const apenas_meus = {{ 'true' if current_user.tipo == 'consultor' else 'false' }};
-    
-    const params = new URLSearchParams({
-      q: termo,
-      aba: aba,
-      meus: apenas_meus ? '1' : '0'
-    });
-    
+    const params = new URLSearchParams({ q: termo, aba, meus: apenas_meus ? '1' : '0' });
     const response = await fetch(`/api/busca-clientes?${params}`);
     const data = await response.json();
-    
     if (data.ok) {
-      atualizarTabelaClientes(data.clientes);
-    } else {
-      console.error('Erro na busca:', data.erro);
+      if (aba === 'oracle') {
+        atualizarRepresentantesOracle(data.clientes);
+      } else {
+        atualizarTabelaClientes(data.clientes);
+      }
     }
-  } catch (error) {
-    console.error('Erro ao buscar clientes:', error);
-  }
+  } catch (error) { console.error('Erro ao buscar clientes:', error); }
 }
 
 function atualizarTabelaClientes(clientes) {
   const tbody = document.getElementById('tbodyClientes');
-  
   if (!clientes || clientes.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Nenhum cliente encontrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="bi bi-inbox"></i><p class="fw-semibold mb-0">Nenhum cliente encontrado.</p></div></td></tr>';
     return;
   }
-  
   tbody.innerHTML = clientes.map(c => `
     <tr data-origem="${c.origem || ''}">
       <td>
-        <div class="d-flex flex-column">
-          <strong>${c.nome}</strong>
-          <div class="mt-1">
-            ${c.origem === 'manual' ? '<span class="badge bg-secondary">Manual</span>' : ''}
-            ${c.origem === 'importado_csv' ? '<span class="badge bg-info">Importado</span>' : ''}
-          </div>
+        <div class="fw-bold" style="font-size:.84rem;">${c.nome}</div>
+        <div class="mt-1">
+          ${c.origem === 'manual'       ? '<span class="badge-manual">Manual</span>'    : ''}
+          ${c.origem === 'importado_csv'? '<span class="badge-importado">Importado</span>' : ''}
         </div>
       </td>
-      <td>${c.cnpj || '-'}</td>
-      <td>${c.telefone ? `<a href="tel:${c.telefone}">${c.telefone}</a>` : '-'}</td>
-      <td>${c.representante_nome || '-'}</td>
+      <td><code>${c.cnpj || '—'}</code></td>
+      <td>${c.telefone ? `<a href="tel:${c.telefone}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${c.telefone}</a>` : '—'}</td>
+      <td><small style="color:var(--text-2);">${c.representante_nome || '—'}</small></td>
       {% if aba != 'pendentes' %}
-      <td>${c.ultima_ligacao || '-'}</td>
+      <td style="font-size:.8rem;">${c.ultima_ligacao || '—'}</td>
       {% endif %}
       {% if aba == 'retornar' %}
-      <td class="${c.retorno_atrasado ? 'text-danger fw-bold' : ''}">
-        ${c.proxima_ligacao || '-'}
-        ${c.retorno_atrasado ? '<i class="bi bi-exclamation-triangle"></i>' : ''}
+      <td style="font-size:.8rem;" class="${c.retorno_atrasado ? 'text-danger fw-bold' : ''}">
+        ${c.proxima_ligacao || '—'}
+        ${c.retorno_atrasado ? '<i class="bi bi-exclamation-triangle ms-1"></i>' : ''}
       </td>
       {% endif %}
-      <td><span class="badge bg-info">${c.total_ligacoes}</span></td>
+      <td><span class="badge-count">${c.total_ligacoes}</span></td>
       <td>
-        <button class="btn btn-sm btn-primary"
-                onclick="abrirForm(${c.id}, '${c.nome.replace(/'/g, "\\'")}', '${c.telefone || ''}')">
-          <i class="bi bi-telephone-plus"></i>
-        </button>
-        {% if aba != 'pendentes' %}
-        <button class="btn btn-sm btn-outline-secondary"
-                onclick="historico(${c.id})">
-          <i class="bi bi-clock-history"></i>
-        </button>
-        {% endif %}
-        <button class="btn btn-sm btn-outline-danger"
-                onclick="removerCliente(${c.id}, '${c.nome.replace(/'/g, "\\'")}')">
-          <i class="bi bi-trash"></i>
-        </button>
+        <div class="d-flex gap-1">
+          <button class="action-btn btn btn-primary" onclick="abrirForm(${c.id}, '${c.nome.replace(/'/g,"\\'")}', '${c.telefone || ''}')" title="Registrar Ligação"><i class="bi bi-telephone-plus"></i></button>
+          {% if aba != 'pendentes' %}
+          <button class="action-btn btn btn-outline-secondary" onclick="historico(${c.id})" title="Histórico"><i class="bi bi-clock-history"></i></button>
+          {% endif %}
+          <button class="action-btn btn btn-outline-danger" onclick="removerCliente(${c.id}, '${c.nome.replace(/'/g,"\\'")}')"><i class="bi bi-trash"></i></button>
+        </div>
       </td>
     </tr>
   `).join('');
 }
 
-// 🆕 FUNÇÃO DE SINCRONIZAÇÃO ORACLE
+// SINCRONIZAÇÃO ORACLE
 function sincronizarOracle() {
   const btn = document.getElementById('btnSincronizarOracle');
   if (!btn) return;
-  
-  // Confirmar ação
-  if (!confirm('Deseja sincronizar os clientes com Oracle agora?\n\nEsta ação pode levar alguns minutos e atualizará a lista de clientes sem pedidos de 90-120 dias.')) {
-    return;
-  }
-  
-  // Desabilitar botão e mostrar loading
+  if (!confirm('Deseja sincronizar os clientes com Oracle agora?\n\nEsta ação pode levar alguns minutos.')) return;
   const originalText = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Sincronizando...';
-  
-  // Fazer requisição POST
+  btn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i> Sincronizando...';
   fetch('/sincronizar-oracle', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCookie('csrf_token') // se usar CSRF
-    }
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrf_token') }
   })
-  .then(response => response.json())
+  .then(r => r.json())
   .then(data => {
     if (data.success) {
-      // Mostrar sucesso
-      alert('✅ ' + data.message + '\n\nA página será recarregada em alguns segundos para mostrar os resultados atualizados.');
-      
-      // Recarregar página após 3 segundos
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
-    } else {
-      // Mostrar erro
-      alert('❌ ' + data.message);
-    }
+      alert('✅ ' + data.message + '\n\nA página será recarregada em alguns segundos.');
+      setTimeout(() => window.location.reload(), 3000);
+    } else { alert('❌ ' + data.message); }
   })
-  .catch(error => {
-    console.error('Erro na sincronização:', error);
-    alert('❌ Erro ao sincronizar com Oracle. Tente novamente ou contate o suporte.');
-  })
-  .finally(() => {
-    // Restaurar botão
-    btn.disabled = false;
-    btn.innerHTML = originalText;
-  });
+  .catch(() => alert('❌ Erro ao sincronizar com Oracle.'))
+  .finally(() => { btn.disabled = false; btn.innerHTML = originalText; });
 }
 
-// FUNÇÃO DE DETALHES CLIENTE ORACLE
+// DETALHES CLIENTE ORACLE
 function detalhesClienteOracle(clienteId) {
-  // Mostrar modal
   const modal = new bootstrap.Modal(document.getElementById('modalDetalhesOracle'));
   modal.show();
-  
-  // Resetar conteúdo
   document.getElementById('detalhesOracleContent').innerHTML = `
-    <div class="text-center">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Carregando...</span>
-      </div>
-      <p class="mt-2">Carregando dados do Oracle...</p>
-    </div>
-  `;
-  
-  // Buscar dados do cliente
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Carregando dados do Oracle...</p>
+    </div>`;
   fetch(`/detalhes-cliente-oracle/${clienteId}`)
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
-      if (data.success) {
-        renderizarDetalhesOracle(data);
-      } else {
-        document.getElementById('detalhesOracleContent').innerHTML = `
-          <div class="alert alert-danger">
-            <i class="bi bi-exclamation-triangle"></i> 
-            Erro: ${data.message}
-          </div>
-        `;
-      }
+      if (data.success) renderizarDetalhesOracle(data);
+      else document.getElementById('detalhesOracleContent').innerHTML =
+        `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Erro: ${data.message}</div>`;
     })
-    .catch(error => {
-      console.error('Erro ao buscar detalhes:', error);
-      document.getElementById('detalhesOracleContent').innerHTML = `
-        <div class="alert alert-danger">
-          <i class="bi bi-exclamation-triangle"></i> 
-          Erro ao carregar detalhes do cliente.
-        </div>
-      `;
+    .catch(() => {
+      document.getElementById('detalhesOracleContent').innerHTML =
+        `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Erro ao carregar detalhes.</div>`;
     });
 }
 
-// FUNÇÃO PARA RENDERIZAR DETALHES ORACLE
 function renderizarDetalhesOracle(data) {
   const cliente = data.cliente;
-  const pedidos = data.pedidos_oracle || [];
-  const itens = data.itens_oracle || [];
-  
+  const itens   = data.itens_oracle || [];
+
+  const conceitoBadge = cliente.conceito === 'LIBERADO'
+    ? '<span class="badge-liberado">✓ Liberado</span>'
+    : cliente.conceito === 'INADIMPLENTE'
+    ? '<span class="badge-inadimplente">! Inadimplente</span>'
+    : '<span class="badge-semconceito">? Sem Conceito</span>';
+
   let html = `
-    <div class="row">
-      <!-- DADOS PRINCIPAIS -->
+    <div class="row g-3">
       <div class="col-md-6">
-        <div class="card border-info">
-          <div class="card-header bg-info text-white">
+        <div class="panel-card" style="margin-bottom:0;">
+          <div class="panel-header" style="font-size:.82rem;padding:10px 16px;">
             <i class="bi bi-person"></i> Dados do Cliente
           </div>
-          <div class="card-body">
-            <table class="table table-sm table-borderless">
-              <tr>
-                <td><strong>Nome:</strong></td>
-                <td>${cliente.nome}</td>
-              </tr>
-              <tr>
-                <td><strong>CNPJ:</strong></td>
-                <td><code>${cliente.cnpj || '-'}</code></td>
-              </tr>
-              <tr>
-                <td><strong>Telefone:</strong></td>
-                <td>
-                  ${cliente.telefone ? 
-                    `<a href="tel:${cliente.telefone}" class="btn btn-sm btn-outline-primary">
-                      <i class="bi bi-telephone"></i> ${cliente.telefone}
-                    </a>` : 
-                    '-'
-                  }
-                </td>
-              </tr>
-              ${cliente.cd_cliente_oracle ? `
-              <tr>
-                <td><strong>Código Oracle:</strong></td>
-                <td><code>${cliente.cd_cliente_oracle}</code></td>
-              </tr>
-              ` : ''}
-              ${cliente.representante_oracle ? `
-              <tr>
-                <td><strong>Representante Oracle:</strong></td>
-                <td>${cliente.representante_oracle}</td>
-              </tr>
-              ` : ''}
+          <div class="panel-body" style="padding:14px 16px;">
+            <table class="table table-sm table-borderless" style="font-size:.83rem;margin:0;">
+              <tr><td class="fw-bold text-muted" style="width:40%">Nome</td><td>${cliente.nome}</td></tr>
+              <tr><td class="fw-bold text-muted">CNPJ</td><td><code>${cliente.cnpj || '—'}</code></td></tr>
+              <tr><td class="fw-bold text-muted">Telefone</td><td>
+                ${cliente.telefone ? `<a href="tel:${cliente.telefone}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${cliente.telefone}</a>` : '—'}
+              </td></tr>
+              ${cliente.cd_cliente_oracle ? `<tr><td class="fw-bold text-muted">Cód. Oracle</td><td><code>${cliente.cd_cliente_oracle}</code></td></tr>` : ''}
+              ${cliente.representante_oracle ? `<tr><td class="fw-bold text-muted">Representante</td><td>${cliente.representante_oracle}</td></tr>` : ''}
             </table>
           </div>
         </div>
       </div>
-      
-      <!-- DADOS DE CRÉDITO -->
       <div class="col-md-6">
-        <div class="card border-warning">
-          <div class="card-header bg-warning text-dark">
+        <div class="panel-card" style="margin-bottom:0;">
+          <div class="panel-header" style="font-size:.82rem;padding:10px 16px;">
             <i class="bi bi-shield-check"></i> Dados de Crédito
           </div>
-          <div class="card-body">
-            <table class="table table-sm table-borderless">
-              <tr>
-                <td><strong>Conceito:</strong></td>
-                <td>
-                  <span class="badge ${
-                    cliente.conceito === 'LIBERADO' ? 'bg-success' : 
-                    cliente.conceito === 'INADIMPLENTE' ? 'bg-danger' : 
-                    'bg-secondary'
-                  }">
-                    ${cliente.conceito || 'SEM CONCEITO'}
-                  </span>
-                </td>
-              </tr>
-              ${cliente.categoria_consultor ? `
-              <tr>
-                <td><strong>Consultor Oracle:</strong></td>
-                <td><small>${cliente.categoria_consultor}</small></td>
-              </tr>
-              ` : ''}
-              ${cliente.ultimo_pedido_oracle ? `
-              <tr>
-                <td><strong>Último Pedido:</strong></td>
-                <td>${cliente.ultimo_pedido_oracle}</td>
-              </tr>
-              ` : ''}
-              ${cliente.valor_ultimo_pedido ? `
-              <tr>
-                <td><strong>Valor Último Pedido:</strong></td>
-                <td class="fw-bold text-success">R$ ${parseFloat(cliente.valor_ultimo_pedido).toFixed(2).replace('.', ',')}</td>
-              </tr>
-              ` : ''}
+          <div class="panel-body" style="padding:14px 16px;">
+            <table class="table table-sm table-borderless" style="font-size:.83rem;margin:0;">
+              <tr><td class="fw-bold text-muted" style="width:40%">Conceito</td><td>${conceitoBadge}</td></tr>
+              ${cliente.categoria_consultor ? `<tr><td class="fw-bold text-muted">Consultor Oracle</td><td><small>${cliente.categoria_consultor}</small></td></tr>` : ''}
+              ${cliente.ultimo_pedido_oracle ? `<tr><td class="fw-bold text-muted">Último Pedido</td><td>${cliente.ultimo_pedido_oracle}</td></tr>` : ''}
+              ${cliente.valor_ultimo_pedido ? `<tr><td class="fw-bold text-muted">Valor</td><td style="font-weight:700;color:#16a34a;">R$ ${parseFloat(cliente.valor_ultimo_pedido).toFixed(2).replace('.',',')}</td></tr>` : ''}
             </table>
           </div>
         </div>
       </div>
+    </div>
   `;
 
-  // Adicionar itens dos pedidos se houver
   if (itens.length > 0) {
-    // Deduplicação simples
     const itensUnicos = [];
     const vistos = new Set();
-    
     itens.forEach(item => {
       const chave = `${item.idproduto}_${item.quantidade}_${item.precounitario}`;
-      if (!vistos.has(chave)) {
-        vistos.add(chave);
-        itensUnicos.push(item);
-      }
+      if (!vistos.has(chave)) { vistos.add(chave); itensUnicos.push(item); }
     });
-    
-    // Agrupar por pedido
     const itensPorPedido = {};
     itensUnicos.forEach(item => {
       const pedido = item.cd_pedido || 'sem-pedido';
-      if (!itensPorPedido[pedido]) {
-        itensPorPedido[pedido] = {
-          dt_pedido: item.dt_pedido,
-          cd_pedido: item.cd_pedido,
-          itens: []
-        };
-      }
+      if (!itensPorPedido[pedido]) itensPorPedido[pedido] = { dt_pedido: item.dt_pedido, cd_pedido: item.cd_pedido, itens: [] };
       itensPorPedido[pedido].itens.push(item);
     });
-    
-    html += `
-      <div class="row mt-3">
-        <div class="col-12">
-          <div class="card border-success">
-            <div class="card-header bg-success text-white">
-              <i class="bi bi-cart"></i> Itens dos Pedidos (últimos 365 dias)
-              <span class="badge bg-light text-dark float-end">${Object.keys(itensPorPedido).length} pedidos</span>
-            </div>
-            <div class="card-body">
-    `;
-    
-    // Renderizar cada pedido
+
+    html += `<div class="panel-card mt-3" style="margin-bottom:0;">
+      <div class="panel-header" style="font-size:.82rem;padding:10px 16px;">
+        <i class="bi bi-cart"></i> Itens dos Pedidos (últimos 365 dias)
+        <span style="margin-left:auto;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 10px;font-size:.7rem;">${Object.keys(itensPorPedido).length} pedido(s)</span>
+      </div>
+      <div class="panel-body">`;
+
     Object.values(itensPorPedido).forEach(pedido => {
-      const data = pedido.dt_pedido ? new Date(pedido.dt_pedido).toLocaleDateString('pt-BR') : '-';
-      const numeroPedido = pedido.cd_pedido || '-';
-      
+      const dataPedido = pedido.dt_pedido ? new Date(pedido.dt_pedido).toLocaleDateString('pt-BR') : '—';
       html += `
-        <div class="mb-4 p-3 border rounded bg-light">
-          <h6 class="mb-3 text-primary">
-            <i class="bi bi-receipt"></i> Pedido #${numeroPedido} - ${data}
-          </h6>
-          <div class="row">
-      `;
-      
+        <div style="margin-bottom:16px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);">
+          <div style="font-size:.82rem;font-weight:700;color:var(--brand-700);margin-bottom:10px;">
+            <i class="bi bi-receipt me-1"></i>Pedido #${pedido.cd_pedido || '—'} — ${dataPedido}
+          </div>
+          <div class="row g-2">`;
       pedido.itens.forEach(item => {
-        const nomeProduto = item.nome_produto || item.idproduto || '-';
-        const quantidade = item.quantidade || 0;
-        const preco = item.precounitario ? `R$ ${parseFloat(item.precounitario).toFixed(2).replace('.', ',')}` : '-';
-        
-        html += `
-          <div class="col-md-6 col-lg-4 mb-2">
-            <div class="d-flex align-items-center">
-              <i class="bi bi-box-seam text-success me-2"></i>
-              <div>
-                <strong>${nomeProduto}</strong><br>
-                <small class="text-muted">${quantidade} unid - ${preco}</small>
-              </div>
+        const nome     = item.nome_produto || item.idproduto || '—';
+        const qtd      = item.quantidade || 0;
+        const preco    = item.precounitario ? `R$ ${parseFloat(item.precounitario).toFixed(2).replace('.',',')}` : '—';
+        html += `<div class="col-md-6 col-lg-4">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;">
+            <i class="bi bi-box-seam" style="color:#16a34a;"></i>
+            <div>
+              <div style="font-size:.8rem;font-weight:600;">${nome}</div>
+              <div style="font-size:.73rem;color:var(--text-2);">${qtd} unid · ${preco}</div>
             </div>
           </div>
-        `;
+        </div>`;
       });
-      
-      html += `
-          </div>
-        </div>
-      `;
+      html += `</div></div>`;
     });
-    
-    html += `
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+    html += `</div></div>`;
   }
-  
-  // Adicionar informações de sincronização
+
   if (cliente.data_ultima_sincronizacao) {
-    html += `
-      <div class="row mt-3">
-        <div class="col-12">
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i>
-            <strong>Informações:</strong> 
-            Dados sincronizados com Oracle em ${cliente.data_ultima_sincronizacao}
-          </div>
-        </div>
-      </div>
-    `;
+    html += `<div class="alert alert-primary mt-3" style="border-radius:8px;font-size:.8rem;">
+      <i class="bi bi-info-circle me-1"></i>
+      Dados sincronizados com Oracle em <strong>${cliente.data_ultima_sincronizacao}</strong>
+    </div>`;
   }
-  
-  // Atualizar o conteúdo do modal
+
   document.getElementById('detalhesOracleContent').innerHTML = html;
-  
-  // Guardar ID do cliente para usar no botão de ligação
   window.clienteDetalhesAtual = cliente.id;
 }
 
-// FUNÇÃO PARA REGISTRAR LIGAÇÃO DESDE DETALHES
 function registrarLigacaoDesdeDetalhes() {
   if (window.clienteDetalhesAtual) {
-    // Fechar modal de detalhes
     const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalDetalhesOracle'));
     modalDetalhes.hide();
-    
-    // Abrir modal de ligação
-    const cliente = window.clienteDetalhesAtual;
-    // Buscar nome e telefone do cliente (poderia ser passado via global)
-    fetch(`/detalhes-cliente-oracle/${cliente}`)
-      .then(response => response.json())
+    fetch(`/detalhes-cliente-oracle/${window.clienteDetalhesAtual}`)
+      .then(r => r.json())
       .then(data => {
-        if (data.success) {
-          abrirForm(data.cliente.id, data.cliente.nome, data.cliente.telefone);
-        }
+        if (data.success) abrirForm(data.cliente.id, data.cliente.nome, data.cliente.telefone);
       });
   }
 }
 
-// Helper para obter cookie CSRF (se necessário)
+// TOGGLE REPRESENTANTES
+function toggleRepresentante(index) {
+  const div    = document.getElementById(`representante-${index}`);
+  const icone  = document.getElementById(`icone-${index}`);
+  if (!div || !icone) return;
+  const aberto = div.style.display !== 'none';
+  div.style.display = aberto ? 'none' : 'block';
+  icone.classList.toggle('open', !aberto);
+}
+
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== '') {
@@ -1845,42 +2032,5 @@ function getCookie(name) {
   return cookieValue;
 }
 
-// FUNÇÃO PARA EXPANDIR/RETRAIR REPRESENTANTES ORACLE
-function toggleRepresentante(nomeRepresentante) {
-  const div = document.getElementById(`representante-${nomeRepresentante}`);
-  const icone = document.getElementById(`icone-${nomeRepresentante}`);
-  
-  if (div.style.display === 'none') {
-    div.style.display = 'block';
-    icone.className = 'bi bi-chevron-up';
-  } else {
-    div.style.display = 'none';
-    icone.className = 'bi bi-chevron-down';
-  }
-}
-
-// FUNÇÃO PARA ABRIR TODOS OS REPRESENTANTES (OPCIONAL)
-function expandirTodosRepresentantes() {
-  const representantes = document.querySelectorAll('[id^="representante-"]');
-  const icones = document.querySelectorAll('[id^="icone-"]');
-  
-  representantes.forEach((div, index) => {
-    div.style.display = 'block';
-    icones[index].className = 'bi bi-chevron-up';
-  });
-}
-
-// FUNÇÃO PARA RECOLHER TODOS OS REPRESENTANTES (OPCIONAL)
-function recolherTodosRepresentantes() {
-  const representantes = document.querySelectorAll('[id^="representante-"]');
-  const icones = document.querySelectorAll('[id^="icone-"]');
-  
-  representantes.forEach((div, index) => {
-    div.style.display = 'none';
-    icones[index].className = 'bi bi-chevron-down';
-  });
-}
-
 </script>
-
 {% endblock %}

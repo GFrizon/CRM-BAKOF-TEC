@@ -29,7 +29,7 @@ def sincronizacao_automatica_diaria():
     
     try:
         from app import app, db, Cliente, Usuario
-        from oracle_service import get_clientes_oracle
+        from oracle_service import get_clientes_oracle, get_valor_total_365dias
         
         with app.app_context():
             logger.info("\n🔍 1. Buscando clientes alvo no Oracle...")
@@ -129,6 +129,15 @@ def sincronizacao_automatica_diaria():
                             if dt_pedido:
                                 novo_cliente.ultimo_pedido_oracle = dt_pedido
                             
+                            # Calcular valor total dos últimos 365 dias
+                            try:
+                                valor_total_365 = get_valor_total_365dias(cd_cliente)
+                                novo_cliente.valor_total_365dias = valor_total_365
+                                logger.info(f"   Valor 365 dias para {cd_cliente}: R$ {valor_total_365:.2f}")
+                            except Exception as e:
+                                logger.warning(f"   Erro ao calcular valor 365 dias para {cd_cliente}: {str(e)}")
+                                novo_cliente.valor_total_365dias = 0.0
+                            
                             novo_cliente.data_ultima_sincronizacao = datetime.now()
                             db.session.add(novo_cliente)
                             adicionados += 1
@@ -192,6 +201,15 @@ def sincronizacao_automatica_diaria():
                                 dt_pedido = cliente_oracle.get('dt_pedido')
                                 if dt_pedido:
                                     cliente_mysql.ultimo_pedido_oracle = dt_pedido
+                                
+                                # Calcular valor total dos últimos 365 dias
+                                try:
+                                    valor_total_365 = get_valor_total_365dias(cd_cliente)
+                                    cliente_mysql.valor_total_365dias = valor_total_365
+                                    logger.info(f"   Valor 365 dias para {cd_cliente}: R$ {valor_total_365:.2f}")
+                                except Exception as e:
+                                    logger.warning(f"   Erro ao calcular valor 365 dias para {cd_cliente}: {str(e)}")
+                                    cliente_mysql.valor_total_365dias = 0.0
                                 
                                 cliente_mysql.data_ultima_sincronizacao = datetime.now()
                                 atualizados += 1
