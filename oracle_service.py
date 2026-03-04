@@ -165,7 +165,8 @@ class OracleService:
           PED.cd_cliente,
           CLI.nome_completo as cliente,
           CLI.cnpj_cpf as cnpj,  -- CNPJ/CPF do cliente
-          CLI.fax_fone as telefone,  -- Telefone principal
+          CLI.fone as telefone1,  -- Telefone 1
+          CLI.fax_fone as telefone2,  -- Telefone 2
           REP.nome_completo || ' - ' || CLI.cd_representant as representante,
           PED.total_pedido,
           PED.situacao,

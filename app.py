@@ -117,6 +117,7 @@ class Cliente(db.Model):
     nome = db.Column(db.String(200), nullable=False)
     cnpj = db.Column(db.String(18))
     telefone = db.Column(db.String(20))
+    telefone2 = db.Column(db.String(20))
     representante_nome = db.Column(db.String(200))
     consultor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     data_cadastro = db.Column(db.DateTime, default=datetime.now)
@@ -2628,6 +2629,7 @@ def detalhes_cliente_oracle(cliente_id: int):
                     "nome": cliente.nome,
                     "cnpj": cliente.cnpj,
                     "telefone": cliente.telefone,
+                    "telefone2": cliente.telefone2,
                     "representante_nome": cliente.representante_nome,
                     "origem": "manual"
                 },
@@ -2648,6 +2650,7 @@ def detalhes_cliente_oracle(cliente_id: int):
                 "nome": cliente.nome,
                 "cnpj": cliente.cnpj,
                 "telefone": cliente.telefone,
+                "telefone2": cliente.telefone2,
                 "cd_cliente_oracle": cliente.cd_cliente_oracle,
                 "categoria_consultor": cliente.categoria_consultor,
                 "conceito": cliente.conceito,

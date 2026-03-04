@@ -981,6 +981,10 @@ code {
                   <a href="tel:{{ c.telefone }}" class="tel-link">
                     <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
                   </a>
+                  {% elif c.telefone2 %}
+                  <a href="tel:{{ c.telefone2 }}" class="tel-link">
+                    <i class="bi bi-telephone-fill"></i> {{ c.telefone2 }}
+                  </a>
                   {% else %}
                   <span style="color:var(--text-3);">—</span>
                   {% endif %}
@@ -1111,6 +1115,10 @@ code {
             {% if c.telefone %}
             <a href="tel:{{ c.telefone }}" class="tel-link">
               <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
+            </a>
+            {% elif c.telefone2 %}
+            <a href="tel:{{ c.telefone2 }}" class="tel-link">
+              <i class="bi bi-telephone-fill"></i> {{ c.telefone2 }}
             </a>
             {% else %}—{% endif %}
           </td>
@@ -1857,7 +1865,7 @@ function atualizarTabelaClientes(clientes) {
         </div>
       </td>
       <td><code>${c.cnpj || '—'}</code></td>
-      <td>${c.telefone ? `<a href="tel:${c.telefone}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${c.telefone}</a>` : '—'}</td>
+      <td>${c.telefone ? `<a href="tel:${c.telefone}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${c.telefone}</a>` : (c.telefone2 ? `<a href="tel:${c.telefone2}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${c.telefone2}</a>` : '—')}</td>
       <td><small style="color:var(--text-2);">${c.representante_nome || '—'}</small></td>
       {% if aba != 'pendentes' %}
       <td style="font-size:.8rem;">${c.ultima_ligacao || '—'}</td>
@@ -1949,7 +1957,9 @@ function renderizarDetalhesOracle(data) {
               <tr><td class="fw-bold text-muted" style="width:40%">Nome</td><td>${cliente.nome}</td></tr>
               <tr><td class="fw-bold text-muted">CNPJ</td><td><code>${cliente.cnpj || '—'}</code></td></tr>
               <tr><td class="fw-bold text-muted">Telefone</td><td>
-                ${cliente.telefone ? `<a href="tel:${cliente.telefone}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${cliente.telefone}</a>` : '—'}
+                ${cliente.telefone ? `<div><a href="tel:${cliente.telefone}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${cliente.telefone}</a></div>` : ''}
+                ${cliente.telefone2 ? `<div><a href="tel:${cliente.telefone2}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${cliente.telefone2}</a></div>` : ''}
+                ${!cliente.telefone && !cliente.telefone2 ? '—' : ''}
               </td></tr>
               ${cliente.cd_cliente_oracle ? `<tr><td class="fw-bold text-muted">Cód. Oracle</td><td><code>${cliente.cd_cliente_oracle}</code></td></tr>` : ''}
               ${cliente.representante_oracle ? `<tr><td class="fw-bold text-muted">Representante</td><td>${cliente.representante_oracle}</td></tr>` : ''}

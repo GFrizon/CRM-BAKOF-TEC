@@ -110,10 +110,16 @@ def sincronizacao_automatica_diaria():
                                 consultor_id = mapa_consultores.get(codigo_consultor, consultores[0].id)
                             
                             # Criar novo cliente
+                            # Tratar telefones: se telefone1 estiver vazio, usar telefone2
+                            telefone_principal = cliente_oracle.get('telefone1')
+                            if not telefone_principal or telefone_principal.strip() == '':
+                                telefone_principal = cliente_oracle.get('telefone2')
+                            
                             novo_cliente = Cliente(
                                 nome=cliente_oracle.get('cliente', '')[:200],
                                 cnpj=cliente_oracle.get('cnpj'),
-                                telefone=cliente_oracle.get('telefone'),
+                                telefone=telefone_principal,
+                                telefone2=cliente_oracle.get('telefone2'),
                                 cd_cliente_oracle=cd_cliente,
                                 categoria_consultor=cliente_oracle.get('consultor'),
                                 conceito=cliente_oracle.get('conceito'),
@@ -191,6 +197,13 @@ def sincronizacao_automatica_diaria():
                                     consultor_id = mapa_consultores.get(codigo_consultor, cliente_mysql.consultor_id)
                                 
                                 # Atualizar dados
+                                # Tratar telefones: se telefone1 estiver vazio, usar telefone2
+                                telefone_principal = cliente_oracle.get('telefone1')
+                                if not telefone_principal or telefone_principal.strip() == '':
+                                    telefone_principal = cliente_oracle.get('telefone2')
+                                
+                                cliente_mysql.telefone = telefone_principal
+                                cliente_mysql.telefone2 = cliente_oracle.get('telefone2')
                                 cliente_mysql.categoria_consultor = cliente_oracle.get('consultor')
                                 cliente_mysql.conceito = cliente_oracle.get('conceito')
                                 cliente_mysql.representante_oracle = cliente_oracle.get('representante')
