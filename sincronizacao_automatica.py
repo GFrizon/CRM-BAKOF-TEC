@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from sqlalchemy.exc import IntegrityError
 
+# Importar utilitários de telefone
+from telefone_utils import padronizar_telefone, identificar_ddd_padrao
+
 # Carregar .env
 load_dotenv('.env')
 
@@ -66,6 +69,20 @@ def sincronizacao_automatica_diaria():
             
             logger.info("\n Processando sincronização...")
             
+            # Detectar DDD mais comum para usar como padrão
+            todos_telefones = []
+            for cliente_oracle in clientes_oracle:
+                todos_telefones.extend([
+                    cliente_oracle.get('telefone1'),
+                    cliente_oracle.get('telefone2')
+                ])
+            
+            ddd_padrao = identificar_ddd_padrao(todos_telefones)
+            if ddd_padrao:
+                logger.info(f" DDD padrão detectado: {ddd_padrao}")
+            else:
+                logger.info(" Nenhum DDD padrão detectado")
+            
             # Conjuntos para controle
             codigos_oracle_atuais = {str(c.get('cd_cliente', '')) for c in clientes_oracle}
             codigos_mysql_atuais = {c.cd_cliente_oracle for c in clientes_oracle_mysql if c.cd_cliente_oracle}
@@ -111,15 +128,23 @@ def sincronizacao_automatica_diaria():
                             
                             # Criar novo cliente
                             # Tratar telefones: se telefone1 estiver vazio, usar telefone2
-                            telefone_principal = cliente_oracle.get('telefone1')
-                            if not telefone_principal or telefone_principal.strip() == '':
-                                telefone_principal = cliente_oracle.get('telefone2')
+                            telefone1_bruto = cliente_oracle.get('telefone1')
+                            telefone2_bruto = cliente_oracle.get('telefone2')
+                            
+                            # Padronizar telefones
+                            telefone1_padronizado = padronizar_telefone(telefone1_bruto, ddd_padrao)
+                            telefone2_padronizado = padronizar_telefone(telefone2_bruto, ddd_padrao)
+                            
+                            # Definir telefone principal (padronizado)
+                            telefone_principal = telefone1_padronizado
+                            if not telefone_principal:
+                                telefone_principal = telefone2_padronizado
                             
                             novo_cliente = Cliente(
                                 nome=cliente_oracle.get('cliente', '')[:200],
                                 cnpj=cliente_oracle.get('cnpj'),
                                 telefone=telefone_principal,
-                                telefone2=cliente_oracle.get('telefone2'),
+                                telefone2=telefone2_padronizado,
                                 cd_cliente_oracle=cd_cliente,
                                 categoria_consultor=cliente_oracle.get('consultor'),
                                 conceito=cliente_oracle.get('conceito'),
@@ -198,12 +223,20 @@ def sincronizacao_automatica_diaria():
                                 
                                 # Atualizar dados
                                 # Tratar telefones: se telefone1 estiver vazio, usar telefone2
-                                telefone_principal = cliente_oracle.get('telefone1')
-                                if not telefone_principal or telefone_principal.strip() == '':
-                                    telefone_principal = cliente_oracle.get('telefone2')
+                                telefone1_bruto = cliente_oracle.get('telefone1')
+                                telefone2_bruto = cliente_oracle.get('telefone2')
+                                
+                                # Padronizar telefones
+                                telefone1_padronizado = padronizar_telefone(telefone1_bruto, ddd_padrao)
+                                telefone2_padronizado = padronizar_telefone(telefone2_bruto, ddd_padrao)
+                                
+                                # Definir telefone principal (padronizado)
+                                telefone_principal = telefone1_padronizado
+                                if not telefone_principal:
+                                    telefone_principal = telefone2_padronizado
                                 
                                 cliente_mysql.telefone = telefone_principal
-                                cliente_mysql.telefone2 = cliente_oracle.get('telefone2')
+                                cliente_mysql.telefone2 = telefone2_padronizado
                                 cliente_mysql.categoria_consultor = cliente_oracle.get('consultor')
                                 cliente_mysql.conceito = cliente_oracle.get('conceito')
                                 cliente_mysql.representante_oracle = cliente_oracle.get('representante')
