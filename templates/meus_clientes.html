@@ -1058,6 +1058,16 @@ code {
 <!-- ============================================================
      TABELA PADRÃO (abas pendentes / contatados / retornar)
      ============================================================ -->
+     
+<!-- Notificação simples de retornos -->
+{% if total_retornar and total_retornar > 0 %}
+<div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+  <strong>⚠️ Atenção!</strong> Você tem <strong>{{ total_retornar }}</strong> retorno{{ 's' if total_retornar != 1 else '' }} agendado{{ 's' if total_retornar != 1 else '' }}.
+  <a href="{{ url_for('meus_clientes', aba='retornar') }}" class="btn btn-sm btn-warning ms-2">Ver Retornos</a>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
 <div class="panel-card" style="overflow:visible;">
   <div class="panel-body" style="padding-bottom:0;">
     <!-- Tabs modernas -->
@@ -1069,7 +1079,11 @@ code {
         <i class="bi bi-check2-circle me-1"></i>Contatados <span class="ms-1" style="font-size:.7rem;opacity:.7;">({{ total_contatados }})</span>
       </a>
       <a class="nav-link {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
-        <i class="bi bi-arrow-return-right me-1"></i>Retornar <span class="ms-1" style="font-size:.7rem;opacity:.7;">({{ total_retornar }})</span>
+        <i class="bi bi-arrow-return-right me-1"></i>Retornar 
+        <span class="ms-1" style="font-size:.7rem;opacity:.7;">({{ total_retornar }})</span>
+        {% if total_retornar and total_retornar > 0 %}
+        <i class="bi bi-exclamation-triangle-fill text-danger ms-1" style="font-size:0.8rem;"></i>
+        {% endif %}
       </a>
       <a class="nav-link oracle-tab {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
         <i class="bi bi-database me-1"></i>Sem Pedido 90–120d <span class="ms-1" style="font-size:.7rem;opacity:.8;">({{ total_oracle }})</span>
@@ -1133,7 +1147,15 @@ code {
           {% if aba == 'retornar' %}
           <td>
             {% if c.proxima_ligacao %}
+            {% set agora = now() %}
+            {% if c.proxima_ligacao < agora %}
+            <span class="text-danger fw-bold" style="font-size:.8rem;">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>
+              {{ c.proxima_ligacao.strftime('%d/%m/%Y %H:%M') }}
+            </span>
+            {% else %}
             <span style="font-size:.8rem;">{{ c.proxima_ligacao.strftime('%d/%m/%Y %H:%M') }}</span>
+            {% endif %}
             {% else %}—{% endif %}
           </td>
           {% endif %}
@@ -1870,9 +1892,14 @@ function atualizarTabelaClientes(clientes) {
       <td style="font-size:.8rem;">${c.ultima_ligacao || '—'}</td>
       {% endif %}
       {% if aba == 'retornar' %}
-      <td style="font-size:.8rem;" class="${c.retorno_atrasado ? 'text-danger fw-bold' : ''}">
-        ${c.proxima_ligacao || '—'}
-        ${c.retorno_atrasado ? '<i class="bi bi-exclamation-triangle ms-1"></i>' : ''}
+      <td style="font-size:.8rem;">
+        ${c.retorno_atrasado ? 
+          `<span class="text-danger fw-bold">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            ${c.proxima_ligacao || '—'}
+          </span>` : 
+          c.proxima_ligacao || '—'
+        }
       </td>
       {% endif %}
       <td><span class="badge-count">${c.total_ligacoes}</span></td>
