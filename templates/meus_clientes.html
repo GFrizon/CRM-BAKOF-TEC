@@ -1222,16 +1222,19 @@ code {
             </div>
             <div id="retornoContainer" style="display:none;" class="col-12">
               <div class="row g-2">
-                <div class="col-md-6">
-                  <label class="form-label">Retornar em (dias)</label>
-                  <input type="number" class="form-control" id="dias_retorno" min="1" value="30">
+                <div class="col-12">
+                  <label class="form-label"><i class="bi bi-calendar-plus me-1"></i>Agendar Retorno (Opcional)</label>
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">Ou em (data)</label>
+                  <label class="form-label">Retornar em (dias)</label>
+                  <input type="number" class="form-control" id="dias_retorno" min="1" placeholder="Ex: 5">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Ou em (data específica)</label>
                   <input type="date" class="form-control" id="data_retorno">
                 </div>
               </div>
-              <small class="text-muted">Se selecionar data, os dias são ignorados.</small>
+              <small class="text-muted">Deixe em branco se não quiser agendar retorno. Se selecionar data, os dias são ignorados.</small>
             </div>
             <div class="col-12">
               <label class="form-label">Observações</label>
@@ -1476,7 +1479,7 @@ function abrirForm(id, nome, telefone) {
   document.getElementById('resultado').value = 'nao_comprou';
   document.getElementById('valor_venda').value = '';
   document.getElementById('observacao').value = '';
-  document.getElementById('dias_retorno').value = 30;
+  document.getElementById('dias_retorno').value = '';
   document.getElementById('data_retorno').value = '';
   toggleCamposResultado();
   modalLigacao.show();
@@ -1494,11 +1497,8 @@ function toggleCamposResultado() {
     document.getElementById('valor_venda').required = false;
     document.getElementById('valor_venda').value = '';
   }
-  boxRetorno.style.display = (r === 'retornar') ? 'block' : 'none';
-  if (r !== 'retornar') {
-    document.getElementById('dias_retorno').value = 30;
-    document.getElementById('data_retorno').value = '';
-  }
+  // Mostrar campos de retorno para QUALQUER resultado (opcional)
+  boxRetorno.style.display = 'block';
 }
 
 // HISTÓRICO COM BOTÃO DE EDITAR
@@ -1635,12 +1635,11 @@ async function salvarLigacao(e) {
     valor_venda:  document.getElementById('valor_venda').value,
     observacao:   document.getElementById('observacao').value
   };
-  if (payload.resultado === 'retornar') {
-    const dias = parseInt(document.getElementById('dias_retorno').value || '30', 10);
-    const data = document.getElementById('data_retorno').value;
-    if (data)              { payload.data_retorno  = data; }
-    else if (!isNaN(dias)) { payload.dias_retorno = dias; }
-  }
+  // Enviar campos de retorno para QUALQUER resultado (se preenchidos)
+  const dias = parseInt(document.getElementById('dias_retorno').value || '0', 10);
+  const data = document.getElementById('data_retorno').value;
+  if (data)              { payload.data_retorno  = data; }
+  else if (!isNaN(dias) && dias > 0) { payload.dias_retorno = dias; }
   const r = await fetch(`/registrar-ligacao/${id}`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},

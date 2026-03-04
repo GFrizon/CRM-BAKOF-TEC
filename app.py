@@ -827,31 +827,31 @@ def registrar_ligacao(cliente_id: int):
         )
         db.session.add(lig)
 
-        if resultado == 'retornar':
+        # Retorno opcional para QUALQUER resultado
+        dias_retorno = None
+        data_retorno = s(payload.get('data_retorno'))
+        try:
+            dias_retorno = int(payload.get('dias_retorno')) if payload.get('dias_retorno') else None
+        except Exception:
             dias_retorno = None
-            data_retorno = s(payload.get('data_retorno'))
-            try:
-                dias_retorno = int(payload.get('dias_retorno')) if payload.get('dias_retorno') else None
-            except Exception:
-                dias_retorno = None
 
-            if data_retorno:
-                try:
-                    d = datetime.strptime(data_retorno, "%Y-%m-%d").date()
-                    cli.proxima_ligacao = datetime(d.year, d.month, d.day, 9, 0, 0)
-                except Exception:
-                    cli.proxima_ligacao = agora + timedelta(days=30)
-            elif dias_retorno and dias_retorno > 0:
-                cli.proxima_ligacao = agora + timedelta(days=dias_retorno)
-            else:
+        # Só agenda retorno se preencher algo
+        if data_retorno:
+            try:
+                d = datetime.strptime(data_retorno, "%Y-%m-%d").date()
+                cli.proxima_ligacao = datetime(d.year, d.month, d.day, 9, 0, 0)
+            except Exception:
                 cli.proxima_ligacao = agora + timedelta(days=30)
+        elif dias_retorno and dias_retorno > 0:
+            cli.proxima_ligacao = agora + timedelta(days=dias_retorno)
         else:
+            # Se não preencher nada, não agenda retorno
             cli.proxima_ligacao = None
 
         db.session.commit()
 
         msg = "Ligação registrada!"
-        if resultado == 'retornar':
+        if cli.proxima_ligacao:
             msg = "Ligação registrada! Cliente marcado para retorno."
         elif resultado == 'comprou':
             msg = "Ligação registrada! Venda marcada como 'comprou'."
