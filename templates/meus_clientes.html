@@ -1639,7 +1639,46 @@ async function salvarLigacao(e) {
     body: JSON.stringify(payload)
   });
   const j = await r.json();
-  if (j.ok) { modalLigacao.hide(); alert(j.mensagem || 'Ligação registrada!'); location.reload(); }
+  if (j.ok) { 
+    modalLigacao.hide(); 
+    alert(j.mensagem || 'Ligação registrada!'); 
+    
+    // Salvar estado dos representantes expandidos antes de recarregar
+    const representantesExpandidos = [];
+    document.querySelectorAll('.rep-card .rep-header').forEach((header, index) => {
+      const div = document.getElementById(`representante-${index}`);
+      if (div && div.style.display !== 'none') {
+        representantesExpandidos.push(index);
+      }
+    });
+    
+    // Recarregar mantendo o estado
+    const url = new URL(window.location);
+    url.searchParams.set('reps_expandidos', representantesExpandidos.join(','));
+    
+    // Adicionar scroll para o representante mais próximo da posição atual
+    if (representantesExpandidos.length > 0) {
+      // Encontrar o representante mais próximo da posição atual da página
+      const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+      let closestRep = representantesExpandidos[0];
+      let minDistance = Math.abs(scrollPosition - (document.querySelector(`.rep-card:nth-child(${closestRep + 1})`)?.offsetTop || 0));
+      
+      representantesExpandidos.forEach(index => {
+        const repCard = document.querySelector(`.rep-card:nth-child(${index + 1})`);
+        if (repCard) {
+          const distance = Math.abs(scrollPosition - repCard.offsetTop);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestRep = index;
+          }
+        }
+      });
+      
+      url.searchParams.set('scroll_to_rep', closestRep);
+    }
+    
+    window.location.href = url.toString();
+  }
   else       { alert(j.mensagem || 'Erro ao registrar ligação'); }
 }
 
@@ -2031,6 +2070,45 @@ function getCookie(name) {
   }
   return cookieValue;
 }
+
+// Restaurar estado dos representantes expandidos ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const repsExpandidos = urlParams.get('reps_expandidos');
+  const scrollToRep = urlParams.get('scroll_to_rep');
+  
+  if (repsExpandidos) {
+    const indices = repsExpandidos.split(',').map(i => parseInt(i.trim())).filter(i => !isNaN(i));
+    
+    // Aguardar um pouco para garantir que os elementos foram renderizados
+    setTimeout(() => {
+      indices.forEach(index => {
+        const div = document.getElementById(`representante-${index}`);
+        const icone = document.getElementById(`icone-${index}`);
+        if (div && icone) {
+          div.style.display = 'block';
+          icone.classList.add('open');
+        }
+      });
+      
+      // Fazer scroll para o representante mais próximo
+      if (scrollToRep && !isNaN(parseInt(scrollToRep))) {
+        const repIndex = parseInt(scrollToRep);
+        const repCard = document.querySelector(`.rep-card:nth-child(${repIndex + 1})`);
+        if (repCard) {
+          setTimeout(() => {
+            // Scroll suave para o topo do card do representante
+            repCard.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            });
+          }, 150);
+        }
+      }
+    }, 100);
+  }
+});
 
 </script>
 {% endblock %}
