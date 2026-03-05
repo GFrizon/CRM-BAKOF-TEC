@@ -9,6 +9,12 @@ from oracle_service import get_clientes_oracle, test_oracle_connection
 
 
 def register_oracle_routes(app):
+    def _limpar_texto(valor):
+        if valor is None:
+            return None
+        texto = str(valor).strip()
+        return texto or None
+
     @app.route('/test-oracle')
     @login_required
     def test_oracle_route():
@@ -70,9 +76,21 @@ def register_oracle_routes(app):
                     if not cd_cliente:
                         continue
 
+                    cnpj_oracle = _limpar_texto(cliente_oracle.get('cnpj'))
+                    telefone1_oracle = _limpar_texto(cliente_oracle.get('telefone1'))
+                    telefone2_oracle = _limpar_texto(cliente_oracle.get('telefone2'))
+                    telefone_principal = telefone1_oracle or telefone2_oracle
+
                     cliente_mysql = Cliente.query.filter_by(cd_cliente_oracle=cd_cliente).first()
 
                     if cliente_mysql:
+                        if cnpj_oracle:
+                            cliente_mysql.cnpj = cnpj_oracle
+                        if telefone_principal:
+                            cliente_mysql.telefone = telefone_principal
+                        if telefone2_oracle:
+                            cliente_mysql.telefone2 = telefone2_oracle
+
                         cliente_mysql.categoria_consultor = cliente_oracle.get('consultor')
                         cliente_mysql.conceito = cliente_oracle.get('conceito')
                         cliente_mysql.representante_oracle = cliente_oracle.get('representante')
@@ -104,6 +122,9 @@ def register_oracle_routes(app):
 
                         novo_cliente = Cliente(
                             nome=cliente_oracle.get('cliente', '')[:200],
+                            cnpj=cnpj_oracle,
+                            telefone=telefone_principal,
+                            telefone2=telefone2_oracle,
                             cd_cliente_oracle=cd_cliente,
                             categoria_consultor=cliente_oracle.get('consultor'),
                             conceito=cliente_oracle.get('conceito'),

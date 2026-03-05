@@ -142,7 +142,7 @@ def sincronizacao_automatica_diaria():
                             
                             novo_cliente = Cliente(
                                 nome=cliente_oracle.get('cliente', '')[:200],
-                                cnpj=cliente_oracle.get('cnpj'),
+                                cnpj=(str(cliente_oracle.get('cnpj')).strip() if cliente_oracle.get('cnpj') is not None else None),
                                 telefone=telefone_principal,
                                 telefone2=telefone2_padronizado,
                                 cd_cliente_oracle=cd_cliente,
@@ -234,9 +234,17 @@ def sincronizacao_automatica_diaria():
                                 telefone_principal = telefone1_padronizado
                                 if not telefone_principal:
                                     telefone_principal = telefone2_padronizado
-                                
-                                cliente_mysql.telefone = telefone_principal
-                                cliente_mysql.telefone2 = telefone2_padronizado
+
+                                cnpj_oracle = cliente_oracle.get('cnpj')
+                                if cnpj_oracle is not None and str(cnpj_oracle).strip():
+                                    cliente_mysql.cnpj = str(cnpj_oracle).strip()
+
+                                # Não sobrescreve com vazio para evitar "sumiço" de dados locais.
+                                if telefone_principal:
+                                    cliente_mysql.telefone = telefone_principal
+                                if telefone2_padronizado:
+                                    cliente_mysql.telefone2 = telefone2_padronizado
+
                                 cliente_mysql.categoria_consultor = cliente_oracle.get('consultor')
                                 cliente_mysql.conceito = cliente_oracle.get('conceito')
                                 cliente_mysql.representante_oracle = cliente_oracle.get('representante')
