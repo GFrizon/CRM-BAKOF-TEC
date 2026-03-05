@@ -431,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
     columns.forEach(column => {
         column.addEventListener('dragover', function(e) {
             e.preventDefault();
-            this.style.backgroundColor = '#f0f0f0';
+            this.style.backgroundColor = 'var(--brand-50)';
         });
         
         column.addEventListener('dragleave', function(e) {

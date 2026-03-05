@@ -11,6 +11,33 @@ from core.helpers import _percent, formatar_dinheiro, s
 from core.models import Banner, Cliente, Ligacao, Usuario
 
 
+def _ultimos_meses(qtd=12):
+    data_atual = datetime.now()
+    meses_nomes = {
+        1: "Janeiro",
+        2: "Fevereiro",
+        3: "Março",
+        4: "Abril",
+        5: "Maio",
+        6: "Junho",
+        7: "Julho",
+        8: "Agosto",
+        9: "Setembro",
+        10: "Outubro",
+        11: "Novembro",
+        12: "Dezembro",
+    }
+
+    meses = []
+    base = data_atual.year * 12 + (data_atual.month - 1)
+    for i in range(qtd):
+        atual = base - i
+        ano = atual // 12
+        mes = (atual % 12) + 1
+        meses.append({"mes": mes, "ano": ano, "texto": f"{meses_nomes[mes]}/{ano}"})
+    return meses
+
+
 def get_banners_ativos():
     agora = datetime.now()
     return (
@@ -113,25 +140,7 @@ def register_supervisor_routes(app):
                 }
             )
 
-        meses_disponiveis = []
-        data_atual = datetime.now()
-        meses_nomes = {
-            1: "Janeiro",
-            2: "Fevereiro",
-            3: "Março",
-            4: "Abril",
-            5: "Maio",
-            6: "Junho",
-            7: "Julho",
-            8: "Agosto",
-            9: "Setembro",
-            10: "Outubro",
-            11: "Novembro",
-            12: "Dezembro",
-        }
-        for i in range(12):
-            data = data_atual - timedelta(days=30 * i)
-            meses_disponiveis.append({"mes": data.month, "ano": data.year, "texto": f"{meses_nomes[data.month]}/{data.year}"})
+        meses_disponiveis = _ultimos_meses(12)
 
         return render_template(
             "supervisor.html",
@@ -152,39 +161,87 @@ def register_supervisor_routes(app):
             banners_ativos=get_banners_ativos(),
         )
 
-    @app.route("/ligacoes-dia/<string:data>")
-    def ligacoes_dia(data):
-        if not current_user.is_authenticated or current_user.tipo != "supervisor":
-            return jsonify({"erro": "Acesso negado"}), 403
+    @app.route("/api/supervisor/ligacoes-por-mes")
+    @login_required
+    def api_supervisor_ligacoes_por_mes():
+        if current_user.tipo != "supervisor":
+            return jsonify({"ok": False, "erro": "Acesso negado"}), 403
 
         try:
-            data_obj = datetime.strptime(data, "%Y-%m-%d").date()
+            mes = int(request.args.get("mes", datetime.now().month))
+            ano = int(request.args.get("ano", datetime.now().year))
+            consultor_id = request.args.get("consultor_id", type=int)
 
-            ligacoes = (
+            if mes < 1 or mes > 12:
+                return jsonify({"ok": False, "erro": "Mês inválido"}), 400
+
+            inicio = datetime(ano, mes, 1)
+            fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
+
+            consultor_nome = "Todos os consultores"
+            if consultor_id:
+                consultor = Usuario.query.filter_by(id=consultor_id, tipo="consultor", ativo=True).first()
+                if not consultor:
+                    return jsonify({"ok": False, "erro": "Consultor inválido"}), 400
+                consultor_nome = consultor.nome
+
+            query = (
                 Ligacao.query.options(joinedload(Ligacao.consultor), joinedload(Ligacao.cliente))
-                .filter(func.date(Ligacao.data_hora) == data_obj)
-                .order_by(Ligacao.data_hora.desc())
-                .all()
+                .filter(Ligacao.data_hora >= inicio, Ligacao.data_hora < fim)
             )
+            if consultor_id:
+                query = query.filter(Ligacao.consultor_id == consultor_id)
 
-            resultado = []
+            ligacoes = query.order_by(Ligacao.data_hora.desc()).all()
+
+            itens = []
+            vendas = 0
+            receita = 0.0
             for lig in ligacoes:
-                resultado.append(
+                resultado = lig.resultado or "nao_comprou"
+                valor = float(lig.valor_venda or 0)
+                if resultado == "comprou":
+                    vendas += 1
+                    receita += valor
+
+                itens.append(
                     {
-                        "hora": lig.data_hora.strftime("%H:%M"),
-                        "consultor": lig.consultor.nome if lig.consultor else "",
-                        "cliente": lig.cliente.nome if lig.cliente else "",
+                        "id": lig.id,
+                        "data_hora": lig.data_hora.strftime("%d/%m/%Y %H:%M"),
+                        "consultor": lig.consultor.nome if lig.consultor else "-",
+                        "cliente": lig.cliente.nome if lig.cliente else "-",
                         "contato": lig.contato_nome or "-",
-                        "resultado": lig.resultado or "nao_comprou",
-                        "valor": formatar_dinheiro(lig.valor_venda or 0),
+                        "resultado": resultado,
+                        "valor": valor,
+                        "valor_fmt": formatar_dinheiro(valor),
                         "observacao": lig.observacao or "",
                     }
                 )
 
-            return jsonify(resultado)
+            total = len(itens)
+            conversao = _percent(vendas, total) if total else 0.0
 
+            return jsonify(
+                {
+                    "ok": True,
+                    "mes": mes,
+                    "ano": ano,
+                    "consultor_id": consultor_id,
+                    "consultor_nome": consultor_nome,
+                    "ligacoes": itens,
+                    "estatisticas": {
+                        "total_ligacoes": total,
+                        "vendas": vendas,
+                        "conversao": round(conversao, 1),
+                        "receita": receita,
+                        "receita_fmt": formatar_dinheiro(receita),
+                    },
+                }
+            )
+        except ValueError:
+            return jsonify({"ok": False, "erro": "Parâmetros inválidos"}), 400
         except Exception as e:
-            return jsonify({"erro": str(e)}), 500
+            return jsonify({"ok": False, "erro": str(e)}), 500
 
     @app.route("/supervisor/usuarios")
     @login_required
@@ -436,3 +493,4 @@ def register_supervisor_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
+

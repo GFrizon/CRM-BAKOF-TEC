@@ -8,15 +8,22 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <style>
     :root{
-      /* Paleta Bakof */
-      --bakof-blue-1:#0B2D6B;
-      --bakof-blue-2:#1E3A8A;
-      --bakof-yellow:#F4C400;
+      --brand-50:#eff6ff;
+      --brand-100:#dbeafe;
+      --brand-500:#3b82f6;
+      --brand-600:#2563eb;
+      --brand-700:#1d4ed8;
+      --brand-800:#1e40af;
+      --brand-900:#1e3a8a;
+      --surface:#ffffff;
+      --surface-2:#f8fafc;
+      --border:#e2e8f0;
+      --text-2:#475569;
     }
 
     /* Fundo com o azul Bakof */
     body {
-      background: linear-gradient(135deg, var(--bakof-blue-1) 0%, var(--bakof-blue-2) 100%);
+      background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-800) 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -31,7 +38,7 @@
     }
     
     .login-card {
-      background: white;
+      background: var(--surface);
       border-radius: 24px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
       overflow: hidden;
@@ -45,7 +52,7 @@
     
     /* Header do card com azul Bakof */
     .login-header {
-      background: linear-gradient(135deg, var(--bakof-blue-1) 0%, var(--bakof-blue-2) 100%);
+      background: linear-gradient(135deg, var(--brand-800) 0%, var(--brand-600) 100%);
       padding: 2.5rem 2rem;
       text-align: center;
       color: white;
@@ -79,7 +86,7 @@
     
     .form-control {
       border-radius: 12px;
-      border: 2px solid #e0e0e0;
+      border: 1px solid var(--border);
       padding: 1rem 1.2rem;
       font-size: 1rem;
       transition: all 0.3s ease;
@@ -87,13 +94,13 @@
     
     /* realce no foco em azul Bakof */
     .form-control:focus {
-      border-color: var(--bakof-blue-2);
-      box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.15);
+      border-color: var(--brand-600);
+      box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.15);
     }
     
     .form-floating > label {
       padding: 1rem 1.2rem;
-      color: #6c757d;
+      color: var(--text-2);
     }
     
     /* Botão no azul Bakof; hover levemente mais escuro */
@@ -103,15 +110,15 @@
       border-radius: 12px;
       font-weight: 600;
       font-size: 1.05rem;
-      background: linear-gradient(135deg, var(--bakof-blue-1) 0%, var(--bakof-blue-2) 100%);
+      background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-600) 100%);
       border: none;
       color: white;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(11, 45, 107, 0.35);
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.28);
     }
     .btn-login:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(11, 45, 107, 0.5);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.38);
     }
     .btn-login:active { transform: translateY(0); }
     
@@ -126,13 +133,13 @@
     .login-footer {
       text-align: center;
       padding: 1.5rem;
-      background: #f8f9fa;
-      color: #6c757d;
+      background: var(--surface-2);
+      color: var(--text-2);
       font-size: 0.85rem;
     }
     
     .demo-info {
-      background: #f8f9fa;
+      background: var(--surface-2);
       border-radius: 12px;
       padding: 1rem;
       margin-top: 1.5rem;
@@ -140,7 +147,7 @@
     .demo-info h6 {
       font-size: 0.85rem;
       font-weight: 600;
-      color: #495057;
+      color: var(--text-2);
       margin-bottom: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -153,7 +160,7 @@
       font-size: 0.85rem;
       display: flex; align-items: center; gap: 0.5rem;
     }
-    .demo-credential i { color: var(--bakof-blue-1); }
+    .demo-credential i { color: var(--brand-700); }
     .demo-credential code { background: #e9ecef; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
   </style>
 </head>
