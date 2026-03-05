@@ -228,64 +228,73 @@ body { background: #f0f4f8 !important; }
    CARDS DE REPRESENTANTES
    ============================================================ */
 .rep-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 10px;
+  background: linear-gradient(180deg, #f7faff 0%, #f3f8ff 100%);
+  border: 1px solid #dbe4ef;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
+  margin-bottom: 12px;
   overflow: hidden;
-  transition: box-shadow .2s;
+  transition: box-shadow .2s, transform .2s, border-color .2s;
 }
-.rep-card:hover { box-shadow: var(--shadow-md); }
+.rep-card:hover {
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .08);
+  border-color: #c9d7ea;
+  transform: translateY(-1px);
+}
 
 .rep-header {
-  background: linear-gradient(135deg, var(--brand-800) 0%, var(--brand-700) 100%);
-  padding: 13px 18px;
+  background: linear-gradient(180deg, #eef4ff 0%, #e7f0ff 100%);
+  border-bottom: 1px solid #d8e4f4;
+  padding: 12px 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
   user-select: none;
-  transition: background .15s;
+  transition: background .15s, border-color .15s;
 }
-.rep-header:hover { background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-800) 100%); }
+.rep-header:hover {
+  background: linear-gradient(180deg, #e8f1ff 0%, #deebff 100%);
+  border-bottom-color: #cddcef;
+}
 
 .rep-avatar {
   width: 34px;
   height: 34px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.18);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #edf3ff 0%, #e2ecff 100%);
+  border: 1px solid #d3e0f5;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 12px;
+  margin-right: 10px;
   flex-shrink: 0;
 }
-.rep-avatar i { color: #fff; font-size: 15px; }
+.rep-avatar i { color: #34558a; font-size: 14px; }
 
 .rep-name {
   font-size: .9rem;
-  font-weight: 700;
-  color: #fff;
+  font-weight: 650;
+  color: #10233f;
   line-height: 1.2;
 }
 .rep-meta {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 .rep-badge {
-  background: rgba(255,255,255,.22);
-  color: #fff;
-  font-size: .7rem;
+  background: #eef3fb;
+  color: #415a7e;
+  font-size: .68rem;
   font-weight: 600;
-  padding: 2px 9px;
+  padding: 2px 8px;
   border-radius: 99px;
-  border: 1px solid rgba(255,255,255,.25);
+  border: 1px solid #d8e3f3;
 }
 .rep-chevron {
-  color: rgba(255,255,255,.7);
+  color: #5d7391;
   font-size: 13px;
   transition: transform .25s ease;
 }
@@ -298,19 +307,21 @@ body { background: #f0f4f8 !important; }
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid #e2eaf5;
+  border-bottom: 1px solid #dde6f2;
+  background: #f5f9ff;
 }
 @media (max-width: 768px) { .rep-metrics { grid-template-columns: repeat(2, 1fr); } }
 
 .metric-item {
-  padding: 14px 16px;
+  padding: 11px 14px;
   text-align: center;
   border-right: 1px solid var(--border);
-  background: var(--surface-2);
+  background: rgba(255, 255, 255, .45);
   transition: background .15s;
 }
 .metric-item:last-child { border-right: none; }
-.metric-item:hover { background: var(--brand-50); }
+.metric-item:hover { background: rgba(255, 255, 255, .7); }
 
 .metric-icon {
   font-size: .9rem;
@@ -322,12 +333,12 @@ body { background: #f0f4f8 !important; }
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .04em;
-  color: var(--text-3);
+  color: #7a8ea8;
 }
 .metric-value {
-  font-size: .95rem;
+  font-size: .9rem;
   font-weight: 700;
-  color: var(--text-1);
+  color: #1f3553;
   margin-top: 2px;
 }
 
@@ -335,7 +346,7 @@ body { background: #f0f4f8 !important; }
 .rep-consultores {
   padding: 10px 16px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: #f2f7ff;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -358,7 +369,7 @@ body { background: #f0f4f8 !important; }
 .rep-table-wrap { overflow-x: auto; }
 .rep-table { margin: 0; font-size: .83rem; }
 .rep-table thead th {
-  background: var(--surface-3) !important;
+  background: #eaf1fb !important;
   color: var(--text-2) !important;
   font-size: .72rem !important;
   font-weight: 700 !important;
@@ -378,6 +389,29 @@ body { background: #f0f4f8 !important; }
 .rep-table tbody tr { transition: background .12s; }
 .rep-table tbody tr:hover td { background: var(--brand-50) !important; }
 .rep-table tbody tr:last-child td { border-bottom: none !important; }
+
+.rep-table td.col-cliente .oracle-cliente-main {
+  font-size: .86rem;
+  font-weight: 700;
+  color: #0f2746;
+}
+.rep-table td.col-cnpj code {
+  font-size: .73rem;
+  color: #5a6f8b;
+}
+.rep-table td.col-consultor small {
+  font-size: .72rem;
+  color: #60758f !important;
+}
+.rep-table td.col-pedido span {
+  font-size: .77rem !important;
+  color: #2f4765;
+}
+.rep-table td.col-valor .valor-principal {
+  font-size: .84rem;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
 
 .oracle-cliente-main {
   font-size: .82rem;
@@ -403,6 +437,9 @@ body { background: #f0f4f8 !important; }
   align-items: center;
   gap: 3px;
   white-space: nowrap;
+}
+.oracle-cliente-meta-item i {
+  color: #6a84a6;
 }
 
 /* Status row highlight */
@@ -438,6 +475,13 @@ body { background: #f0f4f8 !important; }
 }
 .action-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.12); }
 .rep-table .action-btn { width: 28px; height: 28px; font-size: .76rem; }
+
+@media (max-width: 1200px) {
+  .rep-table thead th,
+  .rep-table tbody td { padding: 8px 9px !important; }
+  .rep-table td.col-cliente .oracle-cliente-main { font-size: .84rem; }
+  .oracle-cliente-meta { font-size: .69rem; }
+}
 
 /* ============================================================
    STAT ORACLE (dentro do painel)
@@ -1022,7 +1066,7 @@ code {
             <tbody>
               {% for c in dados.clientes %}
               <tr class="{% if c.conceito == 'INADIMPLENTE' %}row-inadimplente{% elif c.conceito == 'LIBERADO' %}row-liberado{% endif %}">
-                <td>
+                <td class="col-cliente">
                   <div class="fw-bold oracle-cliente-main" style="color:var(--text-1);">{{ c.nome }}</div>
                   <div class="oracle-cliente-meta">
                     <div class="oracle-cliente-meta-row">
@@ -1035,8 +1079,8 @@ code {
                     </div>
                   </div>
                 </td>
-                <td><code>{{ c.cnpj or '—' }}</code></td>
-                <td>
+                <td class="col-cnpj"><code>{{ c.cnpj or '—' }}</code></td>
+                <td class="col-telefone">
                   {% if c.telefone %}
                   <div class="contact-inline">
                     <a href="tel:{{ c.telefone }}" class="tel-link">
@@ -1059,7 +1103,7 @@ code {
                   <span style="color:var(--text-3);">—</span>
                   {% endif %}
                 </td>
-                <td>
+                <td class="col-status">
                   {% if c.conceito == 'LIBERADO' %}
                   <span class="badge-liberado">✓ Liberado</span>
                   {% elif c.conceito == 'INADIMPLENTE' %}
@@ -1068,24 +1112,24 @@ code {
                   <span class="badge-semconceito">? S/C</span>
                   {% endif %}
                 </td>
-                <td><small style="color:var(--text-2);">{{ c.categoria_consultor or '—' }}</small></td>
-                <td>
+                <td class="col-consultor"><small style="color:var(--text-2);">{{ c.categoria_consultor or '—' }}</small></td>
+                <td class="col-pedido">
                   {% if c.ultimo_pedido_oracle %}
                   <span style="font-size:.8rem;">{{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}</span>
                   {% else %}
                   <span style="color:var(--text-3);">—</span>
                   {% endif %}
                 </td>
-                <td>
+                <td class="col-valor">
                   {% if c.valor_total_365dias %}
-                  <div style="font-weight:700;color:var(--brand-700);font-size:.8rem;">{{ c.valor_total_365dias | formatar_dinheiro }}</div>
+                  <div class="valor-principal" style="color:var(--brand-700);">{{ c.valor_total_365dias | formatar_dinheiro }}</div>
                   {% elif c.valor_ultimo_pedido %}
-                  <div style="font-weight:700;color:#ca8a04;font-size:.8rem;">{{ c.valor_ultimo_pedido | formatar_dinheiro }}</div>
+                  <div class="valor-principal" style="color:#ca8a04;">{{ c.valor_ultimo_pedido | formatar_dinheiro }}</div>
                   {% else %}
                   <span style="color:var(--text-3);">—</span>
                   {% endif %}
                 </td>
-                <td>
+                <td class="col-acoes">
                   <div class="d-flex gap-1">
                     <button class="action-btn btn btn-outline-secondary"
                             onclick="detalhesClienteOracle({{ c.id }})"
