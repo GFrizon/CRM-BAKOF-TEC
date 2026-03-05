@@ -152,7 +152,7 @@ def sincronizacao_automatica_diaria():
                                 valor_ultimo_pedido=cliente_oracle.get('total_pedido'),
                                 situacao_ultimo_pedido=cliente_oracle.get('situacao'),
                                 consultor_id=consultor_id,
-                                origem='sincronizacao_oracle',
+                                origem='importado_csv',
                                 ativo=True
                             )
                             
