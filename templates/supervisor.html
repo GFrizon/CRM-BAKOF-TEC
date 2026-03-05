@@ -296,7 +296,7 @@
                 </span>
               </td>
               <td class="text-end">
-                <span class="fw-bold text-success">R$ {{ r.receita_fmt }}</span>
+                <span class="fw-bold text-success">{{ r.receita_fmt }}</span>
               </td>
             </tr>
             {% endfor %}
@@ -460,7 +460,7 @@ async function aplicarFiltroMes() {
           <td class="text-center"><span class="badge bg-primary">${c.total_ligacoes}</span></td>
           <td class="text-center"><span class="badge bg-success">${c.vendas}</span></td>
           <td class="text-center"><span class="badge ${badgeClass}">${c.conversao}%</span></td>
-          <td class="text-end"><strong class="text-success">R$ ${c.receita_fmt}</strong></td>
+          <td class="text-end"><strong class="text-success">${c.receita_fmt}</strong></td>
         </tr>
       `;
     });
@@ -542,10 +542,10 @@ async function verLigacoesDia(dataIso, dataFormatada) {
                   </div>
                 ` : ''}
                 
-                ${lig.valor !== '0,00' ? `
+                ${lig.valor !== 'R$ 0,00' ? `
                   <div class="col-md-4">
                     <small class="text-muted">Valor:</small><br>
-                    <strong class="text-success">R$ ${lig.valor}</strong>
+                    <strong class="text-success">${lig.valor}</strong>
                   </div>
                 ` : ''}
               </div>

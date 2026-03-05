@@ -109,7 +109,7 @@ def register_supervisor_routes(app):
                     "vendas": vend,
                     "conversao": round(conv_pct, 1),
                     "receita": receita_val,
-                    "receita_fmt": f"{receita_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    "receita_fmt": formatar_dinheiro(receita_val),
                 }
             )
 

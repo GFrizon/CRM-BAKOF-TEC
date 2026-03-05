@@ -803,7 +803,7 @@ code {
           <div class="oracle-stat-icon" style="background:var(--brand-50);"><i class="bi bi-currency-dollar" style="color:var(--brand-600);"></i></div>
           <div>
             <div class="oracle-stat-label" style="color:var(--brand-600);">Ticket Médio</div>
-            <div class="oracle-stat-val" style="font-size:.85rem;">R$ {{ "%.0f"|format(stats_oracle.ticket_medio or 0) | replace('.', ',') }}</div>
+            <div class="oracle-stat-val" style="font-size:.85rem;">{{ stats_oracle.ticket_medio | formatar_dinheiro }}</div>
           </div>
         </div>
       </div>
@@ -930,7 +930,7 @@ code {
           <div class="metric-item">
             <div class="metric-icon" style="color:var(--brand-600);">R$</div>
             <div class="metric-label">Ticket Médio</div>
-            <div class="metric-value">R$ {{ "%.0f"|format(dados.ticket_medio) | replace('.', ',') }}</div>
+            <div class="metric-value">{{ dados.ticket_medio | formatar_dinheiro }}</div>
           </div>
           <div class="metric-item">
             <div class="metric-icon">📅</div>
@@ -1008,9 +1008,9 @@ code {
                 </td>
                 <td>
                   {% if c.valor_total_365dias %}
-                  <div style="font-weight:700;color:var(--brand-700);font-size:.8rem;">R$ {{ "%.2f"|format(c.valor_total_365dias) | replace('.', ',') }}</div>
+                  <div style="font-weight:700;color:var(--brand-700);font-size:.8rem;">{{ c.valor_total_365dias | formatar_dinheiro }}</div>
                   {% elif c.valor_ultimo_pedido %}
-                  <div style="font-weight:700;color:#16a34a;font-size:.8rem;">R$ {{ "%.2f"|format(c.valor_ultimo_pedido) | replace('.', ',') }}</div>
+                  <div style="font-weight:700;color:#16a34a;font-size:.8rem;">{{ c.valor_ultimo_pedido | formatar_dinheiro }}</div>
                   {% else %}
                   <span style="color:var(--text-3);">—</span>
                   {% endif %}
@@ -1554,7 +1554,7 @@ function historico(id) {
                 <div class="mt-2 d-flex gap-2 flex-wrap">
                   <span class="badge-count" style="font-size:.7rem;">${item.resultado}</span>
                   ${item.contato_nome ? `<span style="font-size:.75rem;color:var(--text-2);">Contato: ${item.contato_nome}</span>` : ''}
-                  ${item.valor_venda !== '0,00' ? `<span style="font-size:.75rem;font-weight:700;color:#16a34a;">R$ ${item.valor_venda}</span>` : ''}
+                  ${item.valor_venda !== 'R$ 0,00' ? `<span style="font-size:.75rem;font-weight:700;color:#16a34a;">${item.valor_venda}</span>` : ''}
                 </div>
                 ${item.observacao ? `<div style="margin-top:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:.8rem;color:var(--text-2);">${item.observacao}</div>` : ''}
               </div>
@@ -2012,7 +2012,7 @@ function renderizarDetalhesOracle(data) {
               <tr><td class="fw-bold text-muted" style="width:40%">Conceito</td><td>${conceitoBadge}</td></tr>
               ${cliente.categoria_consultor ? `<tr><td class="fw-bold text-muted">Consultor Oracle</td><td><small>${cliente.categoria_consultor}</small></td></tr>` : ''}
               ${cliente.ultimo_pedido_oracle ? `<tr><td class="fw-bold text-muted">Último Pedido</td><td>${cliente.ultimo_pedido_oracle}</td></tr>` : ''}
-              ${cliente.valor_ultimo_pedido ? `<tr><td class="fw-bold text-muted">Valor</td><td style="font-weight:700;color:#16a34a;">R$ ${parseFloat(cliente.valor_ultimo_pedido).toFixed(2).replace('.',',')}</td></tr>` : ''}
+              ${cliente.valor_ultimo_pedido ? `<tr><td class="fw-bold text-muted">Valor</td><td style="font-weight:700;color:#16a34a;">${parseFloat(cliente.valor_ultimo_pedido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>` : ''}
             </table>
           </div>
         </div>
@@ -2052,7 +2052,7 @@ function renderizarDetalhesOracle(data) {
       pedido.itens.forEach(item => {
         const nome     = item.nome_produto || item.idproduto || '—';
         const qtd      = item.quantidade || 0;
-        const preco    = item.precounitario ? `R$ ${parseFloat(item.precounitario).toFixed(2).replace('.',',')}` : '—';
+        const preco    = item.precounitario ? parseFloat(item.precounitario).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—';
         html += `<div class="col-md-6 col-lg-4">
           <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;">
             <i class="bi bi-box-seam" style="color:#16a34a;"></i>

@@ -21,15 +21,15 @@ def so_digits(v):
 def formatar_dinheiro(valor):
     try:
         v = float(valor or 0)
-        return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except Exception:
-        return "0,00"
+        return "R$ 0,00"
 
 
 def formatar_dinheiro_filter(valor):
     try:
         v = float(valor or 0)
-        return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except (ValueError, TypeError):
         return "R$ 0,00"
 

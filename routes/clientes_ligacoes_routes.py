@@ -382,14 +382,7 @@ def register_clientes_ligacoes_routes(app):
                 Ligacao.resultado == 'comprou'
             ).scalar() or 0
 
-            def _fmt_money(v):
-                try:
-                    v = float(v or 0)
-                    return f"{v:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-                except:
-                    return "0,00"
-
-            stats['receita_mes'] = _fmt_money(receita_total)
+            stats['receita_mes'] = formatar_dinheiro(receita_total)
         
         # Gerar lista de meses/anos disponíveis para o filtro do consultor
         meses_disponiveis_consultor = []
