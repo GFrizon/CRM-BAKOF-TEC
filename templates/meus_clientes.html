@@ -502,8 +502,36 @@ body { background: #f0f4f8 !important; }
   border-radius: 99px;
   padding: 2px 10px;
   transition: all .15s;
+  white-space: nowrap;
 }
 .tel-link:hover { background: var(--brand-600); color: #fff; border-color: var(--brand-600); }
+
+.contact-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.wa-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid #86efac;
+  background: #dcfce7;
+  color: #15803d;
+  text-decoration: none;
+  transition: all .15s;
+}
+.wa-link:hover {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
 
 /* ============================================================
    ESPAÇO VAZIO
@@ -978,13 +1006,23 @@ code {
                 <td><code>{{ c.cnpj or '—' }}</code></td>
                 <td>
                   {% if c.telefone %}
-                  <a href="tel:{{ c.telefone }}" class="tel-link">
-                    <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
-                  </a>
+                  <div class="contact-inline">
+                    <a href="tel:{{ c.telefone }}" class="tel-link">
+                      <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
+                    </a>
+                    <a href="#" class="wa-link" onclick="abrirWhatsApp('{{ (c.telefone or c.telefone2)|e }}', '{{ c.nome|e }}'); return false;" title="Chamar no WhatsApp">
+                      <i class="bi bi-whatsapp"></i>
+                    </a>
+                  </div>
                   {% elif c.telefone2 %}
-                  <a href="tel:{{ c.telefone2 }}" class="tel-link">
-                    <i class="bi bi-telephone-fill"></i> {{ c.telefone2 }}
-                  </a>
+                  <div class="contact-inline">
+                    <a href="tel:{{ c.telefone2 }}" class="tel-link">
+                      <i class="bi bi-telephone-fill"></i> {{ c.telefone2 }}
+                    </a>
+                    <a href="#" class="wa-link" onclick="abrirWhatsApp('{{ (c.telefone or c.telefone2)|e }}', '{{ c.nome|e }}'); return false;" title="Chamar no WhatsApp">
+                      <i class="bi bi-whatsapp"></i>
+                    </a>
+                  </div>
                   {% else %}
                   <span style="color:var(--text-3);">—</span>
                   {% endif %}
@@ -1136,13 +1174,23 @@ code {
           <td><code>{{ c.cnpj or '—' }}</code></td>
           <td>
             {% if c.telefone %}
-            <a href="tel:{{ c.telefone }}" class="tel-link">
-              <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
-            </a>
+            <div class="contact-inline">
+              <a href="tel:{{ c.telefone }}" class="tel-link">
+                <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
+              </a>
+              <a href="#" class="wa-link" onclick="abrirWhatsApp('{{ (c.telefone or c.telefone2)|e }}', '{{ c.nome|e }}'); return false;" title="Chamar no WhatsApp">
+                <i class="bi bi-whatsapp"></i>
+              </a>
+            </div>
             {% elif c.telefone2 %}
-            <a href="tel:{{ c.telefone2 }}" class="tel-link">
-              <i class="bi bi-telephone-fill"></i> {{ c.telefone2 }}
-            </a>
+            <div class="contact-inline">
+              <a href="tel:{{ c.telefone2 }}" class="tel-link">
+                <i class="bi bi-telephone-fill"></i> {{ c.telefone2 }}
+              </a>
+              <a href="#" class="wa-link" onclick="abrirWhatsApp('{{ (c.telefone or c.telefone2)|e }}', '{{ c.nome|e }}'); return false;" title="Chamar no WhatsApp">
+                <i class="bi bi-whatsapp"></i>
+              </a>
+            </div>
             {% else %}—{% endif %}
           </td>
           <td><small style="color:var(--text-2);">{{ c.representante_nome or '—' }}</small></td>
@@ -1768,6 +1816,49 @@ function filtrarPorOrigem() {
   });
 }
 
+function normalizarNumeroWhatsApp(telefone) {
+  let numero = (telefone || '').toString().replace(/\D+/g, '');
+  if (!numero) return null;
+
+  numero = numero.replace(/^0+/, '');
+  if (!numero.startsWith('55')) numero = `55${numero}`;
+  return numero;
+}
+
+function abrirWhatsApp(telefone, nomeCliente = '') {
+  const numero = normalizarNumeroWhatsApp(telefone);
+  if (!numero) {
+    alert('Telefone inválido para WhatsApp.');
+    return;
+  }
+
+  const texto = nomeCliente
+    ? `Olá ${nomeCliente}, tudo bem?`
+    : 'Olá, tudo bem?';
+  const url = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function escaparAspasSimples(valor) {
+  return (valor || '').toString().replace(/'/g, "\\'");
+}
+
+function renderContatoItem(telefone, nomeCliente = '') {
+  if (!telefone) return '';
+  const tel = telefone.toString();
+  const telEsc = escaparAspasSimples(tel);
+  const nomeEsc = escaparAspasSimples(nomeCliente);
+
+  return `
+    <div class="contact-inline">
+      <a href="tel:${tel}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${tel}</a>
+      <a href="#" class="wa-link" onclick="abrirWhatsApp('${telEsc}', '${nomeEsc}'); return false;" title="Chamar no WhatsApp">
+        <i class="bi bi-whatsapp"></i>
+      </a>
+    </div>
+  `;
+}
+
 async function removerCliente(id, nome) {
   const motivo = prompt(`Deseja realmente remover "${nome}"?\n\nMotivo (opcional):`);
   if (motivo === null) return;
@@ -1895,7 +1986,7 @@ function atualizarTabelaClientes(clientes) {
         </div>
       </td>
       <td><code>${c.cnpj || '—'}</code></td>
-      <td>${c.telefone ? `<a href="tel:${c.telefone}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${c.telefone}</a>` : (c.telefone2 ? `<a href="tel:${c.telefone2}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${c.telefone2}</a>` : '—')}</td>
+      <td>${renderContatoItem(c.telefone || c.telefone2, c.nome) || '—'}</td>
       <td><small style="color:var(--text-2);">${c.representante_nome || '—'}</small></td>
       {% if aba != 'pendentes' %}
       <td style="font-size:.8rem;">${c.ultima_ligacao || '—'}</td>
@@ -1992,8 +2083,8 @@ function renderizarDetalhesOracle(data) {
               <tr><td class="fw-bold text-muted" style="width:40%">Nome</td><td>${cliente.nome}</td></tr>
               <tr><td class="fw-bold text-muted">CNPJ</td><td><code>${cliente.cnpj || '—'}</code></td></tr>
               <tr><td class="fw-bold text-muted">Telefone</td><td>
-                ${cliente.telefone ? `<div><a href="tel:${cliente.telefone}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${cliente.telefone}</a></div>` : ''}
-                ${cliente.telefone2 ? `<div><a href="tel:${cliente.telefone2}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${cliente.telefone2}</a></div>` : ''}
+                ${renderContatoItem(cliente.telefone, cliente.nome)}
+                ${renderContatoItem(cliente.telefone2, cliente.nome)}
                 ${!cliente.telefone && !cliente.telefone2 ? '—' : ''}
               </td></tr>
               ${cliente.cd_cliente_oracle ? `<tr><td class="fw-bold text-muted">Cód. Oracle</td><td><code>${cliente.cd_cliente_oracle}</code></td></tr>` : ''}
@@ -2157,3 +2248,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </script>
 {% endblock %}
+
