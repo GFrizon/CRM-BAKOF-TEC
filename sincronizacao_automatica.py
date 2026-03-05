@@ -149,6 +149,9 @@ def sincronizacao_automatica_diaria():
                                 categoria_consultor=cliente_oracle.get('consultor'),
                                 conceito=cliente_oracle.get('conceito'),
                                 representante_oracle=cliente_oracle.get('representante'),
+                                municipio=cliente_oracle.get('municipio'),
+                                uf=cliente_oracle.get('uf'),
+                                contato=cliente_oracle.get('contato'),
                                 valor_ultimo_pedido=cliente_oracle.get('total_pedido'),
                                 situacao_ultimo_pedido=cliente_oracle.get('situacao'),
                                 consultor_id=consultor_id,
@@ -248,6 +251,9 @@ def sincronizacao_automatica_diaria():
                                 cliente_mysql.categoria_consultor = cliente_oracle.get('consultor')
                                 cliente_mysql.conceito = cliente_oracle.get('conceito')
                                 cliente_mysql.representante_oracle = cliente_oracle.get('representante')
+                                cliente_mysql.municipio = cliente_oracle.get('municipio')
+                                cliente_mysql.uf = cliente_oracle.get('uf')
+                                cliente_mysql.contato = cliente_oracle.get('contato')
                                 cliente_mysql.valor_ultimo_pedido = cliente_oracle.get('total_pedido')
                                 cliente_mysql.situacao_ultimo_pedido = cliente_oracle.get('situacao')
                                 cliente_mysql.consultor_id = consultor_id  # ATUALIZAR CONSULTOR

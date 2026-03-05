@@ -167,6 +167,9 @@ class OracleService:
           CLI.cnpj_cpf as cnpj,  -- CNPJ/CPF do cliente
           CLI.fone as telefone1,  -- Telefone 1
           CLI.fax_fone as telefone2,  -- Telefone 2
+          CLI.municipio as municipio,
+          CLI.uf as uf,
+          CLI.contato as contato,
           REP.nome_completo || ' - ' || CLI.cd_representant as representante,
           PED.total_pedido,
           PED.situacao,

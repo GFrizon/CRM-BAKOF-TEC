@@ -116,6 +116,9 @@ def register_clientes_ligacoes_routes(app):
                     "categoria_consultor": c.categoria_consultor,  # Mantido!
                     "consultor_id": c.consultor_id,  # Mantido!
                     "conceito": c.conceito,
+                    "municipio": c.municipio,
+                    "uf": c.uf,
+                    "contato": c.contato,
                     "ultimo_pedido_oracle": c.ultimo_pedido_oracle,
                     "valor_ultimo_pedido": c.valor_ultimo_pedido,
                     "valor_total_365dias": c.valor_total_365dias,  # NOVO: Valor total 365 dias

@@ -85,6 +85,9 @@ def bootstrap_app_database():
         ("valor_ultimo_pedido", "ALTER TABLE clientes ADD COLUMN valor_ultimo_pedido DECIMAL(12,2)"),
         ("situacao_ultimo_pedido", "ALTER TABLE clientes ADD COLUMN situacao_ultimo_pedido VARCHAR(50)"),
         ("representante_oracle", "ALTER TABLE clientes ADD COLUMN representante_oracle VARCHAR(200)"),
+        ("municipio", "ALTER TABLE clientes ADD COLUMN municipio VARCHAR(120)"),
+        ("uf", "ALTER TABLE clientes ADD COLUMN uf VARCHAR(2)"),
+        ("contato", "ALTER TABLE clientes ADD COLUMN contato VARCHAR(200)"),
         ("valor_total_365dias", "ALTER TABLE clientes ADD COLUMN valor_total_365dias DECIMAL(12,2)"),
         ("data_ultima_sincronizacao", "ALTER TABLE clientes ADD COLUMN data_ultima_sincronizacao DATETIME"),
     ]

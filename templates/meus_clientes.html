@@ -364,20 +364,46 @@ body { background: #f0f4f8 !important; }
   font-weight: 700 !important;
   letter-spacing: .04em !important;
   text-transform: uppercase;
-  padding: 10px 14px !important;
+  padding: 9px 11px !important;
   border-bottom: 2px solid var(--border-2) !important;
   border-top: none !important;
 }
 .rep-table tbody td {
-  padding: 10px 14px !important;
+  padding: 9px 11px !important;
   border-bottom: 1px solid var(--border) !important;
   border-top: none !important;
   vertical-align: middle !important;
-  font-size: .83rem !important;
+  font-size: .81rem !important;
 }
 .rep-table tbody tr { transition: background .12s; }
 .rep-table tbody tr:hover td { background: var(--brand-50) !important; }
 .rep-table tbody tr:last-child td { border-bottom: none !important; }
+
+.oracle-cliente-main {
+  font-size: .82rem;
+  line-height: 1.1;
+}
+.oracle-cliente-meta {
+  margin-top: 2px;
+  font-size: .71rem;
+  color: var(--text-3);
+}
+.oracle-cliente-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  line-height: 1.15;
+}
+.oracle-cliente-meta-row + .oracle-cliente-meta-row {
+  margin-top: 2px;
+}
+.oracle-cliente-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
 
 /* Status row highlight */
 .rep-table tbody tr.row-inadimplente td { background: #fef2f2 !important; }
@@ -411,6 +437,7 @@ body { background: #f0f4f8 !important; }
   border-width: 1px;
 }
 .action-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+.rep-table .action-btn { width: 28px; height: 28px; font-size: .76rem; }
 
 /* ============================================================
    STAT ORACLE (dentro do painel)
@@ -996,12 +1023,17 @@ code {
               {% for c in dados.clientes %}
               <tr class="{% if c.conceito == 'INADIMPLENTE' %}row-inadimplente{% elif c.conceito == 'LIBERADO' %}row-liberado{% endif %}">
                 <td>
-                  <div class="fw-bold" style="font-size:.84rem;color:var(--text-1);">{{ c.nome }}</div>
-                  {% if c.ultimo_pedido_oracle %}
-                  <small style="color:var(--text-3);font-size:.72rem;">
-                    <i class="bi bi-calendar2-check me-1"></i>{{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}
-                  </small>
-                  {% endif %}
+                  <div class="fw-bold oracle-cliente-main" style="color:var(--text-1);">{{ c.nome }}</div>
+                  <div class="oracle-cliente-meta">
+                    <div class="oracle-cliente-meta-row">
+                      <span class="oracle-cliente-meta-item">
+                        <i class="bi bi-geo-alt"></i>{{ c.municipio or '—' }}{% if c.uf %}/{{ c.uf }}{% endif %}
+                      </span>
+                      <span class="oracle-cliente-meta-item">
+                        <i class="bi bi-person-lines-fill"></i>Contato: {{ c.contato or '—' }}
+                      </span>
+                    </div>
+                  </div>
                 </td>
                 <td><code>{{ c.cnpj or '—' }}</code></td>
                 <td>
@@ -1048,7 +1080,7 @@ code {
                   {% if c.valor_total_365dias %}
                   <div style="font-weight:700;color:var(--brand-700);font-size:.8rem;">{{ c.valor_total_365dias | formatar_dinheiro }}</div>
                   {% elif c.valor_ultimo_pedido %}
-                  <div style="font-weight:700;color:#16a34a;font-size:.8rem;">{{ c.valor_ultimo_pedido | formatar_dinheiro }}</div>
+                  <div style="font-weight:700;color:#ca8a04;font-size:.8rem;">{{ c.valor_ultimo_pedido | formatar_dinheiro }}</div>
                   {% else %}
                   <span style="color:var(--text-3);">—</span>
                   {% endif %}
@@ -2087,6 +2119,8 @@ function renderizarDetalhesOracle(data) {
                 ${renderContatoItem(cliente.telefone2, cliente.nome)}
                 ${!cliente.telefone && !cliente.telefone2 ? '—' : ''}
               </td></tr>
+              <tr><td class="fw-bold text-muted">Município/UF</td><td>${cliente.municipio || '—'}${cliente.uf ? `/${cliente.uf}` : ''}</td></tr>
+              <tr><td class="fw-bold text-muted">Contato</td><td>${cliente.contato || '—'}</td></tr>
               ${cliente.cd_cliente_oracle ? `<tr><td class="fw-bold text-muted">Cód. Oracle</td><td><code>${cliente.cd_cliente_oracle}</code></td></tr>` : ''}
               ${cliente.representante_oracle ? `<tr><td class="fw-bold text-muted">Representante</td><td>${cliente.representante_oracle}</td></tr>` : ''}
             </table>

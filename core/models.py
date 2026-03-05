@@ -39,6 +39,9 @@ class Cliente(db.Model):
     valor_ultimo_pedido = db.Column(db.Numeric(12, 2))
     situacao_ultimo_pedido = db.Column(db.String(50))
     representante_oracle = db.Column(db.String(200))
+    municipio = db.Column(db.String(120))
+    uf = db.Column(db.String(2))
+    contato = db.Column(db.String(200))
     valor_total_365dias = db.Column(db.Numeric(12, 2))
     data_ultima_sincronizacao = db.Column(db.DateTime)
 

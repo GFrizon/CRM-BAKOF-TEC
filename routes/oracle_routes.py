@@ -5,7 +5,7 @@ from flask_login import current_user, login_required
 
 from core.extensions import db
 from core.models import Cliente, Usuario
-from oracle_service import get_clientes_oracle, test_oracle_connection
+from oracle_service import get_clientes_oracle, get_valor_total_365dias, test_oracle_connection
 from telefone_utils import identificar_ddd_padrao, padronizar_telefone
 
 
@@ -94,6 +94,7 @@ def register_oracle_routes(app):
                     telefone_principal = telefone1_padronizado or telefone2_padronizado
 
                     cliente_mysql = Cliente.query.filter_by(cd_cliente_oracle=cd_cliente).first()
+                    valor_total_365 = get_valor_total_365dias(cd_cliente)
 
                     if cliente_mysql:
                         if cnpj_oracle:
@@ -106,7 +107,11 @@ def register_oracle_routes(app):
                         cliente_mysql.categoria_consultor = cliente_oracle.get('consultor')
                         cliente_mysql.conceito = cliente_oracle.get('conceito')
                         cliente_mysql.representante_oracle = cliente_oracle.get('representante')
+                        cliente_mysql.municipio = _limpar_texto(cliente_oracle.get('municipio'))
+                        cliente_mysql.uf = _limpar_texto(cliente_oracle.get('uf'))
+                        cliente_mysql.contato = _limpar_texto(cliente_oracle.get('contato'))
                         cliente_mysql.valor_ultimo_pedido = cliente_oracle.get('total_pedido')
+                        cliente_mysql.valor_total_365dias = valor_total_365
                         cliente_mysql.situacao_ultimo_pedido = cliente_oracle.get('situacao')
 
                         dt_pedido = cliente_oracle.get('dt_pedido')
@@ -141,7 +146,11 @@ def register_oracle_routes(app):
                             categoria_consultor=cliente_oracle.get('consultor'),
                             conceito=cliente_oracle.get('conceito'),
                             representante_oracle=cliente_oracle.get('representante'),
+                            municipio=_limpar_texto(cliente_oracle.get('municipio')),
+                            uf=_limpar_texto(cliente_oracle.get('uf')),
+                            contato=_limpar_texto(cliente_oracle.get('contato')),
                             valor_ultimo_pedido=cliente_oracle.get('total_pedido'),
+                            valor_total_365dias=valor_total_365,
                             situacao_ultimo_pedido=cliente_oracle.get('situacao'),
                             consultor_id=consultor.id,
                             origem='importado_csv',
@@ -201,6 +210,9 @@ def register_oracle_routes(app):
                         "telefone": cliente.telefone,
                         "telefone2": cliente.telefone2,
                         "representante_nome": cliente.representante_nome,
+                        "municipio": cliente.municipio,
+                        "uf": cliente.uf,
+                        "contato": cliente.contato,
                         "origem": "manual"
                     },
                     "pedidos_oracle": [],
@@ -226,6 +238,9 @@ def register_oracle_routes(app):
                     "valor_ultimo_pedido": float(cliente.valor_ultimo_pedido) if cliente.valor_ultimo_pedido else None,
                     "situacao_ultimo_pedido": cliente.situacao_ultimo_pedido,
                     "representante_oracle": cliente.representante_oracle,
+                    "municipio": cliente.municipio,
+                    "uf": cliente.uf,
+                    "contato": cliente.contato,
                     "data_ultima_sincronizacao": cliente.data_ultima_sincronizacao.strftime('%d/%m/%Y %H:%M') if cliente.data_ultima_sincronizacao else None
                 },
                 "pedidos_oracle": pedidos_oracle,
