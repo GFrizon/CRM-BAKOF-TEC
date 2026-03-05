@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from core.extensions import db
 from core.models import Cliente, Usuario
 from oracle_service import get_clientes_oracle, test_oracle_connection
+from telefone_utils import identificar_ddd_padrao, padronizar_telefone
 
 
 def register_oracle_routes(app):
@@ -65,6 +66,15 @@ def register_oracle_routes(app):
 
         try:
             clientes_oracle = get_clientes_oracle()
+            ddd_padrao = identificar_ddd_padrao(
+                [
+                    c.get('telefone1')
+                    for c in clientes_oracle
+                ] + [
+                    c.get('telefone2')
+                    for c in clientes_oracle
+                ]
+            )
 
             sincronizados = 0
             atualizados = 0
@@ -79,7 +89,9 @@ def register_oracle_routes(app):
                     cnpj_oracle = _limpar_texto(cliente_oracle.get('cnpj'))
                     telefone1_oracle = _limpar_texto(cliente_oracle.get('telefone1'))
                     telefone2_oracle = _limpar_texto(cliente_oracle.get('telefone2'))
-                    telefone_principal = telefone1_oracle or telefone2_oracle
+                    telefone1_padronizado = padronizar_telefone(telefone1_oracle, ddd_padrao)
+                    telefone2_padronizado = padronizar_telefone(telefone2_oracle, ddd_padrao)
+                    telefone_principal = telefone1_padronizado or telefone2_padronizado
 
                     cliente_mysql = Cliente.query.filter_by(cd_cliente_oracle=cd_cliente).first()
 
@@ -88,8 +100,8 @@ def register_oracle_routes(app):
                             cliente_mysql.cnpj = cnpj_oracle
                         if telefone_principal:
                             cliente_mysql.telefone = telefone_principal
-                        if telefone2_oracle:
-                            cliente_mysql.telefone2 = telefone2_oracle
+                        if telefone2_padronizado:
+                            cliente_mysql.telefone2 = telefone2_padronizado
 
                         cliente_mysql.categoria_consultor = cliente_oracle.get('consultor')
                         cliente_mysql.conceito = cliente_oracle.get('conceito')
@@ -124,7 +136,7 @@ def register_oracle_routes(app):
                             nome=cliente_oracle.get('cliente', '')[:200],
                             cnpj=cnpj_oracle,
                             telefone=telefone_principal,
-                            telefone2=telefone2_oracle,
+                            telefone2=telefone2_padronizado,
                             cd_cliente_oracle=cd_cliente,
                             categoria_consultor=cliente_oracle.get('consultor'),
                             conceito=cliente_oracle.get('conceito'),
