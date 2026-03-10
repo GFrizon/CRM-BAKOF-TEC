@@ -7,11 +7,17 @@ import os
 import logging
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
+from dotenv import load_dotenv
 from database_utils import retry_oracle_connection, retry_database
 
 # Configuração de logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Carrega .env e .env.oracle para execuções fora do app.py
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+load_dotenv(os.path.join(BASE_DIR, ".env.oracle"))
 
 # Tentar importar oracledb primeiro, se não funcionar, usar cx_Oracle
 try:
@@ -45,9 +51,22 @@ class OracleService:
         # Configurar modo thin client (mais simples que thick client)
         if ORACLE_LIB == 'oracledb':
             try:
-                oracledb.init_oracle_client()
-                logger.info("Oracle Client inicializado (modo thick)")
-            except Exception:
+                lib_dir = os.getenv('ORACLE_CLIENT_LIB_DIR')
+                config_dir = os.getenv('TNS_ADMIN') or os.getenv('ORACLE_CONFIG_DIR')
+                init_kwargs = {}
+                if lib_dir:
+                    init_kwargs['lib_dir'] = lib_dir
+                if config_dir:
+                    init_kwargs['config_dir'] = config_dir
+
+                if init_kwargs:
+                    oracledb.init_oracle_client(**init_kwargs)
+                    logger.info(f"Oracle Client inicializado (modo thick): {init_kwargs}")
+                else:
+                    oracledb.init_oracle_client()
+                    logger.info("Oracle Client inicializado (modo thick)")
+            except Exception as e:
+                logger.warning(f"Nao foi possivel iniciar Oracle Client em modo thick: {e}")
                 logger.info("Usando modo thin client (sem Oracle Client)")
     
     def test_connection(self) -> Tuple[bool, str]:
@@ -64,37 +83,50 @@ class OracleService:
             version = conn.version
             conn.close()
             return True, f"Conexão bem sucedida! Oracle version: {version} (usando {ORACLE_LIB})"
-        except oracledb.DatabaseError as e:
-            logger.error(f"Erro de banco Oracle: {str(e)}")
-            return False, f"Erro de banco de dados: {str(e)}"
-        except oracledb.InterfaceError as e:
-            logger.error(f"Erro de interface Oracle: {str(e)}")
-            return False, f"Erro de conexão/interface: {str(e)}"
         except Exception as e:
             logger.error(f"Erro inesperado ao conectar Oracle: {str(e)}")
             return False, f"Erro de conexão: {str(e)}"
     
+    def _is_connection_alive(self):
+        """Verifica se a conexão Oracle está ativa"""
+        if not self.connection:
+            return False
+        
+        try:
+            if ORACLE_LIB == 'oracledb':
+                return self.connection.ping()
+            else:  # cx_Oracle
+                return self.connection.is_connected
+        except Exception:
+            return False
+    
+    def _reset_connection(self):
+        """Fecha e limpa a conexão Oracle"""
+        if self.connection:
+            try:
+                self.connection.close()
+            except Exception:
+                pass
+            finally:
+                self.connection = None
+    
     @retry_oracle_connection(max_attempts=3, delay=2.0)
     def get_connection(self):
-        """Obtém conexão com o banco Oracle (singleton) com retry"""
+        """Obtém conexão com o banco Oracle (com verificação de vida e reconexão automática)"""
         if not ORACLE_LIB:
             raise ImportError("Nenhuma biblioteca Oracle instalada")
-            
-        if self.connection is None:
+
+        # Verifica se a conexão existe e está ativa
+        if not self._is_connection_alive():
+            self._reset_connection()
             try:
                 if ORACLE_LIB == 'oracledb':
                     self.connection = oracledb.connect(**self.config)
                 else:  # cx_Oracle
                     self.connection = cx_Oracle.connect(**self.config)
-                logger.info(f"Conexão Oracle estabelecida com sucesso (usando {ORACLE_LIB})")
-            except oracledb.DatabaseError as e:
-                logger.error(f"Erro de banco Oracle ao estabelecer conexão: {str(e)}")
-                raise ConnectionError(f"Erro de banco de dados Oracle: {str(e)}")
-            except oracledb.InterfaceError as e:
-                logger.error(f"Erro de interface Oracle ao estabelecer conexão: {str(e)}")
-                raise ConnectionError(f"Erro de interface/conexão Oracle: {str(e)}")
+                logger.info(f"Conexão Oracle estabelecida/reconectada (usando {ORACLE_LIB})")
             except Exception as e:
-                logger.error(f"Erro inesperado ao estabelecer conexão Oracle: {str(e)}")
+                logger.error(f"Erro ao estabelecer conexão Oracle: {str(e)}")
                 raise
         return self.connection
     
@@ -112,14 +144,9 @@ class OracleService:
     def execute_query(self, query: str, params: Optional[Dict] = None) -> List[Dict]:
         """
         Executa query SQL e retorna resultados como lista de dicionários
-        
-        Args:
-            query: Query SQL a ser executada
-            params: Parâmetros opcionais para a query
-            
-        Returns:
-            Lista de dicionários com os resultados
         """
+        conn = None
+        cursor = None
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
@@ -138,13 +165,23 @@ class OracleService:
                 row_dict = dict(zip(columns, row))
                 results.append(row_dict)
             
-            cursor.close()
             logger.info(f"Query executada com sucesso: {len(results)} registros")
             return results
             
         except Exception as e:
+            error_msg = str(e).lower()
+            # Se for erro de conexão perdida, resetar e deixar o retry lidar
+            if any(code in error_msg for code in ['dpy-1001', 'dpi-1010', 'not connected']):
+                logger.warning(f"Conexão perdida detectada ({e}), forçando reconexão...")
+                self._reset_connection()
             logger.error(f"Erro ao executar query: {str(e)}")
             raise
+        finally:
+            if cursor:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
     
     def get_clientes_alvo(self) -> List[Dict]:
         """
