@@ -1,10 +1,10 @@
-{% extends "layout.html" %}
+﻿{% extends "layout.html" %}
 {% block title %}Meus Clientes{% endblock %}
 {% block content %}
 
 <style>
 /* ============================================================
-   VARIÁVEIS DA MARCA — ajuste aqui para mudar tudo de uma vez
+   VARIÁVEIS DA MARCA - ajuste aqui para mudar tudo de uma vez
    ============================================================ */
 :root {
   --brand-50:  #eff6ff;
@@ -42,7 +42,7 @@
 body { background: #f0f4f8 !important; }
 
 /* ============================================================
-   CABEÇALHO DA PÁGINA
+   CABEÃ‡ALHO DA PÁGINA
    ============================================================ */
 .page-header {
   background: var(--surface);
@@ -82,7 +82,7 @@ body { background: #f0f4f8 !important; }
 .stat-card .progress-bar { background: linear-gradient(90deg, var(--brand-500), var(--brand-400)); border-radius: 99px; }
 
 /* ============================================================
-   PAINÉIS DE FILTRO / ESTATÍSTICAS (substitui bg-warning feio)
+   PAINÃ‰IS DE FILTRO / ESTATÍSTICAS (substitui bg-warning feio)
    ============================================================ */
 .panel-card {
   background: var(--surface);
@@ -155,37 +155,193 @@ body { background: #f0f4f8 !important; }
 }
 
 /* ============================================================
+   BARRA DE ACAO RAPIDA + MODO ESCANEAVEL
+   ============================================================ */
+.quick-action-bar {
+  position: sticky;
+  top: 10px;
+  z-index: 30;
+  background: rgba(255, 255, 255, .95);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.quick-action-bar .btn {
+  font-size: .78rem;
+  padding: 5px 10px;
+}
+.quick-action-info {
+  font-size: .76rem;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.btn-sync-oracle {
+  font-size: .74rem !important;
+  padding: 4px 8px !important;
+  line-height: 1.1;
+}
+
+#btn_buscar_oracle_cnpj {
+  font-size: .74rem;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+/* ============================================================
    TABS MODERNAS
    ============================================================ */
 .modern-tabs {
   display: flex;
-  gap: 4px;
-  background: var(--surface-3);
-  border-radius: var(--radius-sm);
-  padding: 4px;
+  gap: 8px;
+  background: linear-gradient(180deg, #f6f9fc 0%, #eff4fa 100%);
+  border: 1px solid #d7e0ed;
+  border-radius: var(--radius-md);
+  padding: 8px;
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
 .modern-tabs .nav-link {
-  border-radius: 5px;
-  padding: 7px 14px;
-  font-size: .82rem;
-  font-weight: 600;
-  color: var(--text-2);
-  border: none !important;
-  background: transparent;
-  transition: all .15s;
+  border-radius: 9px;
+  padding: 9px 12px;
+  font-size: .8rem;
+  font-weight: 700;
+  color: #1f2b3d;
+  border: 1px solid transparent !important;
+  background: rgba(255, 255, 255, .72);
+  transition: all .18s;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.1;
 }
-.modern-tabs .nav-link:hover { background: var(--surface); color: var(--brand-700); }
+.modern-tabs .nav-link:hover {
+  background: #ffffff;
+  color: #1e3a8a;
+  border-color: #cfe0ff !important;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, .12);
+}
 .modern-tabs .nav-link.active {
-  background: var(--surface) !important;
-  color: var(--brand-700) !important;
+  background: #ffffff !important;
+  color: #1d4ed8 !important;
   box-shadow: var(--shadow-sm);
+  border: 1px solid #b9d1ff !important;
 }
 .modern-tabs .nav-link.oracle-tab.active {
   background: linear-gradient(135deg, var(--brand-700), var(--brand-600)) !important;
   color: #fff !important;
+}
+.modern-tabs .nav-link .tab-count {
+  margin-left: 2px;
+  min-width: 34px;
+  text-align: center;
+  background: rgba(15, 23, 42, .1);
+  color: #0f172a;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: .72rem;
+  font-weight: 800;
+}
+.modern-tabs .nav-link .tab-alert {
+  color: #f59e0b;
+  font-size: .7rem;
+  margin-left: -2px;
+  line-height: 1;
+}
+.modern-tabs .nav-link.oracle-tab .tab-count {
+  background: rgba(29, 78, 216, .12);
+  color: #1d4ed8;
+}
+.modern-tabs .nav-link .tab-label {
+  font-weight: 700;
+}
+.modern-tabs .nav-link.oracle-tab.active .tab-count,
+.modern-tabs .nav-link.active .tab-count {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .16);
+}
+.modern-tabs .nav-link.tab-pendentes {
+  background: rgba(37, 99, 235, .08);
+  border-color: rgba(37, 99, 235, .22) !important;
+}
+.modern-tabs .nav-link.tab-pendentes .tab-count {
+  background: #1e40af;
+  color: #ffffff;
+  border: 1px solid #1e3a8a;
+  font-weight: 900;
+}
+.modern-tabs .nav-link.tab-contatados {
+  background: rgba(22, 163, 74, .08);
+  border-color: rgba(22, 163, 74, .22) !important;
+}
+.modern-tabs .nav-link.tab-contatados .tab-count {
+  background: rgba(22, 163, 74, .16);
+  color: #166534;
+}
+.modern-tabs .nav-link.tab-retornar {
+  background: rgba(245, 158, 11, .1);
+  border-color: rgba(245, 158, 11, .25) !important;
+}
+.modern-tabs .nav-link.tab-retornar .tab-count {
+  background: rgba(245, 158, 11, .2);
+  color: #92400e;
+}
+.modern-tabs .nav-link.tab-oracle {
+  background: rgba(234, 88, 12, .1);
+  border-color: rgba(234, 88, 12, .24) !important;
+}
+.modern-tabs .nav-link.tab-oracle .tab-count {
+  background: rgba(234, 88, 12, .2);
+  color: #9a3412;
+}
+.modern-tabs .nav-link.tab-inativos {
+  background: rgba(71, 85, 105, .1);
+  border-color: rgba(71, 85, 105, .24) !important;
+}
+.modern-tabs .nav-link.tab-inativos .tab-count {
+  background: #e2e8f0;
+  color: #0b1220;
+  border: 1px solid #cbd5e1;
+  font-weight: 900;
+}
+.modern-tabs .nav-link.tab-pendentes.active,
+.modern-tabs .nav-link.tab-contatados.active,
+.modern-tabs .nav-link.tab-retornar.active,
+.modern-tabs .nav-link.tab-oracle.active,
+.modern-tabs .nav-link.tab-inativos.active,
+.modern-tabs .nav-link.tab-proximos.active {
+  color: #fff !important;
+}
+.modern-tabs .nav-link.tab-pendentes.active { background: linear-gradient(135deg, #1d4ed8, #2563eb) !important; border-color: transparent !important; }
+.modern-tabs .nav-link.tab-contatados.active { background: linear-gradient(135deg, #15803d, #16a34a) !important; border-color: transparent !important; }
+.modern-tabs .nav-link.tab-retornar.active { background: linear-gradient(135deg, #d97706, #f59e0b) !important; border-color: transparent !important; }
+.modern-tabs .nav-link.tab-oracle.active { background: linear-gradient(135deg, #c2410c, #ea580c) !important; border-color: transparent !important; }
+.modern-tabs .nav-link.tab-inativos.active { background: linear-gradient(135deg, #475569, #64748b) !important; border-color: transparent !important; }
+.modern-tabs .nav-link.tab-proximos {
+  background: rgba(245, 158, 11, .1);
+  border-color: rgba(245, 158, 11, .28) !important;
+}
+.modern-tabs .nav-link.tab-proximos .tab-count {
+  background: rgba(245, 158, 11, .2);
+  color: #78350f;
+}
+.modern-tabs .nav-link.tab-proximos.active { background: linear-gradient(135deg, #b45309, #d97706) !important; border-color: transparent !important; }
+@media (max-width: 768px) {
+  .modern-tabs {
+    gap: 6px;
+    padding: 6px;
+  }
+  .modern-tabs .nav-link {
+    flex: 1 1 calc(50% - 6px);
+    justify-content: center;
+    min-width: 150px;
+  }
 }
 
 /* ============================================================
@@ -301,7 +457,7 @@ body { background: #f0f4f8 !important; }
 .rep-chevron.open { transform: rotate(180deg); }
 
 /* ============================================================
-   MÉTRICAS DENTRO DO REPRESENTANTE
+   MÃ‰TRICAS DENTRO DO REPRESENTANTE
    ============================================================ */
 .rep-metrics {
   display: grid;
@@ -447,6 +603,11 @@ body { background: #f0f4f8 !important; }
 .rep-table tbody tr.row-inadimplente:hover td { background: #fee2e2 !important; }
 .rep-table tbody tr.row-liberado td { background: #f0fdf4 !important; }
 .rep-table tbody tr.row-liberado:hover td { background: #dcfce7 !important; }
+.rep-table tbody tr.row-critical td {
+  background: #fff7ed !important;
+  box-shadow: inset 3px 0 0 #ea580c;
+}
+.rep-table tbody tr.row-critical:hover td { background: #ffedd5 !important; }
 
 /* ============================================================
    BADGES MODERNOS
@@ -459,7 +620,7 @@ body { background: #f0f4f8 !important; }
 .badge-count     { background: var(--brand-600); color: #fff; font-size: .7rem !important; font-weight: 600 !important; padding: 3px 9px !important; border-radius: 99px !important; }
 
 /* ============================================================
-   BOTÕES DE AÇÃO NAS TABELAS
+   BOTÃ•ES DE AÃ‡ÃƒO NAS TABELAS
    ============================================================ */
 .action-btn {
   width: 30px;
@@ -503,7 +664,7 @@ body { background: #f0f4f8 !important; }
 .oracle-stat-val { font-size: 1.15rem; font-weight: 800; line-height: 1; }
 
 /* ============================================================
-   PROGRESS BAR DISTRIBUIÇÃO
+   PROGRESS BAR DISTRIBUIÃ‡ÃƒO
    ============================================================ */
 .dist-bar { height: 22px; border-radius: 99px; overflow: hidden; display: flex; }
 .dist-bar .segment { display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 600; color: #fff; min-width: 40px; }
@@ -539,7 +700,7 @@ body { background: #f0f4f8 !important; }
 }
 
 /* ============================================================
-   BOTÕES PRINCIPAIS
+   BOTÃ•ES PRINCIPAIS
    ============================================================ */
 .btn-brand {
   background: linear-gradient(135deg, var(--brand-600), var(--brand-500));
@@ -605,7 +766,7 @@ body { background: #f0f4f8 !important; }
 }
 
 /* ============================================================
-   ESPAÇO VAZIO
+   ESPAÃ‡O VAZIO
    ============================================================ */
 .empty-state {
   text-align: center;
@@ -616,13 +777,13 @@ body { background: #f0f4f8 !important; }
 .empty-state p { font-size: .88rem; }
 
 /* ============================================================
-   ANIMAÇÃO SPIN (sincronizar)
+   ANIMAÃ‡ÃƒO SPIN (sincronizar)
    ============================================================ */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { display: inline-block; animation: spin .8s linear infinite; }
 
 /* ============================================================
-   CÓDIGO (cnpj, oracle id)
+   CÃ“DIGO (cnpj, oracle id)
    ============================================================ */
 code {
   font-size: .78rem;
@@ -642,11 +803,11 @@ code {
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header brand-header">
-        <h5 class="modal-title"><i class="bi bi-stars me-2"></i>🎉 Novidades da Atualização!</h5>
+        <h5 class="modal-title"><i class="bi bi-stars me-2"></i>Novidades da Atualização!</h5>
       </div>
       <div class="modal-body">
         <div class="alert alert-primary mb-4" style="border-radius:8px;">
-          <i class="bi bi-info-circle me-2"></i><strong>Versão 2.0</strong> — Confira as novidades!
+          <i class="bi bi-info-circle me-2"></i><strong>Versão 2.0</strong> - Confira as novidades!
         </div>
         <ul class="list-unstyled" style="display:flex;flex-direction:column;gap:16px;">
           <li class="d-flex gap-3 align-items-start">
@@ -690,23 +851,30 @@ code {
   </div>
 </div>
 {% endif %}
-
 <!-- ============================================================
-     CABEÇALHO DA PÁGINA
+     CABEÃ‡ALHO DA PÁGINA
      ============================================================ -->
 <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
   <div>
     <h2 class="m-0">
       <i class="bi bi-people-fill me-2" style="color:var(--brand-600);"></i>Meus Clientes
     </h2>
-    {% if aba != 'oracle' %}
-    <p class="mb-0 mt-1">Gerencie representantes, clientes e registre ligações</p>
-    {% else %}
+    {% if aba == 'oracle' %}
     <p class="mb-0 mt-1">Clientes sem pedidos há 90-120 dias (Oracle)</p>
+    {% elif aba == 'inativos' %}
+    <p class="mb-0 mt-1">Clientes inativos – sem pedidos entre 181 dias e 2 anos</p>
+    {% elif aba == 'proximos_inativacao' %}
+    <p class="mb-0 mt-1">Clientes com 151-180 dias sem pedido – próximos de inativação</p>
+    {% elif aba == 'pendentes' and current_user.tipo == 'consultor' %}
+    <p class="mb-0 mt-1">Clientes especiais sem contato registrado – por representante</p>
+    {% elif current_user.tipo == 'televendas' %}
+    <p class="mb-0 mt-1">Gerencie seus clientes e registre ligações (Televendas)</p>
+    {% else %}
+    <p class="mb-0 mt-1">Gerencie representantes, clientes e registre ligações</p>
     {% endif %}
   </div>
   <div class="d-flex flex-wrap gap-2">
- {% if aba != 'oracle' %}
+    {% if aba not in ('oracle', 'inativos') and current_user.tipo != 'televendas' %}
     <button class="btn btn-primary btn-sm" onclick="abrirModalAdicionar()">
       <i class="bi bi-person-plus me-1"></i> Adicionar Cliente
     </button>
@@ -718,9 +886,15 @@ code {
     <a href="{{ url_for('importar_clientes_view') }}" class="btn btn-outline-success btn-sm">
       <i class="bi bi-cloud-upload me-1"></i> Importar CSV
     </a>
-    <button class="btn btn-outline-secondary btn-sm" onclick="sincronizarOracle()" id="btnSincronizarOracle">
+    {% if aba not in ('oracle', 'inativos') %}
+    <button class="btn btn-outline-primary btn-sm" onclick="sincronizarClientesManuaisOracle()" id="btnSyncManuaisOracle">
+      <i class="bi bi-person-check me-1"></i> Sync Manuais
+    </button>
+    {% endif %}
+    <button class="btn btn-outline-secondary btn-sm btn-sync-oracle" onclick="sincronizarOracle()" id="btnSincronizarOracle">
       <i class="bi bi-arrow-clockwise me-1"></i> Sincronizar Oracle
     </button>
+    <span id="syncOracleStatusBadge" class="badge text-bg-secondary align-self-center">Sync Oracle: --</span>
     {% endif %}
   </div>
 </div>
@@ -728,7 +902,7 @@ code {
 <!-- ============================================================
      STAT CARDS (consultor)
      ============================================================ -->
-{% if current_user.tipo == 'consultor' and stats %}
+{% if current_user.tipo in ('consultor', 'televendas') and stats %}
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
     <div class="card stat-card h-100">
@@ -750,7 +924,7 @@ code {
         </div>
         <div class="stat-value">{{ stats.ligacoes_hoje }}</div>
         <div class="progress mt-2"><div class="progress-bar" style="width:{{ stats.progresso_meta }}%"></div></div>
-        <small class="text-muted" style="font-size:.7rem;">Meta {{ stats.meta_diaria }} — {{ stats.progresso_meta }}%</small>
+        <small class="text-muted" style="font-size:.7rem;">Meta {{ stats.meta_diaria }} - {{ stats.progresso_meta }}%</small>
       </div>
     </div>
   </div>
@@ -758,7 +932,7 @@ code {
     <div class="card stat-card h-100">
       <div class="card-body">
         <div class="d-flex align-items-center justify-content-between">
-          <span class="text-muted">Últimos 7 dias</span>
+          <span class="text-muted">Ãšltimos 7 dias</span>
           <i class="bi bi-calendar-week"></i>
         </div>
         <div class="stat-value">{{ stats.ligacoes_semana }}</div>
@@ -769,7 +943,7 @@ code {
     <div class="card stat-card h-100">
       <div class="card-body">
         <div class="d-flex align-items-center justify-content-between">
-          <span class="text-muted">Últimos 30 dias</span>
+          <span class="text-muted">Ãšltimos 30 dias</span>
           <i class="bi bi-calendar3"></i>
         </div>
         <div class="stat-value">{{ stats.ligacoes_mes }}</div>
@@ -782,7 +956,7 @@ code {
 <!-- ============================================================
      FILTRO MENSAL PARA CONSULTORES
      ============================================================ -->
-{% if current_user.tipo == 'consultor' and meses_disponiveis_consultor %}
+{% if current_user.tipo in ('consultor', 'televendas') and meses_disponiveis_consultor %}
 <div class="panel-card">
   <div class="panel-header">
     <i class="bi bi-calendar-range"></i>
@@ -846,16 +1020,57 @@ code {
         <label class="form-label">Status de Crédito:</label>
         <select class="form-select" name="conceito_filtro" onchange="this.form.submit()">
           <option value="">Todos os status</option>
-          <option value="LIBERADO"     {% if request.args.get('conceito_filtro') == 'LIBERADO'     %}selected{% endif %}>✅ Liberados</option>
-          <option value="INADIMPLENTE" {% if request.args.get('conceito_filtro') == 'INADIMPLENTE' %}selected{% endif %}>❌ Inadimplentes</option>
-          <option value="SEM_CONCEITO" {% if request.args.get('conceito_filtro') == 'SEM_CONCEITO' %}selected{% endif %}>❓ Sem Conceito</option>
+          <option value="LIBERADO"     {% if request.args.get('conceito_filtro') == 'LIBERADO'     %}selected{% endif %}>Liberados</option>
+          <option value="INADIMPLENTE" {% if request.args.get('conceito_filtro') == 'INADIMPLENTE' %}selected{% endif %}>Inadimplentes</option>
+          <option value="SEM_CONCEITO" {% if request.args.get('conceito_filtro') == 'SEM_CONCEITO' %}selected{% endif %}>Sem Conceito</option>
         </select>
       </div>
+      {% if current_user.tipo != 'consultor' %}
       <div class="col-md-4">
         <label class="form-label">Consultor:</label>
         <select class="form-select" name="consultor_filtro" onchange="this.form.submit()">
           <option value="">Todos os consultores</option>
           {% for consultor in consultores_oracle %}
+          <option value="{{ consultor.nome }}" {% if request.args.get('consultor_filtro') == consultor.nome %}selected{% endif %}>
+            {{ consultor.nome }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <input type="hidden" name="consultor_filtro" value="">
+      {% endif %}
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ============================================================
+     FILTRO INATIVOS (181 dias a 2 anos)
+     ============================================================ -->
+{% if aba == 'inativos' %}
+<div class="panel-card">
+  <div class="panel-header">
+    <i class="bi bi-funnel"></i>
+    <span>Filtrar Clientes Inativos</span>
+  </div>
+  <div class="panel-body" style="padding-bottom:16px;">
+    <form method="get" action="{{ url_for('meus_clientes') }}" class="row g-3">
+      <input type="hidden" name="aba" value="inativos">
+      <div class="col-md-6">
+        <label class="form-label">Status de Crédito:</label>
+        <select class="form-select" name="conceito_filtro" onchange="this.form.submit()">
+          <option value="">Todos os status</option>
+          <option value="LIBERADO"     {% if request.args.get('conceito_filtro') == 'LIBERADO'     %}selected{% endif %}>Liberados</option>
+          <option value="INADIMPLENTE" {% if request.args.get('conceito_filtro') == 'INADIMPLENTE' %}selected{% endif %}>Inadimplentes</option>
+          <option value="SEM_CONCEITO" {% if request.args.get('conceito_filtro') == 'SEM_CONCEITO' %}selected{% endif %}>Sem Conceito</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Consultor Oracle:</label>
+        <select class="form-select" name="consultor_filtro" onchange="this.form.submit()">
+          <option value="">Todos os consultores</option>
+          {% for consultor in consultores_inativos or [] %}
           <option value="{{ consultor.nome }}" {% if request.args.get('consultor_filtro') == consultor.nome %}selected{% endif %}>
             {{ consultor.nome }}
           </option>
@@ -874,7 +1089,7 @@ code {
 <div class="panel-card">
   <div class="panel-header">
     <i class="bi bi-database"></i>
-    <span>Estatísticas — Clientes sem pedidos 90–120 dias</span>
+    <span>Estatísticas - Clientes sem pedidos 90-120 dias</span>
     <small><i class="bi bi-arrow-clockwise"></i> Atualizado diariamente do banco Oracle</small>
   </div>
   <div class="panel-body">
@@ -939,6 +1154,168 @@ code {
 {% endif %}
 
 <!-- ============================================================
+     PAINEL DE ESTATÍSTICAS INATIVOS
+     ============================================================ -->
+{% if aba == 'inativos' %}
+<div class="panel-card">
+  <div class="panel-header">
+    <i class="bi bi-person-slash"></i>
+    <span>Estatísticas - Clientes inativos 181 dias a 2 anos</span>
+    <small><i class="bi bi-telephone"></i> Área Televendas</small>
+  </div>
+  <div class="panel-body">    <div class="row g-3 mb-3">
+      <div class="col-12">
+        <div class="d-flex flex-wrap align-items-center gap-2" style="font-size:.82rem;">
+          <span class="badge" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;">Entraram hoje: {{ movimento_inativos_hoje.entraram if movimento_inativos_hoje else 0 }}</span>
+          <span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;">Sairam hoje: {{ movimento_inativos_hoje.sairam if movimento_inativos_hoje else 0 }}</span>
+          <span class="badge" style="background:#e0f2fe;color:#0c4a6e;border:1px solid #bae6fd;">Total apos sync: {{ movimento_inativos_hoje.total if movimento_inativos_hoje else 0 }}</span>
+          {% if movimento_inativos_hoje and movimento_inativos_hoje.atualizado_em %}
+          <small class="text-muted ms-1">Atualizado em {{ movimento_inativos_hoje.atualizado_em.strftime('%d/%m/%Y %H:%M') }}</small>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="row g-4">
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#dcfce7;"><i class="bi bi-check-circle" style="color:#16a34a;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#16a34a;">Liberados</div>
+            <div class="oracle-stat-val">{{ stats_inativos.liberados or 0 }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#fee2e2;"><i class="bi bi-exclamation-triangle" style="color:#dc2626;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#dc2626;">Inadimplentes</div>
+            <div class="oracle-stat-val">{{ stats_inativos.inadimplentes or 0 }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:var(--brand-50);"><i class="bi bi-currency-dollar" style="color:var(--brand-600);"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:var(--brand-600);">Ticket Médio</div>
+            <div class="oracle-stat-val" style="font-size:.85rem;">{{ stats_inativos.ticket_medio | formatar_dinheiro }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#fef9c3;"><i class="bi bi-calendar-x" style="color:#b45309;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#b45309;">Média Dias</div>
+            <div class="oracle-stat-val">{{ "%.0f"|format(stats_inativos.dias_sem_pedido or 0) }}d</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-4">
+      <div class="dist-bar">
+        <div class="segment" style="background:#16a34a;width:{{ stats_inativos.perc_liberados or 0 }}%;">
+          {{ stats_inativos.perc_liberados or 0 }}%
+        </div>
+        <div class="segment" style="background:#dc2626;width:{{ stats_inativos.perc_inadimplentes or 0 }}%;">
+          {{ stats_inativos.perc_inadimplentes or 0 }}%
+        </div>
+        <div class="segment" style="background:#94a3b8;width:{{ stats_inativos.perc_sem_conceito or 0 }}%;">
+          {{ stats_inativos.perc_sem_conceito or 0 }}%
+        </div>
+      </div>
+      <div class="d-flex gap-4 mt-2" style="font-size:.72rem;color:var(--text-2);">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#16a34a;margin-right:4px;"></span>Liberados</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#dc2626;margin-right:4px;"></span>Inadimplentes</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#94a3b8;margin-right:4px;"></span>Sem Conceito</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if aba == 'inativos' and stats_televendas %}
+<div class="panel-card mb-3">
+  <div class="panel-header">
+    <i class="bi bi-people"></i>
+    <span>Produtividade Televendas (Hoje/7 dias/30 dias)</span>
+  </div>
+  <div class="panel-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th class="px-3 py-2">Televendas</th>
+            <th class="px-3 py-2 text-center">Hoje</th>
+            <th class="px-3 py-2 text-center">7 dias</th>
+            <th class="px-3 py-2 text-center">30 dias</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in stats_televendas %}
+          <tr {% if current_user.id == t.usuario_id %}style="background:rgba(37,99,235,.06);" {% endif %}>
+            <td class="px-3 py-2 fw-semibold">{{ t.nome }}</td>
+            <td class="px-3 py-2 text-center"><span class="badge-count">{{ t.ligacoes_hoje }}</span></td>
+            <td class="px-3 py-2 text-center">{{ t.ligacoes_semana }}</td>
+            <td class="px-3 py-2 text-center">{{ t.ligacoes_mes }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ============================================================
+     PAINEL DE ESTATÍSTICAS PROXIMOS INATIVAÇÃO
+     ============================================================ -->
+{% if aba == 'proximos_inativacao' and stats_proximos is defined and stats_proximos %}
+<div class="panel-card mt-3" style="border-left:4px solid #d97706;">
+  <div class="panel-body">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 class="mb-0 fw-bold" style="color:#b45309;">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Clientes próximos de inativação – 151 a 180 dias sem pedido
+      </h6>
+      <span class="badge" style="background:#d97706;color:#fff;">{{ total_proximos }} clientes</span>
+    </div>
+    <div class="row g-3 text-center">
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat-card">
+          <div class="oracle-stat-value" style="color:#16a34a;">{{ stats_proximos.liberados }}</div>
+          <div class="oracle-stat-label">Liberados</div>
+          <div class="oracle-stat-perc">{{ stats_proximos.perc_liberados }}%</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat-card">
+          <div class="oracle-stat-value" style="color:#dc2626;">{{ stats_proximos.inadimplentes }}</div>
+          <div class="oracle-stat-label">Inadimplentes</div>
+          <div class="oracle-stat-perc">{{ stats_proximos.perc_inadimplentes }}%</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat-card">
+          <div class="oracle-stat-value" style="color:var(--brand-700);">{{ stats_proximos.ticket_medio | formatar_dinheiro }}</div>
+          <div class="oracle-stat-label">Ticket Médio</div>
+          <div class="oracle-stat-perc">&nbsp;</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat-card">
+          <div class="oracle-stat-value" style="color:#b45309;">{{ stats_proximos.dias_sem_pedido }}d</div>
+          <div class="oracle-stat-label">Média Dias Sem Pedido</div>
+          <div class="oracle-stat-perc"><small class="text-muted">Inativa em &lt;{{ 181 - stats_proximos.dias_sem_pedido }}d avg</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ============================================================
      BUSCA + FILTROS
      ============================================================ -->
 <form method="get" action="{{ url_for('meus_clientes') }}" class="search-bar">
@@ -960,11 +1337,12 @@ code {
       <select class="form-select" name="filtro" onchange="this.form.submit()">
         <option value="">Todos</option>
         <option value="antigos"  {% if request.args.get('filtro') == 'antigos'  %}selected{% endif %}>+30 dias sem contato</option>
-        <option value="recentes" {% if request.args.get('filtro') == 'recentes' %}selected{% endif %}>Recentes (≤7 dias)</option>
+        <option value="recentes" {% if request.args.get('filtro') == 'recentes' %}selected{% endif %}>Recentes (â‰¤7 dias)</option>
       </select>
     </div>
     {% endif %}
 
+    {% if aba not in ('oracle', 'inativos', 'proximos_inativacao') and not usar_vista_agrupada|default(false) %}
     <div class="col-md-3">
       <select id="filtroOrigem" class="form-select" onchange="filtrarPorOrigem()">
         <option value="">Origem: todas</option>
@@ -972,6 +1350,7 @@ code {
         <option value="importado_csv">Origem: importado</option>
       </select>
     </div>
+    {% endif %}
 
     <div class="col-12 text-end">
       <button type="submit" class="btn btn-primary btn-sm">
@@ -982,10 +1361,85 @@ code {
 </form>
 
 <!-- ============================================================
-     LISTA DE REPRESENTANTES (aba oracle)
+     LISTA AGRUPADA (oracle por representante / inativos por UF)
      ============================================================ -->
-{% if aba == 'oracle' %}
+{% if aba in ('oracle', 'inativos', 'proximos_inativacao') or usar_vista_agrupada|default(false) %}
 <div class="mt-2">
+  <div class="panel-card" style="overflow:visible;">
+    <div class="panel-body" style="padding-bottom:0;">
+      <div class="modern-tabs nav">
+        {% if current_user.tipo == 'consultor' %}
+        <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
+          <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
+        </a>
+        <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
+          <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
+        </a>
+        <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
+          <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
+        </a>
+        <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+          <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
+        </a>
+        <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+          <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
+          {% if total_retornar and total_retornar > 0 %}
+          <i class="bi bi-dot tab-alert"></i>
+          {% endif %}
+        </a>
+        {% elif current_user.tipo == 'televendas' %}
+        <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
+          <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
+        </a>
+        <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
+          <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
+        </a>
+        <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+          <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
+        </a>
+        <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+          <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
+          {% if total_retornar and total_retornar > 0 %}
+          <i class="bi bi-dot tab-alert"></i>
+          {% endif %}
+        </a>
+        {% else %}
+        <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
+          <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
+        </a>
+        <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
+          <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
+        </a>
+        <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
+          <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
+        </a>
+        <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+          <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
+        </a>
+        <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+          <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
+          {% if total_retornar and total_retornar > 0 %}
+          <i class="bi bi-dot tab-alert"></i>
+          {% endif %}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="quick-action-bar d-flex flex-wrap align-items-center gap-2">
+    <button class="btn btn-primary btn-sm" onclick="ligarProximoCliente()">
+      <i class="bi bi-telephone-outbound me-1"></i>Ligar proximo
+    </button>
+    <button class="btn btn-outline-danger btn-sm" onclick="filtrarClientesCriticos()">
+      <i class="bi bi-exclamation-triangle me-1"></i>Filtrar criticos
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltroCriticos()">
+      <i class="bi bi-funnel me-1"></i>Limpar filtro
+    </button>
+    <span class="quick-action-info ms-auto" id="quickActionInfo">Mostrando todos os clientes</span>
+  </div>
+
   {% if representantes %}
     {% for representante_nome, dados in representantes %}
     <div class="rep-card">
@@ -997,9 +1451,19 @@ code {
             <i class="bi bi-person-workspace"></i>
           </div>
           <div>
-            <div class="rep-name">{{ representante_nome }}</div>
+            <div class="rep-name">
+              {% if aba == 'inativos' %}
+                {{ representante_nome }}
+              {% else %}
+                {{ representante_nome }}
+              {% endif %}
+            </div>
             <div class="rep-meta">
               <span class="rep-badge">{{ dados.total_clientes }} cliente{% if dados.total_clientes != 1 %}s{% endif %}</span>
+              {% if aba == 'inativos' %}
+              <span class="rep-badge"><i class="bi bi-check-circle me-1"></i>{{ dados.liberados }} liberados</span>
+              <span class="rep-badge"><i class="bi bi-exclamation-triangle me-1"></i>{{ dados.inadimplentes }} inad.</span>
+              {% endif %}
               {% if dados.consultores_internos %}
               <span class="rep-badge">
                 <i class="bi bi-people me-1"></i>{{ dados.consultores_internos|length }} consultor{% if dados.consultores_internos|length != 1 %}es{% endif %}
@@ -1017,12 +1481,12 @@ code {
         <!-- Métricas rápidas -->
         <div class="rep-metrics">
           <div class="metric-item">
-            <div class="metric-icon">✅</div>
+            <div class="metric-icon">OK</div>
             <div class="metric-label">Liberados</div>
             <div class="metric-value" style="color:#16a34a;">{{ dados.liberados }}</div>
           </div>
           <div class="metric-item">
-            <div class="metric-icon">❌</div>
+            <div class="metric-icon">X</div>
             <div class="metric-label">Inadimplentes</div>
             <div class="metric-value" style="color:#dc2626;">{{ dados.inadimplentes }}</div>
           </div>
@@ -1032,7 +1496,7 @@ code {
             <div class="metric-value">{{ dados.ticket_medio | formatar_dinheiro }}</div>
           </div>
           <div class="metric-item">
-            <div class="metric-icon">📅</div>
+            <div class="metric-icon"><i class="bi bi-calendar3"></i></div>
             <div class="metric-label">Dias Médios</div>
             <div class="metric-value">{{ "%.0f"|format(dados.dias_medio) }}d</div>
           </div>
@@ -1057,95 +1521,172 @@ code {
                 <th style="width:13%">CNPJ</th>
                 <th style="width:13%">Telefone</th>
                 <th style="width:10%">Status</th>
-                <th style="width:13%">Consultor Oracle</th>
-                <th style="width:10%">Último Pedido</th>
+                <th style="width:13%">{% if aba == 'inativos' %}Centralizadora{% else %}Consultor Oracle{% endif %}</th>
+                <th style="width:10%">Ultimo Pedido</th>
+                {% if aba == 'proximos_inativacao' %}
+                <th style="width:10%">Inativa em</th>
+                {% endif %}
                 <th style="width:9%">Valor (365d)</th>
                 <th style="width:8%">Ações</th>
               </tr>
             </thead>
             <tbody>
               {% for c in dados.clientes %}
-              <tr class="{% if c.conceito == 'INADIMPLENTE' %}row-inadimplente{% elif c.conceito == 'LIBERADO' %}row-liberado{% endif %}">
+              <tr
+                class="{% if c.conceito == 'INADIMPLENTE' %}row-inadimplente{% elif c.conceito == 'LIBERADO' %}row-liberado{% endif %}"
+                data-cliente-id="{{ c.id if c.id else '' }}"
+                data-cd-cliente-oracle="{{ c.cd_cliente_oracle or '' }}"
+                data-total-ligacoes="{{ c.total_ligacoes or 0 }}"
+                data-tem-telefone="{{ '1' if (c.telefone or c.telefone2) else '0' }}"
+                data-valor="{{ (c.valor_total_365dias or c.valor_ultimo_pedido or 0) }}"
+                data-ultima-ligacao="{{ c.ultima_ligacao.strftime('%Y-%m-%d %H:%M:%S') if c.ultima_ligacao else '' }}"
+                data-proxima-ligacao="{{ c.proxima_ligacao.strftime('%Y-%m-%d %H:%M:%S') if c.proxima_ligacao else '' }}"
+                data-retorno-atrasado="0"
+              >
                 <td class="col-cliente">
                   <div class="fw-bold oracle-cliente-main" style="color:var(--text-1);">{{ c.nome }}</div>
                   <div class="oracle-cliente-meta">
                     <div class="oracle-cliente-meta-row">
                       <span class="oracle-cliente-meta-item">
-                        <i class="bi bi-geo-alt"></i>{{ c.municipio or '—' }}{% if c.uf %}/{{ c.uf }}{% endif %}
+                        <i class="bi bi-geo-alt"></i>{{ c.municipio or '-' }}{% if c.uf %}/{{ c.uf }}{% endif %}
                       </span>
                       <span class="oracle-cliente-meta-item">
-                        <i class="bi bi-person-lines-fill"></i>Contato: {{ c.contato or '—' }}
+                        <i class="bi bi-person-lines-fill"></i>Contato: {{ c.contato or '-' }}
                       </span>
                     </div>
+                    {% if aba == 'inativos' and c.ultima_ligacao_por %}
+                    <div class="oracle-cliente-meta-row">
+                      <span class="oracle-cliente-meta-item">
+                        <i class="bi bi-telephone-outbound"></i>Ultima ligacao por: {{ c.ultima_ligacao_por }}
+                      </span>
+                    </div>
+                    {% endif %}
                   </div>
                 </td>
-                <td class="col-cnpj"><code>{{ c.cnpj or '—' }}</code></td>
+                <td class="col-cnpj"><code>{{ c.cnpj or '-' }}</code></td>
                 <td class="col-telefone">
                   {% if c.telefone %}
                   <div class="contact-inline">
-                    <a href="tel:{{ c.telefone }}" class="tel-link">
+                    <a href="#" class="tel-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ c.telefone|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'telefone' }); return false;">
                       <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
                     </a>
-                    <a href="#" class="wa-link" onclick="abrirWhatsApp('{{ (c.telefone or c.telefone2)|e }}', '{{ c.nome|e }}'); return false;" title="Chamar no WhatsApp">
+                    <a href="#" class="wa-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ (c.telefone or c.telefone2)|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'whatsapp' }); return false;" title="Chamar no WhatsApp">
                       <i class="bi bi-whatsapp"></i>
                     </a>
                   </div>
                   {% elif c.telefone2 %}
                   <div class="contact-inline">
-                    <a href="tel:{{ c.telefone2 }}" class="tel-link">
+                    <a href="#" class="tel-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ c.telefone2|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'telefone' }); return false;">
                       <i class="bi bi-telephone-fill"></i> {{ c.telefone2 }}
                     </a>
-                    <a href="#" class="wa-link" onclick="abrirWhatsApp('{{ (c.telefone or c.telefone2)|e }}', '{{ c.nome|e }}'); return false;" title="Chamar no WhatsApp">
+                    <a href="#" class="wa-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ (c.telefone or c.telefone2)|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'whatsapp' }); return false;" title="Chamar no WhatsApp">
                       <i class="bi bi-whatsapp"></i>
                     </a>
                   </div>
                   {% else %}
-                  <span style="color:var(--text-3);">—</span>
+                  <span style="color:var(--text-3);">-</span>
                   {% endif %}
                 </td>
                 <td class="col-status">
-                  {% if c.conceito == 'LIBERADO' %}
-                  <span class="badge-liberado">✓ Liberado</span>
-                  {% elif c.conceito == 'INADIMPLENTE' %}
-                  <span class="badge-inadimplente">! Inad.</span>
-                  {% else %}
-                  <span class="badge-semconceito">? S/C</span>
-                  {% endif %}
+                  <div style="display:flex;align-items:center;gap:6px;justify-content:flex-start;">
+                    {% if c.conceito == 'LIBERADO' %}
+                    <span class="badge-liberado">Liberado</span>
+                    {% elif c.conceito == 'INADIMPLENTE' %}
+                    <span class="badge-inadimplente">! Inad.</span>
+                    {% else %}
+                    <span class="badge-semconceito">S/C</span>
+                    {% endif %}
+                    {% if c.em_atendimento_ativo %}
+                    <span class="js-atendimento-indicator" title="Em atendimento por {{ c.em_atendimento_por_nome or 'Outro usuario' }}">
+                      <i class="bi bi-telephone-fill" style="font-size:.72rem;color:#dc2626;"></i>
+                    </span>
+                    {% endif %}
+                  </div>
                 </td>
-                <td class="col-consultor"><small style="color:var(--text-2);">{{ c.categoria_consultor or '—' }}</small></td>
+                <td class="col-consultor">
+                  <small style="color:var(--text-2);">
+                    {% if aba == 'inativos' %}
+                      {{ c.centralizadora or '-' }}
+                    {% else %}
+                      {{ c.categoria_consultor or '-' }}
+                    {% endif %}
+                  </small>
+                </td>
                 <td class="col-pedido">
                   {% if c.ultimo_pedido_oracle %}
                   <span style="font-size:.8rem;">{{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}</span>
                   {% else %}
-                  <span style="color:var(--text-3);">—</span>
+                  <span style="color:var(--text-3);">-</span>
                   {% endif %}
                 </td>
+                {% if aba == 'proximos_inativacao' %}
+                <td class="col-inativa-em">
+                  <div style="display:flex;flex-direction:column;gap:2px;">
+                    <span class="badge" style="background:#fff4e5;color:#9a3412;border:1px solid #fed7aa;width:fit-content;">
+                      {{ c.dias_para_inativar or 0 }}d
+                    </span>
+                    <small style="color:var(--text-2);">
+                      {{ c.data_prevista_inativacao.strftime('%d/%m/%Y') if c.data_prevista_inativacao else '-' }}
+                    </small>
+                  </div>
+                </td>
+                {% endif %}
                 <td class="col-valor">
                   {% if c.valor_total_365dias %}
                   <div class="valor-principal" style="color:var(--brand-700);">{{ c.valor_total_365dias | formatar_dinheiro }}</div>
                   {% elif c.valor_ultimo_pedido %}
                   <div class="valor-principal" style="color:#ca8a04;">{{ c.valor_ultimo_pedido | formatar_dinheiro }}</div>
                   {% else %}
-                  <span style="color:var(--text-3);">—</span>
+                  <span style="color:var(--text-3);">-</span>
                   {% endif %}
                 </td>
                 <td class="col-acoes">
                   <div class="d-flex gap-1">
+                    {% if c.id or c.cd_cliente_oracle %}
                     <button class="action-btn btn btn-outline-secondary"
-                            onclick="detalhesClienteOracle({{ c.id }})"
+                            onclick="detalhesClienteOracle({{ c.id if c.id else 'null' }}, '{{ c.cd_cliente_oracle|e }}')"
                             title="Ver Detalhes Oracle">
                       <i class="bi bi-eye"></i>
                     </button>
+                    {% if c.id %}
                     <button class="action-btn btn btn-primary"
                             onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
-                            title="Registrar Ligação">
+                            title="Registrar Ligacao">
                       <i class="bi bi-telephone-plus"></i>
                     </button>
                     {% if c.total_ligacoes > 0 %}
                     <button class="action-btn btn btn-outline-secondary"
                             onclick="historico({{ c.id }})"
-                            title="Histórico">
+                            title="Historico">
                       <i class="bi bi-clock-history"></i>
+                    </button>
+                    {% endif %}
+                    {% else %}
+                    <button class="action-btn btn btn-primary"
+                            onclick="garantirClienteLocalEAbrirForm({
+                              cd_cliente_oracle: '{{ c.cd_cliente_oracle|e }}',
+                              nome: '{{ c.nome|e }}',
+                              telefone: '{{ (c.telefone or '')|e }}',
+                              telefone2: '{{ (c.telefone2 or '')|e }}',
+                              cnpj: '{{ (c.cnpj or '')|e }}',
+                              representante_nome: '{{ (c.representante_nome or '')|e }}',
+                              categoria_consultor: '{{ (c.categoria_consultor or '')|e }}',
+                              conceito: '{{ (c.conceito or '')|e }}',
+                              municipio: '{{ (c.municipio or '')|e }}',
+                              uf: '{{ (c.uf or '')|e }}',
+                              contato: '{{ (c.contato or '')|e }}',
+                              representante_oracle: '{{ (c.representante_oracle or '')|e }}'
+                            })"
+                            title="Registrar Ligacao">
+                      <i class="bi bi-telephone-plus"></i>
+                    </button>
+                    {% endif %}
+                    {% else %}
+                    <button class="action-btn btn btn-outline-secondary" disabled title="Cliente sem código Oracle">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="action-btn btn btn-primary" disabled title="Cliente sem vinculo local">
+                      <i class="bi bi-telephone-plus"></i>
                     </button>
                     {% endif %}
                   </div>
@@ -1162,15 +1703,20 @@ code {
   {% else %}
     <div class="empty-state">
       <i class="bi bi-inbox"></i>
+      {% if aba == 'inativos' %}
+      <p class="fw-semibold">Nenhum cliente inativo encontrado</p>
+      <small>Verifique os filtros ou se há clientes com 181 dias a 2 anos sem pedido</small>
+      {% else %}
       <p class="fw-semibold">Nenhum cliente Oracle encontrado</p>
       <small>Verifique os filtros ou a sincronização com Oracle</small>
+      {% endif %}
     </div>
   {% endif %}
 </div>
 
 {% else %}
 <!-- ============================================================
-     TABELA PADRÃO (abas pendentes / contatados / retornar)
+     TABELA PADRÃƒO (abas pendentes / contatados / retornar)
      ============================================================ -->
      
 <!-- Notificação simples usando total_retornar -->
@@ -1195,23 +1741,59 @@ code {
   <div class="panel-body" style="padding-bottom:0;">
     <!-- Tabs modernas -->
     <div class="modern-tabs nav">
-      <a class="nav-link {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
-        <i class="bi bi-clock me-1"></i>Pendentes <span class="ms-1" style="font-size:.7rem;opacity:.7;">({{ total_pendentes }})</span>
+      {% if current_user.tipo == 'televendas' %}
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
+        <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
-      <a class="nav-link {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
-        <i class="bi bi-check2-circle me-1"></i>Contatados <span class="ms-1" style="font-size:.7rem;opacity:.7;">({{ total_contatados }})</span>
+      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
+        <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
       </a>
-      <a class="nav-link {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
-        <i class="bi bi-arrow-return-right me-1"></i>Retornar 
-        <span class="ms-1" style="font-size:.7rem;opacity:.7;">({{ total_retornar }})</span>
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+        <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
+      </a>
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+        <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
         {% if total_retornar and total_retornar > 0 %}
-        <i class="bi bi-dot text-warning ms-1" style="font-size:0.6rem;"></i>
+        <i class="bi bi-dot tab-alert"></i>
         {% endif %}
       </a>
-      <a class="nav-link oracle-tab {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
-        <i class="bi bi-database me-1"></i>Sem Pedido 90–120d <span class="ms-1" style="font-size:.7rem;opacity:.8;">({{ total_oracle }})</span>
+      {% else %}
+      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
+        <i class="bi bi-clock"></i><span class="tab-label">Pendentes</span><span class="tab-count">{{ total_pendentes }}</span>
       </a>
+      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
+        <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
+      </a>
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
+        <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
+      </a>
+      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
+        <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
+      </a>
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+        <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
+      </a>
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+        <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
+        {% if total_retornar and total_retornar > 0 %}
+        <i class="bi bi-dot tab-alert"></i>
+        {% endif %}
+      </a>
+      {% endif %}
     </div>
+  </div>
+
+  <div class="quick-action-bar d-flex flex-wrap align-items-center gap-2">
+    <button class="btn btn-primary btn-sm" onclick="ligarProximoCliente()">
+      <i class="bi bi-telephone-outbound me-1"></i>Ligar proximo
+    </button>
+    <button class="btn btn-outline-danger btn-sm" onclick="filtrarClientesCriticos()">
+      <i class="bi bi-exclamation-triangle me-1"></i>Filtrar criticos
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltroCriticos()">
+      <i class="bi bi-funnel me-1"></i>Limpar filtro
+    </button>
+    <span class="quick-action-info ms-auto" id="quickActionInfo">Mostrando todos os clientes</span>
   </div>
 
   <!-- Tabela de clientes -->
@@ -1224,7 +1806,7 @@ code {
           <th>Telefone</th>
           <th>Representante</th>
           {% if aba != 'pendentes' %}
-          <th>Última Ligação</th>
+          <th>Ultima Ligacao</th>
           {% endif %}
           {% if aba == 'retornar' %}
           <th>Próximo Contato</th>
@@ -1236,7 +1818,17 @@ code {
       <tbody id="tbodyClientes">
       {% if clientes %}
         {% for c in clientes %}
-        <tr data-origem="{{ c.origem or '' }}">
+        <tr
+          data-origem="{{ c.origem or '' }}"
+          data-cliente-id="{{ c.id if c.id else '' }}"
+          data-cd-cliente-oracle="{{ c.cd_cliente_oracle or '' }}"
+          data-total-ligacoes="{{ c.total_ligacoes or 0 }}"
+          data-tem-telefone="{{ '1' if (c.telefone or c.telefone2) else '0' }}"
+          data-valor="{{ (c.valor_total_365dias or c.valor_ultimo_pedido or 0) }}"
+          data-ultima-ligacao="{{ c.ultima_ligacao.strftime('%Y-%m-%d %H:%M:%S') if c.ultima_ligacao else '' }}"
+          data-proxima-ligacao="{{ c.proxima_ligacao.strftime('%Y-%m-%d %H:%M:%S') if c.proxima_ligacao else '' }}"
+          data-retorno-atrasado="{{ '1' if (c.proxima_ligacao and c.proxima_ligacao < now()) else '0' }}"
+        >
           <td>
             <div class="fw-bold" style="font-size:.84rem;color:var(--text-1);">{{ c.nome }}</div>
             <div class="mt-1 d-flex gap-1">
@@ -1247,34 +1839,34 @@ code {
               {% endif %}
             </div>
           </td>
-          <td><code>{{ c.cnpj or '—' }}</code></td>
+          <td><code>{{ c.cnpj or '-' }}</code></td>
           <td>
             {% if c.telefone %}
             <div class="contact-inline">
-              <a href="tel:{{ c.telefone }}" class="tel-link">
+              <a href="#" class="tel-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ c.telefone|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'telefone' }); return false;">
                 <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
               </a>
-              <a href="#" class="wa-link" onclick="abrirWhatsApp('{{ (c.telefone or c.telefone2)|e }}', '{{ c.nome|e }}'); return false;" title="Chamar no WhatsApp">
+              <a href="#" class="wa-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ (c.telefone or c.telefone2)|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'whatsapp' }); return false;" title="Chamar no WhatsApp">
                 <i class="bi bi-whatsapp"></i>
               </a>
             </div>
             {% elif c.telefone2 %}
             <div class="contact-inline">
-              <a href="tel:{{ c.telefone2 }}" class="tel-link">
+              <a href="#" class="tel-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ c.telefone2|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'telefone' }); return false;">
                 <i class="bi bi-telephone-fill"></i> {{ c.telefone2 }}
               </a>
-              <a href="#" class="wa-link" onclick="abrirWhatsApp('{{ (c.telefone or c.telefone2)|e }}', '{{ c.nome|e }}'); return false;" title="Chamar no WhatsApp">
+              <a href="#" class="wa-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ (c.telefone or c.telefone2)|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'whatsapp' }); return false;" title="Chamar no WhatsApp">
                 <i class="bi bi-whatsapp"></i>
               </a>
             </div>
-            {% else %}—{% endif %}
+            {% else %}-{% endif %}
           </td>
-          <td><small style="color:var(--text-2);">{{ c.representante_nome or '—' }}</small></td>
+          <td><small style="color:var(--text-2);">{{ c.representante_nome or '-' }}</small></td>
           {% if aba != 'pendentes' %}
           <td>
             {% if c.ultima_ligacao %}
             <span style="font-size:.8rem;">{{ c.ultima_ligacao.strftime('%d/%m/%Y %H:%M') }}</span>
-            {% else %}—{% endif %}
+            {% else %}-{% endif %}
           </td>
           {% endif %}
           {% if aba == 'retornar' %}
@@ -1289,7 +1881,7 @@ code {
             {% else %}
             <span style="font-size:.8rem;">{{ c.proxima_ligacao.strftime('%d/%m/%Y %H:%M') }}</span>
             {% endif %}
-            {% else %}—{% endif %}
+            {% else %}-{% endif %}
           </td>
           {% endif %}
           <td>
@@ -1297,6 +1889,11 @@ code {
           </td>
           <td>
             <div class="d-flex gap-1">
+              <button class="action-btn btn btn-outline-secondary"
+                      onclick="abrirDetalhesClienteComSync({{ c.id }}, '{{ (c.cd_cliente_oracle or '')|e }}', '{{ (c.cnpj or '')|e }}')"
+                      title="Ver Detalhes Oracle">
+                <i class="bi bi-eye"></i>
+              </button>
               <button class="action-btn btn btn-primary"
                       onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
                       title="Registrar Ligação">
@@ -1335,7 +1932,7 @@ code {
 {% endif %}
 
 <!-- ============================================================
-     MODAL: REGISTRAR LIGAÇÃO
+     MODAL: REGISTRAR LIGAÃ‡ÃƒO
      ============================================================ -->
 <div class="modal fade" id="modalLigacao" tabindex="-1">
   <div class="modal-dialog modal-lg">
@@ -1435,7 +2032,7 @@ code {
 </div>
 
 <!-- ============================================================
-     MODAL: HISTÓRICO
+     MODAL: HISTÃ“RICO
      ============================================================ -->
 <div class="modal fade" id="modalHistorico" tabindex="-1">
   <div class="modal-dialog modal-lg">
@@ -1452,7 +2049,7 @@ code {
 </div>
 
 <!-- ============================================================
-     MODAL: EDITAR OBSERVAÇÃO
+     MODAL: EDITAR OBSERVAÃ‡ÃƒO
      ============================================================ -->
 <div class="modal fade" id="modalEditarObs" tabindex="-1">
   <div class="modal-dialog">
@@ -1477,7 +2074,7 @@ code {
 </div>
 
 <!-- ============================================================
-     MODAL: EDITAR LIGAÇÃO COMPLETA
+     MODAL: EDITAR LIGAÃ‡ÃƒO COMPLETA
      ============================================================ -->
 <div class="modal fade" id="modalEditarLigacao" tabindex="-1">
   <div class="modal-dialog">
@@ -1534,7 +2131,7 @@ code {
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <p class="text-muted">Isso irá inativar todos os clientes do consultor selecionado. Deseja continuar?</p>
+        <p class="text-muted">Isso irá inativar todos os clientes do consultor selecionado. Deseja continuar</p>
         <select class="form-select" id="consultorLimpar">
           {% for u in consultores or [] %}
           <option value="{{ u.id }}">{{ u.nome }}</option>
@@ -1568,15 +2165,29 @@ code {
             <input type="text" class="form-control text-uppercase" id="novo_nome" required style="text-transform:uppercase;">
           </div>
           <div class="row g-2">
-            <div class="col-md-6">
+            <div class="col-md-8">
               <label class="form-label">CNPJ</label>
-              <input type="text" class="form-control" id="novo_cnpj" placeholder="00.000.000/0000-00">
+              <div class="input-group">
+                <input type="text" class="form-control" id="novo_cnpj" placeholder="00.000.000/0000-00">
+                <button type="button" class="btn btn-outline-secondary" id="btn_buscar_oracle_cnpj" onclick="buscarCnpjOracle()">
+                  Buscar no Oracle
+                </button>
+              </div>
+              <small id="novo_oracle_status" class="text-muted d-block mt-1"></small>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label">Telefone</label>
               <input type="text" class="form-control" id="novo_telefone" placeholder="(00) 00000-0000">
             </div>
           </div>
+          <input type="hidden" id="novo_cd_cliente_oracle">
+          <input type="hidden" id="novo_telefone2">
+          <input type="hidden" id="novo_representante_oracle">
+          <input type="hidden" id="novo_categoria_consultor">
+          <input type="hidden" id="novo_conceito">
+          <input type="hidden" id="novo_municipio">
+          <input type="hidden" id="novo_uf">
+          <input type="hidden" id="novo_contato">
           <div class="mt-3">
             <label class="form-label">Representante</label>
             <input type="text" class="form-control text-uppercase" id="novo_representante" style="text-transform:uppercase;">
@@ -1619,6 +2230,31 @@ let modalLimpar      = new bootstrap.Modal(document.getElementById('modalLimpar'
 let modalAdicionar   = new bootstrap.Modal(document.getElementById('modalAdicionar'));
 let modalEditarObs   = new bootstrap.Modal(document.getElementById('modalEditarObs'));
 let modalEditarLigacao = new bootstrap.Modal(document.getElementById('modalEditarLigacao'));
+const IS_SUPERVISOR = {{ 'true' if is_supervisor else 'false' }};
+
+function mostrarToastMensagem(msg, tipo = 'success') {
+  const id = 'toast-status-codex';
+  let el = document.getElementById(id);
+  if (!el) {
+    const wrap = document.createElement('div');
+    wrap.className = 'toast-container position-fixed top-0 end-0 p-3';
+    wrap.style.zIndex = '1200';
+    wrap.innerHTML = `
+      <div id="${id}" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body fw-semibold"></div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    el = document.getElementById(id);
+  }
+  const body = el.querySelector('.toast-body');
+  if (body) body.textContent = msg || 'Operacao concluida.';
+  el.classList.remove('text-bg-success', 'text-bg-danger', 'text-bg-primary');
+  el.classList.add(tipo === 'error' ? 'text-bg-danger' : (tipo === 'info' ? 'text-bg-primary' : 'text-bg-success'));
+  bootstrap.Toast.getOrCreateInstance(el, { delay: 2200 }).show();
+}
 
 // FECHAR POP-UP DE NOVIDADES
 async function fecharNovidades() {
@@ -1656,7 +2292,7 @@ function toggleCamposResultado() {
   boxRetorno.style.display = 'block';
 }
 
-// HISTÓRICO COM BOTÃO DE EDITAR
+// HISTÃ“RICO COM BOTÃƒO DE EDITAR
 function historico(id) {
   modalHistorico.show();
   fetch(`/historico-ligacoes/${id}`)
@@ -1699,7 +2335,7 @@ function historico(id) {
     });
 }
 
-// ABRIR MODAL DE EDIÇÃO COMPLETA
+// ABRIR MODAL DE EDIÃ‡ÃƒO COMPLETA
 async function editarLigacaoCompleta(ligacaoId) {
   try {
     const r = await fetch(`/api/detalhes-ligacao/${ligacaoId}`);
@@ -1718,6 +2354,34 @@ async function editarLigacaoCompleta(ligacaoId) {
   } catch (erro) {
     console.error('Erro:', erro);
     alert('Erro ao carregar dados da ligação');
+  }
+}
+
+async function garantirClienteLocalEAbrirForm(clienteOracle) {
+  try {
+    const r = await fetch('/garantir-cliente-local-oracle', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrf_token')
+      },
+      body: JSON.stringify(clienteOracle || {})
+    });
+
+    const data = await r.json();
+    if (!data.success || !data.cliente || !data.cliente.id) {
+      alert(data.message || 'Nao foi possivel preparar o cliente para ligacao.');
+      return;
+    }
+
+    abrirForm(
+      data.cliente.id,
+      data.cliente.nome || (clienteOracle && clienteOracle.nome) || 'Cliente',
+      data.cliente.telefone || (clienteOracle && (clienteOracle.telefone || clienteOracle.telefone2)) || ''
+    );
+  } catch (erro) {
+    console.error('Erro ao garantir cliente local:', erro);
+    alert('Erro ao preparar cliente para ligacao.');
   }
 }
 
@@ -1803,53 +2467,41 @@ async function salvarLigacao(e) {
   const j = await r.json();
   if (j.ok) { 
     modalLigacao.hide(); 
-    alert(j.mensagem || 'Ligação registrada!'); 
-    
-    // Salvar estado dos representantes expandidos antes de recarregar
-    const representantesExpandidos = [];
-    document.querySelectorAll('.rep-card .rep-header').forEach((header, index) => {
-      const div = document.getElementById(`representante-${index}`);
-      if (div && div.style.display !== 'none') {
-        representantesExpandidos.push(index);
-      }
-    });
-    
-    // Recarregar mantendo o estado
-    const url = new URL(window.location);
-    url.searchParams.set('reps_expandidos', representantesExpandidos.join(','));
-    
-    // Adicionar scroll para o representante mais próximo da posição atual
-    if (representantesExpandidos.length > 0) {
-      // Encontrar o representante mais próximo da posição atual da página
-      const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-      let closestRep = representantesExpandidos[0];
-      let minDistance = Math.abs(scrollPosition - (document.querySelector(`.rep-card:nth-child(${closestRep + 1})`)?.offsetTop || 0));
-      
-      representantesExpandidos.forEach(index => {
-        const repCard = document.querySelector(`.rep-card:nth-child(${index + 1})`);
-        if (repCard) {
-          const distance = Math.abs(scrollPosition - repCard.offsetTop);
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestRep = index;
-          }
-        }
-      });
-      
-      url.searchParams.set('scroll_to_rep', closestRep);
+    mostrarToastMensagem(j.mensagem || 'Ligacao registrada!', 'success');
+
+    const retornoAgendado = Boolean(payload.data_retorno || payload.dias_retorno);
+    if (ABA_ATUAL === 'inativos' || ABA_ATUAL === 'oracle') {
+      _removerClienteDaTela(id);
+      _ajustarContadorAba(ABA_ATUAL === 'inativos' ? 'Clientes Inativos' : 'Sem Pedido 90-120d', -1);
+      const abaDestino = retornoAgendado ? 'Retornar' : 'Contatados';
+      _ajustarContadorAba(abaDestino, +1);
+      _destacarAbaDestino(abaDestino);
+      atualizarInfoQuickActions();
+      return;
     }
-    
-    window.location.href = url.toString();
+
+    location.reload();
   }
   else       { alert(j.mensagem || 'Erro ao registrar ligação'); }
 }
 
 // Modal novo cliente
 function abrirModalAdicionar() {
+ativarMascaraCnpjNovoCliente();
   document.getElementById('novo_nome').value = '';
   document.getElementById('novo_cnpj').value = '';
   document.getElementById('novo_telefone').value = '';
   document.getElementById('novo_representante').value = '';
+  document.getElementById('novo_cd_cliente_oracle').value = '';
+  document.getElementById('novo_telefone2').value = '';
+  document.getElementById('novo_representante_oracle').value = '';
+  document.getElementById('novo_categoria_consultor').value = '';
+  document.getElementById('novo_conceito').value = '';
+  document.getElementById('novo_municipio').value = '';
+  document.getElementById('novo_uf').value = '';
+  document.getElementById('novo_contato').value = '';
+  const st = document.getElementById('novo_oracle_status');
+  if (st) st.textContent = '';
   {% if is_supervisor %}
   document.getElementById('novo_consultor').value = '';
   {% endif %}
@@ -1857,6 +2509,92 @@ function abrirModalAdicionar() {
 }
 
 function limpaDigitos(v) { return (v || '').replace(/\D+/g, ''); }
+
+function formatarCnpj(v) {
+  const d = limpaDigitos(v).slice(0, 14);
+  if (d.length <= 2) return d;
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+}
+
+function ativarMascaraCnpjNovoCliente() {
+  const el = document.getElementById('novo_cnpj');
+  if (!el || el.dataset.maskReady === '1') return;
+  el.dataset.maskReady = '1';
+  el.addEventListener('input', () => {
+    el.value = formatarCnpj(el.value);
+  });
+  el.addEventListener('blur', () => {
+    el.value = formatarCnpj(el.value);
+  });
+}
+
+async function buscarCnpjOracle() {
+  const cnpjInput = document.getElementById('novo_cnpj');
+  const statusEl = document.getElementById('novo_oracle_status');
+  const botao = document.getElementById('btn_buscar_oracle_cnpj');
+  const cnpj = limpaDigitos(cnpjInput.value);
+
+  if (!cnpj || cnpj.length < 11) {
+    if (statusEl) statusEl.textContent = 'Informe um CNPJ valido para buscar no Oracle.';
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = 'Buscando no Oracle...';
+  if (botao) botao.disabled = true;
+
+  try {
+    const r = await fetch('/clientes/preencher-oracle-cnpj', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ cnpj })
+    });
+    const j = await r.json();
+
+    if (!r.ok || !j.ok) {
+      if (statusEl) statusEl.textContent = j.mensagem || 'Erro ao consultar Oracle.';
+      return;
+    }
+
+    if (!j.encontrado) {
+      if (statusEl) statusEl.textContent = j.mensagem || 'CNPJ nao encontrado no Oracle.';
+      return;
+    }
+
+    const d = j.dados || {};
+    document.getElementById('novo_nome').value = (d.nome || '').toUpperCase();
+    document.getElementById('novo_cnpj').value = formatarCnpj(d.cnpj || cnpj);
+    document.getElementById('novo_telefone').value = d.telefone || d.telefone2 || '';
+    document.getElementById('novo_representante').value = (d.representante_nome || '').toUpperCase();
+    document.getElementById('novo_cd_cliente_oracle').value = d.cd_cliente_oracle || '';
+    document.getElementById('novo_telefone2').value = d.telefone2 || '';
+    document.getElementById('novo_representante_oracle').value = d.representante_oracle || '';
+    document.getElementById('novo_categoria_consultor').value = d.categoria_consultor || '';
+    document.getElementById('novo_conceito').value = d.conceito || '';
+    document.getElementById('novo_municipio').value = d.municipio || '';
+    document.getElementById('novo_uf').value = d.uf || '';
+    document.getElementById('novo_contato').value = d.contato || '';
+
+    {% if is_supervisor %}
+    const consultorSelect = document.getElementById('novo_consultor');
+    if (consultorSelect && d.consultor_id_sugerido) {
+      consultorSelect.value = String(d.consultor_id_sugerido);
+    }
+    {% endif %}
+
+    if (statusEl) {
+      const sufixo = d.consultor_nome_sugerido ? ` Consultor sugerido: ${d.consultor_nome_sugerido}.` : '';
+      statusEl.textContent = `Dados preenchidos a partir do Oracle.${sufixo}`;
+    }
+  } catch (erro) {
+    console.error('Erro ao buscar CNPJ no Oracle:', erro);
+    if (statusEl) statusEl.textContent = 'Erro ao consultar Oracle.';
+  } finally {
+    if (botao) botao.disabled = false;
+  }
+}
 
 async function salvarCliente(e) {
   e.preventDefault();
@@ -1866,7 +2604,15 @@ async function salvarCliente(e) {
     nome,
     cnpj: limpaDigitos(document.getElementById('novo_cnpj').value),
     telefone: limpaDigitos(document.getElementById('novo_telefone').value),
-    representante_nome: document.getElementById('novo_representante').value.trim().toUpperCase()
+    telefone2: limpaDigitos(document.getElementById('novo_telefone2').value),
+    representante_nome: document.getElementById('novo_representante').value.trim().toUpperCase(),
+    cd_cliente_oracle: document.getElementById('novo_cd_cliente_oracle').value.trim(),
+    representante_oracle: document.getElementById('novo_representante_oracle').value.trim(),
+    categoria_consultor: document.getElementById('novo_categoria_consultor').value.trim(),
+    conceito: document.getElementById('novo_conceito').value.trim(),
+    municipio: document.getElementById('novo_municipio').value.trim(),
+    uf: document.getElementById('novo_uf').value.trim(),
+    contato: document.getElementById('novo_contato').value.trim()
   };
   {% if is_supervisor %}
   const cons = document.getElementById('novo_consultor').value;
@@ -1884,11 +2630,55 @@ async function salvarCliente(e) {
 }
 
 function filtrarPorOrigem() {
-  const v    = document.getElementById('filtroOrigem').value;
-  const rows = document.querySelectorAll('#tbodyClientes tr');
+  const seletor = document.getElementById('filtroOrigem');
+  if (!seletor) return;
+  const v = seletor.value;
+  const rows = _linhasClientesTabela();
   rows.forEach(tr => {
     const o = tr.getAttribute('data-origem') || '';
     tr.style.display = (!v || v === o) ? '' : 'none';
+  });
+  atualizarInfoQuickActions();
+}
+
+function _ajustarContadorAba(rotulo, delta) {
+  if (!delta) return;
+  document.querySelectorAll('.modern-tabs .nav-link').forEach((link) => {
+    const label = link.querySelector('.tab-label');
+    const count = link.querySelector('.tab-count');
+    if (!label || !count) return;
+    if ((label.textContent || '').trim() !== rotulo) return;
+    const atual = parseInt((count.textContent || '0').replace(/\D+/g, ''), 10) || 0;
+    count.textContent = String(Math.max(0, atual + delta));
+  });
+}
+
+function _destacarAbaDestino(rotulo) {
+  document.querySelectorAll('.modern-tabs .nav-link').forEach((link) => {
+    const label = link.querySelector('.tab-label');
+    if (!label) return;
+    if ((label.textContent || '').trim() !== rotulo) return;
+    link.classList.add('shadow');
+    link.style.boxShadow = '0 0 0 3px rgba(37,99,235,.22), 0 8px 20px rgba(37,99,235,.25)';
+    setTimeout(() => {
+      link.classList.remove('shadow');
+      link.style.boxShadow = '';
+    }, 1400);
+  });
+}
+
+function _removerClienteDaTela(clienteId) {
+  const id = String(clienteId || '').trim();
+  if (!id) return;
+  const rows = Array.from(document.querySelectorAll(`tr[data-cliente-id="${id}"]`));
+  rows.forEach((row) => {
+    const tbody = row.closest('tbody');
+    row.remove();
+    if (!tbody) return;
+    const aindaTemClientes = tbody.querySelector('tr[data-cliente-id], tr[data-cd-cliente-oracle]');
+    if (!aindaTemClientes) {
+      tbody.innerHTML = "<tr><td colspan='8' class='text-center text-muted py-3'>Sem clientes neste grupo.</td></tr>";
+    }
   });
 }
 
@@ -1905,30 +2695,264 @@ function abrirWhatsApp(telefone, nomeCliente = '') {
   const numero = normalizarNumeroWhatsApp(telefone);
   if (!numero) {
     alert('Telefone inválido para WhatsApp.');
+    return false;
+  }
+
+  // Usa clique sintético em anchor para evitar bloqueio de popup.
+  const a = document.createElement('a');
+  a.href = `https://wa.me/${numero}`;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  return true;
+}
+
+const ABA_ATUAL = '{{ aba|e }}';
+
+async function reservarAtendimentoCliente(clienteId, { forcar = false, aba = '', cdClienteOracle = '' } = {}) {
+  const id = Number(clienteId);
+  if (!Number.isFinite(id) || id <= 0) return false;
+
+  try {
+    const r = await fetch(`/api/clientes/${id}/iniciar-contato`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrf_token')
+      },
+      body: JSON.stringify({
+        forcar: !!forcar,
+        aba: aba || '',
+        cd_cliente_oracle: (cdClienteOracle || '').toString().trim()
+      })
+    });
+
+    let j = {};
+    try {
+      j = await r.json();
+    } catch (_) {
+      return false;
+    }
+
+    if (!j.ok && j.bloqueado && !forcar) {
+      const msg = `${j.em_atendimento_por_nome || 'Outro usuario'} esta atendendo este cliente.\n\nDeseja assumir mesmo assim`;
+      if (confirm(msg)) {
+        return await reservarAtendimentoCliente(id, { forcar: true, aba, cdClienteOracle });
+      }
+      return false;
+    }
+
+    if (!j.ok) {
+      alert(j.mensagem || 'Nao foi possivel reservar o cliente.');
+      return false;
+    }
+
+    return j;
+  } catch (erro) {
+    console.warn('Nao foi possivel reservar atendimento:', erro);
+    return false;
+  }
+}
+
+function marcarEmAtendimentoNoDOM({ clienteId, cdClienteOracle = '', porNome = 'Outro usuario', ate = '' }) {
+  const id = Number(clienteId);
+  const seletorPorId = Number.isFinite(id) && id > 0 ? `tr[data-cliente-id="${id}"]` : null;
+  const seletorPorCd = cdClienteOracle ? `tr[data-cd-cliente-oracle="${cdClienteOracle}"]` : null;
+  const rows = [
+    ...(seletorPorId ? document.querySelectorAll(seletorPorId) : []),
+    ...(seletorPorCd ? document.querySelectorAll(seletorPorCd) : []),
+  ];
+  if (!rows.length) return;
+
+  rows.forEach((row) => atualizarIndicadorAtendimentoNaLinha(row, {
+    ativo: true,
+    por_nome: porNome,
+    ate
+  }));
+}
+
+function atualizarIndicadorAtendimentoNaLinha(row, lockInfo) {
+  if (!row) return;
+  const statusCell = row.querySelector('.col-status > div');
+  if (!statusCell) return;
+
+  let indicador = statusCell.querySelector('.js-atendimento-indicator');
+  if (!lockInfo || !lockInfo.ativo) {
+    if (indicador) indicador.remove();
     return;
   }
 
-  const texto = nomeCliente
-    ? `Olá ${nomeCliente}, tudo bem?`
-    : 'Olá, tudo bem?';
-  const url = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
-  window.open(url, '_blank', 'noopener,noreferrer');
+  const porNome = lockInfo.por_nome || 'Outro usuario';
+  const ate = lockInfo.ate || '';
+  if (!indicador) {
+    indicador = document.createElement('span');
+    indicador.className = 'js-atendimento-indicator';
+    indicador.innerHTML = '<i class="bi bi-telephone-fill" style="font-size:.72rem;color:#dc2626;"></i>';
+    statusCell.appendChild(indicador);
+  }
+  indicador.title = `Em atendimento por ${porNome}${ate ? ` ate ${ate}` : ''}`;
+}
+
+let _syncLocksInativosTimer = null;
+let _syncLocksInativosBusy = false;
+
+async function sincronizarIndicadoresInativos() {
+  if (ABA_ATUAL !== 'inativos') return;
+  if (_syncLocksInativosBusy) return;
+
+  const rows = Array.from(document.querySelectorAll('tr[data-cd-cliente-oracle]'))
+    .filter((row) => (row.getAttribute('data-cd-cliente-oracle') || '').trim().length > 0);
+  if (!rows.length) return;
+
+  const cds = Array.from(new Set(
+    rows.map((row) => (row.getAttribute('data-cd-cliente-oracle') || '').trim()).filter(Boolean)
+  ));
+  if (!cds.length) return;
+
+  _syncLocksInativosBusy = true;
+  try {
+    const r = await fetch('/api/inativos/locks', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrf_token')
+      },
+      body: JSON.stringify({ cds })
+    });
+    const j = await r.json();
+    if (!j || !j.ok) return;
+
+    const locks = j.locks || {};
+    rows.forEach((row) => {
+      const cd = (row.getAttribute('data-cd-cliente-oracle') || '').trim();
+      atualizarIndicadorAtendimentoNaLinha(row, cd ? (locks[cd] || null) : null);
+    });
+  } catch (erro) {
+    console.warn('Falha ao sincronizar locks dos inativos:', erro);
+  } finally {
+    _syncLocksInativosBusy = false;
+  }
+}
+
+function iniciarAutoSyncIndicadoresInativos() {
+  if (ABA_ATUAL !== 'inativos') return;
+  if (_syncLocksInativosTimer) return;
+
+  sincronizarIndicadoresInativos();
+  _syncLocksInativosTimer = setInterval(() => {
+    if (document.hidden) return;
+    sincronizarIndicadoresInativos();
+  }, 2000);
+}
+
+async function garantirClienteLocalOracle({ clienteId, cdClienteOracle, nomeCliente = '', telefone = '' }) {
+  const id = Number(clienteId);
+  if (Number.isFinite(id) && id > 0) return id;
+
+  const cd = (cdClienteOracle || '').toString().trim();
+  if (!cd) return null;
+
+  try {
+    const r = await fetch('/garantir-cliente-local-oracle', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrf_token')
+      },
+      body: JSON.stringify({
+        cd_cliente_oracle: cd,
+        nome: nomeCliente || `Cliente Oracle ${cd}`,
+        telefone: telefone || ''
+      })
+    });
+    const j = await r.json();
+    if (j && j.success && j.cliente && j.cliente.id) {
+      return Number(j.cliente.id);
+    }
+    return null;
+  } catch (erro) {
+    console.warn('Falha ao garantir cliente local:', erro);
+    return null;
+  }
+}
+
+async function iniciarContatoCliente({ clienteId, cdClienteOracle = '', telefone, nomeCliente = '', canal = 'telefone' }) {
+  const tel = (telefone || '').toString().trim();
+  if (!tel) {
+    alert('Telefone nao informado para este cliente.');
+    return false;
+  }
+
+  const confirmaMsg = canal === 'whatsapp'
+    ? 'Voce deseja iniciar uma conversa no WhatsApp'
+    : 'Voce deseja iniciar uma ligacao';
+  if (!confirm(confirmaMsg)) {
+    return false;
+  }
+
+  if (canal === 'whatsapp' && !normalizarNumeroWhatsApp(tel)) {
+    const tentarLigacao = confirm('Numero invalido para WhatsApp. Deseja tentar ligacao normal');
+    if (tentarLigacao) {
+      abrirCanalContato('telefone', tel, nomeCliente);
+    }
+    return false;
+  }
+
+  const idLocal = await garantirClienteLocalOracle({
+    clienteId,
+    cdClienteOracle,
+    nomeCliente,
+    telefone: tel
+  });
+  if (!idLocal) {
+    alert('Nao foi possivel preparar o cliente local para bloqueio de atendimento.');
+    return false;
+  }
+
+  const reservado = await reservarAtendimentoCliente(idLocal, {
+    forcar: false,
+    aba: ABA_ATUAL,
+    cdClienteOracle
+  });
+  if (!reservado) {
+    alert('Cliente em atendimento por outro usuario ou nao foi possivel reservar agora.');
+    return false;
+  }
+  marcarEmAtendimentoNoDOM({
+    clienteId: idLocal,
+    cdClienteOracle,
+    porNome: (reservado.em_atendimento_por_nome || nomeCliente || 'Outro usuario'),
+    ate: (reservado.em_atendimento_ate || ''),
+  });
+
+  if (canal === 'whatsapp') {
+    return abrirWhatsApp(tel, nomeCliente);
+  }
+
+  window.location.href = `tel:${tel}`;
+  return false;
 }
 
 function escaparAspasSimples(valor) {
   return (valor || '').toString().replace(/'/g, "\\'");
 }
 
-function renderContatoItem(telefone, nomeCliente = '') {
+function renderContatoItem(telefone, nomeCliente = '', clienteId = null, cdClienteOracle = '') {
   if (!telefone) return '';
   const tel = telefone.toString();
   const telEsc = escaparAspasSimples(tel);
   const nomeEsc = escaparAspasSimples(nomeCliente);
+  const clienteIdEsc = Number.isFinite(Number(clienteId)) ? Number(clienteId) : 'null';
+  const cdClienteOracleEsc = escaparAspasSimples(cdClienteOracle || '');
 
   return `
     <div class="contact-inline">
-      <a href="tel:${tel}" class="tel-link"><i class="bi bi-telephone-fill"></i> ${tel}</a>
-      <a href="#" class="wa-link" onclick="abrirWhatsApp('${telEsc}', '${nomeEsc}'); return false;" title="Chamar no WhatsApp">
+      <a href="#" class="tel-link" onclick="iniciarContatoCliente({ clienteId: ${clienteIdEsc}, cdClienteOracle: '${cdClienteOracleEsc}', telefone: '${telEsc}', nomeCliente: '${nomeEsc}', canal: 'telefone' }); return false;"><i class="bi bi-telephone-fill"></i> ${tel}</a>
+      <a href="#" class="wa-link" onclick="iniciarContatoCliente({ clienteId: ${clienteIdEsc}, cdClienteOracle: '${cdClienteOracleEsc}', telefone: '${telEsc}', nomeCliente: '${nomeEsc}', canal: 'whatsapp' }); return false;" title="Chamar no WhatsApp">
         <i class="bi bi-whatsapp"></i>
       </a>
     </div>
@@ -1936,7 +2960,7 @@ function renderContatoItem(telefone, nomeCliente = '') {
 }
 
 async function removerCliente(id, nome) {
-  const motivo = prompt(`Deseja realmente remover "${nome}"?\n\nMotivo (opcional):`);
+  const motivo = prompt(`Deseja realmente remover "${nome}"\n\nMotivo (opcional):`);
   if (motivo === null) return;
   try {
     const r = await fetch(`/remover-cliente/${id}`, {
@@ -1967,8 +2991,12 @@ function limparFiltroMesConsultor() {
   window.location.href = url.toString();
 }
 
-// CARREGAR DADOS DO MÊS SELECIONADO
+// CARREGAR DADOS DO MÃŠS SELECIONADO
 document.addEventListener('DOMContentLoaded', async function() {
+  iniciarAutoSyncIndicadoresInativos();
+  iniciarMonitorSyncOracle();
+  atualizarInfoQuickActions();
+
   const mesFiltro = '{{ mes_filtro }}';
   const anoFiltro = '{{ ano_filtro }}';
   if (mesFiltro && anoFiltro && mesFiltro !== 'None' && anoFiltro !== 'None') {
@@ -2018,6 +3046,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // BUSCA EM TEMPO REAL
 let buscaTimeout;
+let ultimoTermoBusca = null;
 const buscaInput = document.getElementById('buscaRapida');
 if (buscaInput) {
   buscaInput.addEventListener('input', function() {
@@ -2032,16 +3061,24 @@ if (buscaInput) {
 async function buscarClientesTempoReal(termo) {
   try {
     const aba = '{{ aba }}';
-    const apenas_meus = {{ 'true' if current_user.tipo == 'consultor' else 'false' }};
+    // Oracle/Inativos usam renderizacao server-side agrupada.
+    // Para essas abas, aplica busca via querystring preservando filtros atuais.
+    if (aba === 'oracle' || aba === 'inativos') {
+      if (ultimoTermoBusca === (termo || '')) return;
+      ultimoTermoBusca = termo || '';
+      const url = new URL(window.location.href);
+      url.searchParams.set('aba', aba);
+      if (termo) url.searchParams.set('q', termo);
+      else url.searchParams.delete('q');
+      window.location.href = url.toString();
+      return;
+    }
+    const apenas_meus = {{ 'true' if current_user.tipo in ('consultor', 'televendas') else 'false' }};
     const params = new URLSearchParams({ q: termo, aba, meus: apenas_meus ? '1' : '0' });
-    const response = await fetch(`/api/busca-clientes?${params}`);
+    const response = await fetch(`/api/busca-clientes${params}`);
     const data = await response.json();
     if (data.ok) {
-      if (aba === 'oracle') {
-        atualizarRepresentantesOracle(data.clientes);
-      } else {
-        atualizarTabelaClientes(data.clientes);
-      }
+      atualizarTabelaClientes(data.clientes);
     }
   } catch (error) { console.error('Erro ao buscar clientes:', error); }
 }
@@ -2050,37 +3087,58 @@ function atualizarTabelaClientes(clientes) {
   const tbody = document.getElementById('tbodyClientes');
   if (!clientes || clientes.length === 0) {
     tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="bi bi-inbox"></i><p class="fw-semibold mb-0">Nenhum cliente encontrado.</p></div></td></tr>';
+    atualizarInfoQuickActions();
     return;
   }
+  const toIsoFromBr = (valor) => {
+    if (!valor || typeof valor !== 'string') return '';
+    const m = valor.match(/^(\d{2})\/(\d{2})\/(\d{4})(?: (\d{2}):(\d{2}))?$/);
+    if (!m) return valor;
+    const hh = m[4] || '00';
+    const mm = m[5] || '00';
+    return `${m[3]}-${m[2]}-${m[1]} ${hh}:${mm}:00`;
+  };
+
   tbody.innerHTML = clientes.map(c => `
-    <tr data-origem="${c.origem || ''}">
+    <tr
+      data-origem="${c.origem || ''}"
+      data-cliente-id="${c.id || ''}"
+      data-cd-cliente-oracle="${c.cd_cliente_oracle || ''}"
+      data-total-ligacoes="${Number(c.total_ligacoes || 0)}"
+      data-tem-telefone="${(c.telefone || c.telefone2) ? '1' : '0'}"
+      data-valor="${Number(c.valor_total_365dias || c.valor_ultimo_pedido || 0)}"
+      data-ultima-ligacao="${toIsoFromBr(c.ultima_ligacao || '')}"
+      data-proxima-ligacao="${toIsoFromBr(c.proxima_ligacao || '')}"
+      data-retorno-atrasado="${c.retorno_atrasado ? '1' : '0'}"
+    >
       <td>
         <div class="fw-bold" style="font-size:.84rem;">${c.nome}</div>
         <div class="mt-1">
-          ${c.origem === 'manual'       ? '<span class="badge-manual">Manual</span>'    : ''}
-          ${c.origem === 'importado_csv'? '<span class="badge-importado">Importado</span>' : ''}
+          ${c.origem === 'manual' ? '<span class="badge-manual">Manual</span>' : ''}
+          ${c.origem === 'importado_csv' ? '<span class="badge-importado">Importado</span>' : ''}
         </div>
       </td>
-      <td><code>${c.cnpj || '—'}</code></td>
-      <td>${renderContatoItem(c.telefone || c.telefone2, c.nome) || '—'}</td>
-      <td><small style="color:var(--text-2);">${c.representante_nome || '—'}</small></td>
+      <td><code>${c.cnpj || '-'}</code></td>
+      <td>${renderContatoItem(c.telefone || c.telefone2, c.nome, c.id, c.cd_cliente_oracle) || '-'}</td>
+      <td><small style="color:var(--text-2);">${c.representante_nome || '-'}</small></td>
       {% if aba != 'pendentes' %}
-      <td style="font-size:.8rem;">${c.ultima_ligacao || '—'}</td>
+      <td style="font-size:.8rem;">${c.ultima_ligacao || '-'}</td>
       {% endif %}
       {% if aba == 'retornar' %}
       <td style="font-size:.8rem;">
         ${c.retorno_atrasado ? 
           `<span class="text-danger fw-bold">
             <i class="bi bi-exclamation-triangle-fill me-1"></i>
-            ${c.proxima_ligacao || '—'}
+            ${c.proxima_ligacao || '-'}
           </span>` : 
-          c.proxima_ligacao || '—'
+          c.proxima_ligacao || '-'
         }
       </td>
       {% endif %}
       <td><span class="badge-count">${c.total_ligacoes}</span></td>
       <td>
         <div class="d-flex gap-1">
+          <button class="action-btn btn btn-outline-secondary" onclick="abrirDetalhesClienteComSync(${c.id}, '${(c.cd_cliente_oracle || '').replace(/'/g,"\\'")}', '${(c.cnpj || '').replace(/'/g,"\\'")}')" title="Ver Detalhes Oracle"><i class="bi bi-eye"></i></button>
           <button class="action-btn btn btn-primary" onclick="abrirForm(${c.id}, '${c.nome.replace(/'/g,"\\'")}', '${c.telefone || ''}')" title="Registrar Ligação"><i class="bi bi-telephone-plus"></i></button>
           {% if aba != 'pendentes' %}
           <button class="action-btn btn btn-outline-secondary" onclick="historico(${c.id})" title="Histórico"><i class="bi bi-clock-history"></i></button>
@@ -2090,33 +3148,319 @@ function atualizarTabelaClientes(clientes) {
       </td>
     </tr>
   `).join('');
+
+  if (_filtroCriticosAtivo) aplicarFiltroCriticosTabela();
+  atualizarInfoQuickActions();
+
+  if (ABA_ATUAL === 'inativos') {
+    sincronizarIndicadoresInativos();
+  }
 }
 
-// SINCRONIZAÇÃO ORACLE
+let _filtroCriticosAtivo = false;
+
+function _linhasClientesTabela() {
+  return Array.from(
+    document.querySelectorAll(
+      '#tbodyClientes tr[data-cliente-id], #tbodyClientes tr[data-cd-cliente-oracle], .rep-table tbody tr[data-cliente-id], .rep-table tbody tr[data-cd-cliente-oracle]'
+    )
+  ).filter(r => !r.querySelector('.empty-state'));
+}
+
+function _linhaVisivel(row) {
+  return row.style.display !== 'none' && row.offsetParent !== null;
+}
+
+function atualizarInfoQuickActions() {
+  const info = document.getElementById('quickActionInfo');
+  if (!info) return;
+  const rows = _linhasClientesTabela();
+  const visiveis = rows.filter(_linhaVisivel).length;
+  info.textContent = _filtroCriticosAtivo
+    ? `Filtro criticos ativo: ${visiveis} cliente(s)`
+    : `Mostrando ${visiveis} cliente(s)`;
+}
+
+function ligarProximoCliente() {
+  const links = _linhasClientesTabela()
+    .filter(_linhaVisivel)
+    .map(r => r.querySelector('.tel-link'))
+    .filter(Boolean);
+  if (!links.length) {
+    alert('Nenhum cliente visivel com telefone para ligar.');
+    return;
+  }
+  links[0].click();
+}
+
+function _ehLinhaCritica(row) {
+  if (!row) return false;
+  return _avaliarCriticidadeLinha(row).critico;
+}
+
+function _parseDataLinha(valor) {
+  if (!valor) return null;
+  const normalizado = String(valor).trim().replace(' ', 'T');
+  const data = new Date(normalizado);
+  if (Number.isNaN(data.getTime())) return null;
+  return data;
+}
+
+function _avaliarCriticidadeLinha(row) {
+  const agora = new Date();
+  const texto = (row.textContent || '').toUpperCase();
+  const totalLigacoes = Number(row.dataset.totalLigacoes || 0);
+  const temTelefone = row.dataset.temTelefone === '1' || !!row.querySelector('.tel-link');
+  const valor = Number(row.dataset.valor || 0);
+  const retornoAtrasado = row.dataset.retornoAtrasado === '1' || !!row.querySelector('.bi-exclamation-triangle-fill');
+  const ultimaLigacao = _parseDataLinha(row.dataset.ultimaLigacao);
+  const proximaLigacao = _parseDataLinha(row.dataset.proximaLigacao);
+
+  let score = 0;
+  const motivos = [];
+
+  if (retornoAtrasado) {
+    score += 80;
+    motivos.push('retorno atrasado');
+  }
+  if (!temTelefone) {
+    score += 45;
+    motivos.push('sem telefone');
+  }
+
+  if (totalLigacoes === 0) {
+    if (valor >= 5000) {
+      score += 45;
+      motivos.push('pendente alto valor');
+    } else if (valor >= 1000) {
+      score += 30;
+      motivos.push('pendente com valor');
+    } else {
+      score += 15;
+      motivos.push('pendente sem contato');
+    }
+  }
+
+  if (ultimaLigacao) {
+    const diasSemContato = Math.floor((agora - ultimaLigacao) / 86400000);
+    if (diasSemContato >= 60) {
+      score += 45;
+      motivos.push('60+ dias sem contato');
+    } else if (diasSemContato >= 30) {
+      score += 30;
+      motivos.push('30+ dias sem contato');
+    } else if (diasSemContato >= 14) {
+      score += 15;
+      motivos.push('14+ dias sem contato');
+    }
+  }
+
+  if (proximaLigacao && !retornoAtrasado) {
+    const horasParaRetorno = (proximaLigacao - agora) / 3600000;
+    if (horasParaRetorno >= 0 && horasParaRetorno <= 24) {
+      score += 20;
+      motivos.push('retorno em ate 24h');
+    }
+  }
+
+  if (row.classList.contains('row-inadimplente') || texto.includes('INADIMPLENTE') || texto.includes('ATRASADO')) {
+    score += 50;
+    motivos.push('inadimplencia/atraso');
+  }
+
+  const critico = score >= 50;
+  return { critico, score, motivos };
+}
+
+function aplicarFiltroCriticosTabela() {
+  const rows = _linhasClientesTabela();
+  rows.forEach(r => {
+    const avaliacao = _avaliarCriticidadeLinha(r);
+    r.classList.toggle('row-critical', avaliacao.critico);
+    r.title = avaliacao.motivos.length ? `Criticidade ${avaliacao.score}: ${avaliacao.motivos.join(', ')}` : '';
+    r.style.display = avaliacao.critico ? '' : 'none';
+  });
+  atualizarInfoQuickActions();
+}
+
+function filtrarClientesCriticos() {
+  _filtroCriticosAtivo = true;
+  aplicarFiltroCriticosTabela();
+}
+
+function limparFiltroCriticos() {
+  _filtroCriticosAtivo = false;
+  const rows = _linhasClientesTabela();
+  rows.forEach(r => {
+    r.style.display = '';
+    r.classList.remove('row-critical');
+    r.removeAttribute('title');
+  });
+  atualizarInfoQuickActions();
+}
+
+// SINCRONIZACAO ORACLE
+let _syncOracleStatusTimer = null;
+let _syncOracleAutoReloadPending = false;
+let _syncOracleWasRunning = false;
+
+function atualizarStatusSyncOracle() {
+  const badge = document.getElementById('syncOracleStatusBadge');
+  if (!badge) return;
+
+  fetch('/sincronizar-oracle-status')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        badge.className = 'badge text-bg-secondary align-self-center';
+        badge.textContent = 'Sync Oracle: indisponivel';
+        return;
+      }
+
+      if (data.running) {
+        _syncOracleWasRunning = true;
+        badge.className = 'badge text-bg-warning align-self-center';
+        badge.textContent = 'Sync Oracle: em andamento (' + (data.started_at || '--') + ')';
+        return;
+      }
+
+      if (data.last_success === true) {
+        badge.className = 'badge text-bg-success align-self-center';
+        badge.textContent = 'Sync Oracle: ok (' + (data.finished_at || '--') + ')';
+        if (_syncOracleAutoReloadPending && _syncOracleWasRunning) {
+          _syncOracleAutoReloadPending = false;
+          _syncOracleWasRunning = false;
+          window.location.reload();
+        }
+        return;
+      }
+
+      if (data.last_success === false) {
+        badge.className = 'badge text-bg-danger align-self-center';
+        badge.textContent = 'Sync Oracle: erro (' + (data.finished_at || '--') + ')';
+        if (_syncOracleAutoReloadPending && _syncOracleWasRunning) {
+          _syncOracleAutoReloadPending = false;
+          _syncOracleWasRunning = false;
+          alert('A sincronizacao terminou com erro. Verifique os logs e tente novamente.');
+        }
+        return;
+      }
+
+      badge.className = 'badge text-bg-secondary align-self-center';
+      badge.textContent = 'Sync Oracle: aguardando';
+    })
+    .catch(() => {
+      badge.className = 'badge text-bg-secondary align-self-center';
+      badge.textContent = 'Sync Oracle: indisponivel';
+    });
+}
+
+function iniciarMonitorSyncOracle() {
+  const badge = document.getElementById('syncOracleStatusBadge');
+  if (!badge) return;
+  atualizarStatusSyncOracle();
+  if (_syncOracleStatusTimer) return;
+  _syncOracleStatusTimer = setInterval(atualizarStatusSyncOracle, 5000);
+}
+
 function sincronizarOracle() {
   const btn = document.getElementById('btnSincronizarOracle');
   if (!btn) return;
-  if (!confirm('Deseja sincronizar os clientes com Oracle agora?\n\nEsta ação pode levar alguns minutos.')) return;
+  if (!confirm('Deseja sincronizar os clientes com Oracle agora\n\nEsta acao pode levar alguns minutos.')) return;
   const originalText = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i> Sincronizando...';
-  fetch('/sincronizar-oracle', {
+
+  fetch('/sincronizar-oracle-async', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrf_token') }
   })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      alert('✅ ' + data.message + '\n\nA página será recarregada em alguns segundos.');
-      setTimeout(() => window.location.reload(), 3000);
-    } else { alert('❌ ' + data.message); }
+    .then(r => r.json())
+    .then(data => {
+      const ok = !!(data.success || data.ok);
+      const msg = data.message || data.mensagem || 'Sincronizacao iniciada.';
+      if (ok) {
+        _syncOracleAutoReloadPending = true;
+        _syncOracleWasRunning = false;
+        atualizarStatusSyncOracle();
+        alert('' + msg + '\n\nA pagina sera atualizada automaticamente quando a sincronizacao concluir.');
+      } else {
+        alert('' + msg);
+      }
+    })
+    .catch(() => alert('Erro ao sincronizar com Oracle.'))
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    });
+}
+
+function sincronizarClientesManuaisOracle() {
+  const btn = document.getElementById('btnSyncManuaisOracle');
+  if (!btn) return;
+  if (!confirm('Deseja sincronizar os clientes manuais com o Oracle agora?')) return;
+
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i> Sincronizando...';
+
+  fetch('/clientes/sincronizar-manuais-oracle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrf_token') }
   })
-  .catch(() => alert('❌ Erro ao sincronizar com Oracle.'))
-  .finally(() => { btn.disabled = false; btn.innerHTML = originalText; });
+    .then(r => r.json())
+    .then(data => {
+      const ok = !!(data.ok || data.success);
+      alert(data.mensagem || (ok ? 'Sync concluído.' : 'Erro ao sincronizar clientes manuais.'));
+      if (ok) location.reload();
+    })
+    .catch(() => alert('Erro ao sincronizar clientes manuais com Oracle.'))
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    });
+}
+
+async function abrirDetalhesClienteComSync(clienteId, cdClienteOracle = '', cnpj = '') {
+  let cdAtual = (cdClienteOracle || '').toString().trim();
+  const id = parseInt(String(clienteId || '0'), 10) || 0;
+  const cnpjDigits = limpaDigitos(cnpj || '');
+
+  if (!IS_SUPERVISOR) {
+    detalhesClienteOracle(id || null, cdAtual);
+    return;
+  }
+
+  if (!id) {
+    detalhesClienteOracle(null, cdAtual);
+    return;
+  }
+
+  try {
+    const r = await fetch(`/clientes/${id}/sincronizar-oracle`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrf_token')
+      },
+      body: JSON.stringify({
+        cd_cliente_oracle: cdAtual,
+        cnpj: cnpjDigits
+      })
+    });
+    const j = await r.json();
+    if (r.ok && j.ok && j.cliente && j.cliente.cd_cliente_oracle) {
+      cdAtual = String(j.cliente.cd_cliente_oracle || '').trim();
+    }
+  } catch (err) {
+    console.warn('Falha ao sincronizar cliente com Oracle antes dos detalhes:', err);
+  }
+
+  detalhesClienteOracle(id, cdAtual);
 }
 
 // DETALHES CLIENTE ORACLE
-function detalhesClienteOracle(clienteId) {
+function detalhesClienteOracle(clienteId, cdClienteOracle) {
   const modal = new bootstrap.Modal(document.getElementById('modalDetalhesOracle'));
   modal.show();
   document.getElementById('detalhesOracleContent').innerHTML = `
@@ -2124,7 +3468,13 @@ function detalhesClienteOracle(clienteId) {
       <div class="spinner-border text-primary" role="status"></div>
       <p class="mt-2 text-muted">Carregando dados do Oracle...</p>
     </div>`;
-  fetch(`/detalhes-cliente-oracle/${clienteId}`)
+
+  const urlDetalhes = clienteId
+    ? `/detalhes-cliente-oracle/${clienteId}`
+    : `/detalhes-cliente-oracle-cd/${encodeURIComponent(cdClienteOracle || '')}`;
+  const janelaDiasDetalhes = {{ 730 if aba == 'inativos' else 365 }};
+
+  fetch(`${urlDetalhes}?janela_dias=${janelaDiasDetalhes}`)
     .then(r => r.json())
     .then(data => {
       if (data.success) renderizarDetalhesOracle(data);
@@ -2139,13 +3489,34 @@ function detalhesClienteOracle(clienteId) {
 
 function renderizarDetalhesOracle(data) {
   const cliente = data.cliente;
-  const itens   = data.itens_oracle || [];
+  const pedidos = data.pedidos_oracle || [];
+  const itens = data.itens_oracle || [];
+  const janelaDias = Number(data.janela_dias || 365);
+  const labelJanela = janelaDias >= 730 ? '24 meses' : '365 dias';
+  const situacaoPedidoMap = {
+    F: 'Faturado',
+    A: 'Aprovado',
+    C: 'Cancelado',
+    L: 'Liberado',
+    P: 'Pendente',
+    FATURADO: 'Faturado',
+    APROVADO: 'Aprovado',
+    CANCELADO: 'Cancelado',
+    LIBERADO: 'Liberado',
+    PENDENTE: 'Pendente'
+  };
+  const formatarSituacaoPedido = (sigla) => {
+    const s = String(sigla || '').trim().toUpperCase();
+    if (!s) return '-';
+    if (situacaoPedidoMap[s]) return situacaoPedidoMap[s];
+    return s.charAt(0) + s.slice(1).toLowerCase();
+  };
 
   const conceitoBadge = cliente.conceito === 'LIBERADO'
-    ? '<span class="badge-liberado">✓ Liberado</span>'
+    ? '<span class="badge-liberado">Liberado</span>'
     : cliente.conceito === 'INADIMPLENTE'
     ? '<span class="badge-inadimplente">! Inadimplente</span>'
-    : '<span class="badge-semconceito">? Sem Conceito</span>';
+    : '<span class="badge-semconceito">Sem Conceito</span>';
 
   let html = `
     <div class="row g-3">
@@ -2157,15 +3528,16 @@ function renderizarDetalhesOracle(data) {
           <div class="panel-body" style="padding:14px 16px;">
             <table class="table table-sm table-borderless" style="font-size:.83rem;margin:0;">
               <tr><td class="fw-bold text-muted" style="width:40%">Nome</td><td>${cliente.nome}</td></tr>
-              <tr><td class="fw-bold text-muted">CNPJ</td><td><code>${cliente.cnpj || '—'}</code></td></tr>
+              <tr><td class="fw-bold text-muted">CNPJ</td><td><code>${cliente.cnpj || '-'}</code></td></tr>
               <tr><td class="fw-bold text-muted">Telefone</td><td>
-                ${renderContatoItem(cliente.telefone, cliente.nome)}
-                ${renderContatoItem(cliente.telefone2, cliente.nome)}
-                ${!cliente.telefone && !cliente.telefone2 ? '—' : ''}
+                ${renderContatoItem(cliente.telefone, cliente.nome, cliente.id, cliente.cd_cliente_oracle)}
+                ${renderContatoItem(cliente.telefone2, cliente.nome, cliente.id, cliente.cd_cliente_oracle)}
+                ${!cliente.telefone && !cliente.telefone2 ? '-' : ''}
               </td></tr>
-              <tr><td class="fw-bold text-muted">Município/UF</td><td>${cliente.municipio || '—'}${cliente.uf ? `/${cliente.uf}` : ''}</td></tr>
-              <tr><td class="fw-bold text-muted">Contato</td><td>${cliente.contato || '—'}</td></tr>
-              ${cliente.cd_cliente_oracle ? `<tr><td class="fw-bold text-muted">Cód. Oracle</td><td><code>${cliente.cd_cliente_oracle}</code></td></tr>` : ''}
+              <tr><td class="fw-bold text-muted">Municipio/UF</td><td>${cliente.municipio || '-'}${cliente.uf ? `/${cliente.uf}` : ''}</td></tr>
+              <tr><td class="fw-bold text-muted">Contato</td><td>${cliente.contato || '-'}</td></tr>
+              ${cliente.cd_cliente_oracle ? `<tr><td class="fw-bold text-muted">Cod. Oracle</td><td><code>${cliente.cd_cliente_oracle}</code></td></tr>` : ''}
+              ${cliente.cd_centralizado ? `<tr><td class="fw-bold text-muted">Centralizadora</td><td><code>${cliente.cd_centralizado}</code>${cliente.nome_centralizadora ? ` - ${cliente.nome_centralizadora}` : ''}</td></tr>` : ''}
               ${cliente.representante_oracle ? `<tr><td class="fw-bold text-muted">Representante</td><td>${cliente.representante_oracle}</td></tr>` : ''}
             </table>
           </div>
@@ -2174,13 +3546,13 @@ function renderizarDetalhesOracle(data) {
       <div class="col-md-6">
         <div class="panel-card" style="margin-bottom:0;">
           <div class="panel-header" style="font-size:.82rem;padding:10px 16px;">
-            <i class="bi bi-shield-check"></i> Dados de Crédito
+            <i class="bi bi-shield-check"></i> Dados de Credito
           </div>
           <div class="panel-body" style="padding:14px 16px;">
             <table class="table table-sm table-borderless" style="font-size:.83rem;margin:0;">
               <tr><td class="fw-bold text-muted" style="width:40%">Conceito</td><td>${conceitoBadge}</td></tr>
               ${cliente.categoria_consultor ? `<tr><td class="fw-bold text-muted">Consultor Oracle</td><td><small>${cliente.categoria_consultor}</small></td></tr>` : ''}
-              ${cliente.ultimo_pedido_oracle ? `<tr><td class="fw-bold text-muted">Último Pedido</td><td>${cliente.ultimo_pedido_oracle}</td></tr>` : ''}
+              ${cliente.ultimo_pedido_oracle ? `<tr><td class="fw-bold text-muted">Ultimo Pedido</td><td>${cliente.ultimo_pedido_oracle}</td></tr>` : ''}
               ${cliente.valor_ultimo_pedido ? `<tr><td class="fw-bold text-muted">Valor</td><td style="font-weight:700;color:#16a34a;">${parseFloat(cliente.valor_ultimo_pedido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>` : ''}
             </table>
           </div>
@@ -2189,51 +3561,74 @@ function renderizarDetalhesOracle(data) {
     </div>
   `;
 
+
   if (itens.length > 0) {
     const itensUnicos = [];
     const vistos = new Set();
     itens.forEach(item => {
-      const chave = `${item.idproduto}_${item.quantidade}_${item.precounitario}`;
-      if (!vistos.has(chave)) { vistos.add(chave); itensUnicos.push(item); }
+      const chave = `${item.cd_pedido}_${item.sequencia}_${item.idproduto}_${item.quantidade}_${item.precounitario}_${item.pe_desconto}`;
+      if (!vistos.has(chave)) {
+        vistos.add(chave);
+        itensUnicos.push(item);
+      }
     });
+
     const itensPorPedido = {};
     itensUnicos.forEach(item => {
       const pedido = item.cd_pedido || 'sem-pedido';
-      if (!itensPorPedido[pedido]) itensPorPedido[pedido] = { dt_pedido: item.dt_pedido, cd_pedido: item.cd_pedido, itens: [] };
+      if (!itensPorPedido[pedido]) itensPorPedido[pedido] = {
+        dt_pedido: item.dt_pedido,
+        cd_pedido: item.cd_pedido,
+        situacao: item.situacao,
+        itens: []
+      };
       itensPorPedido[pedido].itens.push(item);
     });
 
     html += `<div class="panel-card mt-3" style="margin-bottom:0;">
       <div class="panel-header" style="font-size:.82rem;padding:10px 16px;">
-        <i class="bi bi-cart"></i> Itens dos Pedidos (últimos 365 dias)
+        <i class="bi bi-cart"></i> Itens dos Pedidos (${labelJanela})
         <span style="margin-left:auto;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 10px;font-size:.7rem;">${Object.keys(itensPorPedido).length} pedido(s)</span>
       </div>
       <div class="panel-body">`;
 
     Object.values(itensPorPedido).forEach(pedido => {
-      const dataPedido = pedido.dt_pedido ? new Date(pedido.dt_pedido).toLocaleDateString('pt-BR') : '—';
+      const dataPedido = pedido.dt_pedido ? new Date(pedido.dt_pedido).toLocaleDateString('pt-BR') : '-';
+      const situacaoPedido = formatarSituacaoPedido(pedido.situacao);
       html += `
         <div style="margin-bottom:16px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);">
           <div style="font-size:.82rem;font-weight:700;color:var(--brand-700);margin-bottom:10px;">
-            <i class="bi bi-receipt me-1"></i>Pedido #${pedido.cd_pedido || '—'} — ${dataPedido}
+            <i class="bi bi-receipt me-1"></i>Pedido #${pedido.cd_pedido || '-'} - ${dataPedido} - ${situacaoPedido}
           </div>
           <div class="row g-2">`;
+
       pedido.itens.forEach(item => {
-        const nome     = item.nome_produto || item.idproduto || '—';
-        const qtd      = item.quantidade || 0;
-        const preco    = item.precounitario ? parseFloat(item.precounitario).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—';
+        const nome = item.nome_produto || item.idproduto || '-';
+        const qtd = item.quantidade || 0;
+        const preco = item.precounitario
+          ? parseFloat(item.precounitario).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+          : '-';
+        const descontoNum = (item.pe_desconto !== null && item.pe_desconto !== undefined && item.pe_desconto !== '')
+          ? Number(item.pe_desconto)
+          : null;
+        const descontoTxt = descontoNum !== null && !Number.isNaN(descontoNum)
+          ? `${descontoNum.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`
+          : null;
+
         html += `<div class="col-md-6 col-lg-4">
           <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;">
             <i class="bi bi-box-seam" style="color:#16a34a;"></i>
             <div>
               <div style="font-size:.8rem;font-weight:600;">${nome}</div>
-              <div style="font-size:.73rem;color:var(--text-2);">${qtd} unid · ${preco}</div>
+              <div style="font-size:.73rem;color:var(--text-2);">${qtd} unid | ${preco}${descontoTxt ? ` | Desc.: ${descontoTxt}` : ''}</div>
             </div>
           </div>
         </div>`;
       });
+
       html += `</div></div>`;
     });
+
     html += `</div></div>`;
   }
 
@@ -2245,7 +3640,7 @@ function renderizarDetalhesOracle(data) {
   }
 
   document.getElementById('detalhesOracleContent').innerHTML = html;
-  window.clienteDetalhesAtual = cliente.id;
+  window.clienteDetalhesAtual = cliente.id || null;
 }
 
 function registrarLigacaoDesdeDetalhes() {
@@ -2262,12 +3657,14 @@ function registrarLigacaoDesdeDetalhes() {
 
 // TOGGLE REPRESENTANTES
 function toggleRepresentante(index) {
-  const div    = document.getElementById(`representante-${index}`);
-  const icone  = document.getElementById(`icone-${index}`);
+  const div = document.getElementById(`representante-${index}`);
+  const icone = document.getElementById(`icone-${index}`);
   if (!div || !icone) return;
+
   const aberto = div.style.display !== 'none';
   div.style.display = aberto ? 'none' : 'block';
   icone.classList.toggle('open', !aberto);
+  atualizarInfoQuickActions();
 }
 
 function getCookie(name) {
@@ -2285,45 +3682,9 @@ function getCookie(name) {
   return cookieValue;
 }
 
-// Restaurar estado dos representantes expandidos ao carregar a página
-document.addEventListener('DOMContentLoaded', function() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const repsExpandidos = urlParams.get('reps_expandidos');
-  const scrollToRep = urlParams.get('scroll_to_rep');
-  
-  if (repsExpandidos) {
-    const indices = repsExpandidos.split(',').map(i => parseInt(i.trim())).filter(i => !isNaN(i));
-    
-    // Aguardar um pouco para garantir que os elementos foram renderizados
-    setTimeout(() => {
-      indices.forEach(index => {
-        const div = document.getElementById(`representante-${index}`);
-        const icone = document.getElementById(`icone-${index}`);
-        if (div && icone) {
-          div.style.display = 'block';
-          icone.classList.add('open');
-        }
-      });
-      
-      // Fazer scroll para o representante mais próximo
-      if (scrollToRep && !isNaN(parseInt(scrollToRep))) {
-        const repIndex = parseInt(scrollToRep);
-        const repCard = document.querySelector(`.rep-card:nth-child(${repIndex + 1})`);
-        if (repCard) {
-          setTimeout(() => {
-            // Scroll suave para o topo do card do representante
-            repCard.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'start',
-              inline: 'nearest'
-            });
-          }, 150);
-        }
-      }
-    }, 100);
-  }
-});
-
 </script>
 {% endblock %}
+
+
+
 
