@@ -48,6 +48,10 @@
               <span class="badge bg-primary">
                 <i class="bi bi-shield-check"></i> Supervisor
               </span>
+            {% elif u.tipo == 'televendas' %}
+              <span class="badge bg-warning text-dark">
+                <i class="bi bi-telephone-forward"></i> Televendas
+              </span>
             {% else %}
               <span class="badge bg-secondary">
                 <i class="bi bi-person"></i> Consultor
@@ -147,6 +151,7 @@
             <select class="form-select" id="criarTipo" onchange="toggleMetaDiaria('criar')">
               <option value="consultor">Consultor</option>
               <option value="supervisor">Supervisor</option>
+              <option value="televendas">Televendas</option>
             </select>
           </div>
           
@@ -197,6 +202,7 @@
             <select class="form-select" id="editarTipo" onchange="toggleMetaDiaria('editar')">
               <option value="consultor">Consultor</option>
               <option value="supervisor">Supervisor</option>
+              <option value="televendas">Televendas</option>
             </select>
           </div>
           
@@ -407,7 +413,7 @@ async function redefinirSenha(e) {
 async function toggleStatus(id, nome, ativo) {
   const acao = ativo ? 'inativar' : 'ativar';
   
-  if (!confirm(`Tem certeza que deseja ${acao} o usuário ${nome}?`)) {
+  if (!confirm(`Tem certeza que deseja ${acao} o usuário ${nome}`)) {
     return;
   }
   

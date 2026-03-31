@@ -136,8 +136,8 @@ def register_clientes_ligacoes_routes(app):
         # Inativos e uma aba exclusiva de televendas e supervisor.
         if current_user.tipo not in ('televendas', 'supervisor') and aba == 'inativos':
             return redirect(url_for('meus_clientes', aba='pendentes'))
-        # Televendas não pode acessar a aba oracle
-        if current_user.tipo == 'televendas' and aba in ('pendentes', 'oracle'):
+        # Televendas não pode acessar pendentes/oracle/proximos_inativacao
+        if current_user.tipo == 'televendas' and aba in ('pendentes', 'oracle', 'proximos_inativacao'):
             return redirect(url_for('meus_clientes', aba='inativos'))
         
         apenas_meus = True if current_user.tipo in ('consultor', 'televendas') else (request.args.get('meus') == '1')
@@ -204,6 +204,7 @@ def register_clientes_ligacoes_routes(app):
                 codigos_referencia = {
                     "100": "Roseleia Basso",
                     "002": "Rodrigo Crespan",
+                    "007": "Janine de Mello",
                     "012": "Sandra Vendruscolo da Silva",
                     "001": "Elisabete Haus",
                     "003": "Iara Sponchiado",
@@ -456,11 +457,22 @@ def register_clientes_ligacoes_routes(app):
             if apenas_meus:
                 todos_clientes = todos_clientes.filter(Cliente.consultor_id == current_user.id)
 
-            total_pendentes = todos_clientes.filter(Cliente.id.notin_(
+            base_pendentes = todos_clientes.filter(Cliente.id.notin_(
                 db.session.query(Ligacao.cliente_id).filter(
                     Ligacao.consultor_id == current_user.id if apenas_meus else True
                 )
-            )).count()
+            ))
+            if current_user.tipo == 'consultor':
+                # Mantém "Clientes Especiais" consistente em todas as abas:
+                # para consultor, remove da contagem operacional a campanha 90-120d.
+                limite_min_90_120 = datetime.now() - timedelta(days=120)
+                limite_max_90_120 = datetime.now() - timedelta(days=90)
+                base_pendentes = base_pendentes.filter(~and_(
+                    Cliente.cd_cliente_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.between(limite_min_90_120, limite_max_90_120),
+                ))
+            total_pendentes = base_pendentes.count()
 
             total_contatados = todos_clientes.filter(Cliente.id.in_(
                 db.session.query(Ligacao.cliente_id).filter(
@@ -604,6 +616,7 @@ def register_clientes_ligacoes_routes(app):
                 codigos_referencia = {
                     "100": "Roseleia Basso",
                     "002": "Rodrigo Crespan",
+                    "007": "Janine de Mello",
                     "012": "Sandra Vendruscolo da Silva",
                     "001": "Elisabete Haus",
                     "003": "Iara Sponchiado",
@@ -1227,39 +1240,25 @@ def register_clientes_ligacoes_routes(app):
         elif apenas_meus:
             q = q.filter(Cliente.consultor_id == current_user.id)
 
-        if current_user.tipo == 'consultor' and aba == 'pendentes':
-            # Evita misturar campanha 90-120d na aba operacional de pendentes.
-            limite_min_90_120 = datetime.now() - timedelta(days=120)
-            limite_max_90_120 = datetime.now() - timedelta(days=90)
-            q = q.filter(~and_(
-                Cliente.cd_cliente_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.between(limite_min_90_120, limite_max_90_120),
-            ))
-
         termo = request.args.get('q', '').strip()
-        if termo:
-            like = f"%{termo}%"
-            q = q.filter(or_(
-                Cliente.nome.like(like),
-                Cliente.cnpj.like(like),
-                Cliente.telefone.like(like),
-                Cliente.representante_nome.like(like),
-                Cliente.representante_oracle.like(like)
-            ))
 
         clientes_todos = q.order_by(Cliente.nome.asc()).all()
 
         pendentes, contatados, precisa_retornar = [], [], []
         agora = datetime.now()
+        limite_min_90_120 = agora - timedelta(days=120)
+        limite_max_90_120 = agora - timedelta(days=90)
         filtrar_por_categoria_consultor = (current_user.tipo == 'consultor')
+        ajustar_consultor_supervisor_pendentes = (current_user.tipo == 'supervisor' and aba == 'pendentes')
         mapa_nome_para_id = {}
         mapa_codigo_para_id = {}
-        if filtrar_por_categoria_consultor:
+        ids_usuarios_ativos = set()
+        if filtrar_por_categoria_consultor or ajustar_consultor_supervisor_pendentes:
             usuarios_ativos = Usuario.query.filter(
                 Usuario.ativo == True,
                 Usuario.tipo.in_(["consultor", "televendas", "supervisor"])
             ).all()
+            ids_usuarios_ativos = {u.id for u in usuarios_ativos if u and u.id}
             mapa_nome_para_id = {
                 _normalizar_nome_consultor(u.nome): u.id
                 for u in usuarios_ativos if u and u.nome
@@ -1267,6 +1266,7 @@ def register_clientes_ligacoes_routes(app):
             codigos_referencia = {
                 "100": "Roseleia Basso",
                 "002": "Rodrigo Crespan",
+                "007": "Janine de Mello",
                 "012": "Sandra Vendruscolo da Silva",
                 "001": "Elisabete Haus",
                 "003": "Iara Sponchiado",
@@ -1282,9 +1282,27 @@ def register_clientes_ligacoes_routes(app):
                     mapa_codigo_para_id[codigo] = uid
 
         for c in clientes_todos:
-            ligs = sorted(c.ligacoes, key=lambda x: x.data_hora, reverse=True)
+            ligacoes_relevantes = (
+                [l for l in c.ligacoes if l.consultor_id == current_user.id]
+                if current_user.tipo in ('consultor', 'televendas')
+                else list(c.ligacoes)
+            )
+            ligs = sorted(ligacoes_relevantes, key=lambda x: x.data_hora, reverse=True)
             ultima = ligs[0] if ligs else None
             total = len(ligs)
+            origem_cliente = str(getattr(c, 'origem', '') or '').strip().lower()
+            consultor_id_view = c.consultor_id
+            if ajustar_consultor_supervisor_pendentes and c.cd_cliente_oracle and c.categoria_consultor:
+                consultor_esperado = _resolver_consultor_id_por_categoria(
+                    c.categoria_consultor,
+                    mapa_codigo_para_id=mapa_codigo_para_id,
+                    mapa_nome_para_id=mapa_nome_para_id,
+                )
+                if consultor_esperado:
+                    consultor_id_view = consultor_esperado
+            if ajustar_consultor_supervisor_pendentes and c.consultor_id:
+                if c.consultor_id not in ids_usuarios_ativos:
+                    consultor_id_view = consultor_id_view if consultor_id_view != c.consultor_id else None
             dados = {
                 "id": c.id,
                 "nome": c.nome,
@@ -1303,7 +1321,7 @@ def register_clientes_ligacoes_routes(app):
                 "cd_cliente_oracle": c.cd_cliente_oracle,
                 "categoria_consultor": c.categoria_consultor or '',
                 "centralizadora": '',
-                "consultor_id": c.consultor_id,
+                "consultor_id": consultor_id_view,
                 "conceito": c.conceito or '',
                 "municipio": c.municipio or '',
                 "uf": c.uf or '',
@@ -1315,7 +1333,12 @@ def register_clientes_ligacoes_routes(app):
                 "em_atendimento_ate": None,
             }
 
-            if filtrar_por_categoria_consultor and c.cd_cliente_oracle and c.categoria_consultor:
+            if (
+                filtrar_por_categoria_consultor
+                and c.cd_cliente_oracle
+                and c.categoria_consultor
+                and origem_cliente != 'manual'
+            ):
                 consultor_esperado = _resolver_consultor_id_por_categoria(
                     c.categoria_consultor,
                     mapa_codigo_para_id=mapa_codigo_para_id,
@@ -1324,7 +1347,22 @@ def register_clientes_ligacoes_routes(app):
                 if consultor_esperado and consultor_esperado != current_user.id:
                     continue
 
+            # Regra de negocio: para consultor, cliente manual pertence a
+            # "Clientes Especiais" (antiga aba Pendentes), mesmo com historico.
+            if current_user.tipo == 'consultor' and origem_cliente == 'manual':
+                pendentes.append(dados)
+                continue
+
             if total == 0:
+                # Evita misturar campanha 90-120d na aba operacional de pendentes
+                # e no badge "Clientes Especiais" do consultor.
+                if (
+                    current_user.tipo == 'consultor'
+                    and c.cd_cliente_oracle
+                    and c.ultimo_pedido_oracle
+                    and limite_min_90_120 <= c.ultimo_pedido_oracle <= limite_max_90_120
+                ):
+                    continue
                 pendentes.append(dados)
             else:
                 if c.proxima_ligacao or (ultima and ultima.resultado == 'retornar'):
@@ -1333,10 +1371,32 @@ def register_clientes_ligacoes_routes(app):
                 else:
                     contatados.append(dados)
 
+        total_pendentes_badge = len(pendentes)
+        total_contatados_badge = len(contatados)
+        total_retornar_badge = len(precisa_retornar)
+
+        # Busca textual só na listagem atual (não afeta badges).
+        if termo:
+            termo_lower = termo.lower()
+
+            def _match_termo(item):
+                return any(
+                    termo_lower in str(item.get(chave) or '').lower()
+                    for chave in ('nome', 'cnpj', 'telefone', 'representante_nome', 'representante_oracle')
+                )
+
+            pendentes_view = [c for c in pendentes if _match_termo(c)]
+            contatados_view = [c for c in contatados if _match_termo(c)]
+            precisa_retornar_view = [c for c in precisa_retornar if _match_termo(c)]
+        else:
+            pendentes_view = pendentes
+            contatados_view = contatados
+            precisa_retornar_view = precisa_retornar
+
         if aba == 'pendentes':
             # Ordenar pendentes por valor (maior para menor)
             clientes = sorted(
-                pendentes, 
+                pendentes_view,
                 key=lambda x: (
                     float(x.get('valor_total_365dias') or 0),
                     float(x.get('valor_ultimo_pedido') or 0)
@@ -1346,7 +1406,7 @@ def register_clientes_ligacoes_routes(app):
         elif aba == 'retornar':
             # Ordenar retornar por data, depois por valor
             clientes = sorted(
-                precisa_retornar, 
+                precisa_retornar_view,
                 key=lambda x: (
                     x['proxima_ligacao'] or datetime.max,
                     float(x.get('valor_total_365dias') or 0),
@@ -1356,7 +1416,7 @@ def register_clientes_ligacoes_routes(app):
         else:
             # Ordenar contatados por valor (maior para menor)
             clientes = sorted(
-                contatados, 
+                contatados_view,
                 key=lambda x: (
                     float(x.get('valor_total_365dias') or 0),
                     float(x.get('valor_ultimo_pedido') or 0)
@@ -1411,10 +1471,20 @@ def register_clientes_ligacoes_routes(app):
                 Ligacao.data_hora >= desde30,
                 Ligacao.resultado == 'comprou'
             ).scalar() or 0
+            positivos_30 = db.session.query(func.count(Ligacao.id)).filter(
+                Ligacao.consultor_id == current_user.id,
+                Ligacao.data_hora >= desde30,
+                Ligacao.resultado.in_(('comprou', 'relacionamento', 'retornar'))
+            ).scalar() or 0
 
             stats['taxa_conversao'] = round(
                 (vendas_30 / stats['ligacoes_mes'] * 100) if stats['ligacoes_mes'] > 0 else 0, 1
             )
+            stats['positivos_30'] = int(positivos_30)
+            stats['taxa_positiva_30'] = round(
+                (positivos_30 / stats['ligacoes_mes'] * 100) if stats['ligacoes_mes'] > 0 else 0, 1
+            )
+            stats['converteu_30'] = int(vendas_30)
 
             receita_total = db.session.query(func.sum(Ligacao.valor_venda)).filter(
                 Ligacao.consultor_id == current_user.id,
@@ -1423,6 +1493,7 @@ def register_clientes_ligacoes_routes(app):
             ).scalar() or 0
 
             stats['receita_mes'] = formatar_dinheiro(receita_total)
+            stats['clientes_90_120'] = int(total_oracle_badge or 0)
         
         # Gerar lista de meses/anos disponíveis para o filtro do consultor e televendas
         meses_disponiveis_consultor = []
@@ -1449,7 +1520,9 @@ def register_clientes_ligacoes_routes(app):
                 if idade <= _INATIVOS_COUNT_CACHE_TTL_SECONDS:
                     total_inativos_badge = int(cache.get("count") or 0)
             if total_inativos_badge == 0:
-                consultor_inativos = current_user.id if apenas_meus else None
+                # Televendas vê todos os inativos na aba (sem filtro por consultor_id),
+                # então o badge deve refletir o total global, não apenas os do usuário.
+                consultor_inativos = current_user.id if (apenas_meus and current_user.tipo == 'consultor') else None
                 total_inativos_badge = _total_inativos_badge(consultor_inativos)
                 _INATIVOS_COUNT_CACHE[current_user.id] = {
                     "count": int(total_inativos_badge),
@@ -1458,11 +1531,36 @@ def register_clientes_ligacoes_routes(app):
 
         # Para consultores: converter para vista agrupada por representante
         # (mantendo contatados/retornar na lista simples original).
-        if current_user.tipo == 'consultor' and aba not in ('contatados', 'retornar'):
+        if (
+            (current_user.tipo == 'supervisor' and aba == 'pendentes') or
+            (current_user.tipo in ('consultor', 'supervisor') and aba not in ('contatados', 'retornar', 'pendentes'))
+        ):
             agora_grp = datetime.now()
+            agrupar_por_consultor = (current_user.tipo == 'supervisor' and aba == 'pendentes')
+            mapa_consultor_nome = {}
+            if agrupar_por_consultor:
+                mapa_consultor_nome = {
+                    int(uid): (nome or '').strip()
+                    for uid, nome in (
+                        db.session.query(Usuario.id, Usuario.nome)
+                        .filter(Usuario.ativo == True)
+                        .all()
+                    )
+                }
+            grupo_sem_nome = 'SEM CONSULTOR' if agrupar_por_consultor else 'SEM REPRESENTANTE'
             representantes_data_grp = {}
             for item in clientes:
-                rep_nome = str(item.get('representante_nome') or '').strip() or 'SEM REPRESENTANTE'
+                if agrupar_por_consultor:
+                    consultor_id_item = item.get('consultor_id')
+                    rep_nome = (
+                        mapa_consultor_nome.get(int(consultor_id_item))
+                        if consultor_id_item else None
+                    ) or grupo_sem_nome
+                else:
+                    rep_nome = (
+                        str(item.get('representante_oracle') or item.get('representante_nome') or '').strip()
+                        or grupo_sem_nome
+                    )
                 if rep_nome not in representantes_data_grp:
                     representantes_data_grp[rep_nome] = {
                         'nome': rep_nome,
@@ -1491,23 +1589,29 @@ def register_clientes_ligacoes_routes(app):
                 ]
                 dados_rep['dias_medio'] = sum(dias_r) / len(dias_r) if dias_r else 0
 
-            representantes_ordenados_grp = sorted(
-                representantes_data_grp.items(),
-                key=lambda x: (-x[1]['total_clientes'], x[0] == 'SEM REPRESENTANTE', x[0])
-            )
+            if current_user.tipo == 'consultor' and aba == 'pendentes':
+                representantes_ordenados_grp = sorted(
+                    representantes_data_grp.items(),
+                    key=lambda x: (x[0] == grupo_sem_nome, x[0].upper())
+                )
+            else:
+                representantes_ordenados_grp = sorted(
+                    representantes_data_grp.items(),
+                    key=lambda x: (-x[1]['total_clientes'], x[0] == grupo_sem_nome, x[0])
+                )
 
             return render_template(
                 'meus_clientes.html',
                 representantes=representantes_ordenados_grp,
                 usar_vista_agrupada=True,
                 aba=aba,
-                total_pendentes=len(pendentes),
-                total_contatados=len(contatados),
-                total_retornar=len(precisa_retornar),
+                total_pendentes=total_pendentes_badge,
+                total_contatados=total_contatados_badge,
+                total_retornar=total_retornar_badge,
                 total_inativos=total_inativos_badge,
                 total_oracle=total_oracle_badge,
                 total_proximos=total_proximos_badge,
-                is_supervisor=False,
+                is_supervisor=(current_user.tipo == 'supervisor'),
                 now=datetime.now,
                 stats=stats,
                 mostrar_novidades=not current_user.viu_novidades,
@@ -1520,9 +1624,9 @@ def register_clientes_ligacoes_routes(app):
         return render_template(
             'meus_clientes.html',
             clientes=clientes,
-            total_pendentes=len(pendentes),
-            total_contatados=len(contatados),
-            total_retornar=len(precisa_retornar),
+            total_pendentes=total_pendentes_badge,
+            total_contatados=total_contatados_badge,
+            total_retornar=total_retornar_badge,
             total_inativos=total_inativos_badge,
             total_oracle=total_oracle_badge,
             total_proximos=total_proximos_badge,
@@ -2086,7 +2190,11 @@ def register_clientes_ligacoes_routes(app):
             elif resultado == 'comprou':
                 msg = "Ligação registrada! Venda marcada como 'comprou'."
 
-            return jsonify({"ok": True, "mensagem": msg})
+            return jsonify({
+                "ok": True,
+                "mensagem": msg,
+                "proxima_ligacao": cli.proxima_ligacao.isoformat() if cli.proxima_ligacao else None,
+            })
 
         except Exception as e:
             db.session.rollback()
@@ -2575,42 +2683,52 @@ def register_clientes_ligacoes_routes(app):
     def api_resultados_por_mes():
         if current_user.tipo != 'supervisor':
             return jsonify({"erro": "Acesso negado"}), 403
-        
+
         try:
             mes = int(request.args.get('mes', datetime.now().month))
             ano = int(request.args.get('ano', datetime.now().year))
-            
-            # Buscar ligações do mês/ano específico
-            ligacoes = (
+
+            if mes < 1 or mes > 12:
+                return jsonify({"ok": False, "erro": "Mês inválido"}), 400
+
+            inicio = datetime(ano, mes, 1)
+            fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
+
+            # Subquery: agrega ligações do período por consultor.
+            # Feito como subquery para que consultores com 0 ligações no mês
+            # (mas com histórico em outros meses) apareçam com total=0.
+            subq = (
+                db.session.query(
+                    Ligacao.consultor_id.label('cid'),
+                    func.count(Ligacao.id).label('total'),
+                    func.sum(case((Ligacao.resultado == 'comprou', 1), else_=0)).label('vendas'),
+                    func.sum(case((Ligacao.resultado == 'comprou', Ligacao.valor_venda), else_=0)).label('receita'),
+                )
+                .filter(Ligacao.data_hora >= inicio, Ligacao.data_hora < fim)
+                .group_by(Ligacao.consultor_id)
+                .subquery()
+            )
+
+            rows = (
                 db.session.query(
                     Usuario.id,
                     Usuario.nome,
-                    func.count(Ligacao.id).label("total_ligacoes"),
-                    func.sum(case((Ligacao.resultado == 'comprou', 1), else_=0)).label("vendas"),
-                    func.sum(case((Ligacao.resultado == 'comprou', Ligacao.valor_venda), else_=0)).label("receita")
+                    func.coalesce(subq.c.total, 0).label('total'),
+                    func.coalesce(subq.c.vendas, 0).label('vendas'),
+                    func.coalesce(subq.c.receita, 0.0).label('receita'),
                 )
-                .join(Ligacao, Ligacao.consultor_id == Usuario.id, isouter=True)
+                .outerjoin(subq, subq.c.cid == Usuario.id)
                 .filter(Usuario.tipo == 'consultor', Usuario.ativo == True)
-                .filter(or_(
-                    extract('month', Ligacao.data_hora) == mes,
-                    Ligacao.id == None
-                ))
-                .filter(or_(
-                    extract('year', Ligacao.data_hora) == ano,
-                    Ligacao.id == None
-                ))
-                .group_by(Usuario.id, Usuario.nome)
-                .order_by(desc("receita"))
+                .order_by(desc('receita'))
                 .all()
             )
-            
+
             resultado = []
-            for uid, nome, total, vendas, receita in ligacoes:
+            for uid, nome, total, vendas, receita in rows:
                 total = int(total or 0)
                 vendas = int(vendas or 0)
                 receita = float(receita or 0)
                 conv = _percent(vendas, total) if total else 0.0
-                
                 resultado.append({
                     "id": uid,
                     "nome": nome,
@@ -2618,16 +2736,11 @@ def register_clientes_ligacoes_routes(app):
                     "vendas": vendas,
                     "conversao": round(conv, 1),
                     "receita": receita,
-                    "receita_fmt": formatar_dinheiro(receita)
+                    "receita_fmt": formatar_dinheiro(receita),
                 })
-            
-            return jsonify({
-                "ok": True,
-                "mes": mes,
-                "ano": ano,
-                "consultores": resultado
-            })
-            
+
+            return jsonify({"ok": True, "mes": mes, "ano": ano, "consultores": resultado})
+
         except Exception as e:
             return jsonify({"ok": False, "erro": str(e)}), 500
 
@@ -2670,8 +2783,10 @@ def register_clientes_ligacoes_routes(app):
             # Estatísticas do mês
             total_ligacoes = len(resultado)
             vendas = len([l for l in resultado if l["resultado"] == "comprou"])
+            positivos = len([l for l in resultado if l["resultado"] in ("comprou", "relacionamento", "retornar")])
             receita_total = sum([l["valor_venda"] for l in resultado if l["resultado"] == "comprou"])
             taxa_conversao = _percent(vendas, total_ligacoes) if total_ligacoes else 0
+            taxa_positiva = _percent(positivos, total_ligacoes) if total_ligacoes else 0
             
             return jsonify({
                 "ok": True,
@@ -2680,10 +2795,12 @@ def register_clientes_ligacoes_routes(app):
                 "ligacoes": resultado,
                 "estatisticas": {
                     "total_ligacoes": total_ligacoes,
+                    "positivos": positivos,
                     "vendas": vendas,
                     "receita_total": receita_total,
                     "receita_fmt": formatar_dinheiro(receita_total),
-                    "taxa_conversao": round(taxa_conversao, 1)
+                    "taxa_conversao": round(taxa_conversao, 1),
+                    "taxa_positiva": round(taxa_positiva, 1)
                 }
             })
             

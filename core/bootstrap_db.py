@@ -59,6 +59,24 @@ def bootstrap_app_database():
             "ALTER TABLE clientes ADD COLUMN origem ENUM('importado_csv','manual') NOT NULL DEFAULT 'manual'"
         )
 
+    if not _column_exists("clientes", "telefone2"):
+        _run_ddl("ALTER TABLE clientes ADD COLUMN telefone2 VARCHAR(20)")
+
+    # Update usuarios.tipo enum to include 'televendas' (MySQL syntax)
+    try:
+        db.session.execute(
+            text(
+                "ALTER TABLE usuarios MODIFY COLUMN tipo "
+                "ENUM('consultor', 'supervisor', 'televendas') "
+                "NOT NULL DEFAULT 'consultor'"
+            )
+        )
+        db.session.commit()
+        print("[OK] Campo usuarios.tipo atualizado para incluir 'televendas'")
+    except Exception as e:
+        db.session.rollback()
+        print(f"[WARN] Erro ao atualizar enum usuarios.tipo (pode já estar atualizado): {e}")
+
     try:
         db.session.execute(
             text(
@@ -90,6 +108,8 @@ def bootstrap_app_database():
         ("contato", "ALTER TABLE clientes ADD COLUMN contato VARCHAR(200)"),
         ("valor_total_365dias", "ALTER TABLE clientes ADD COLUMN valor_total_365dias DECIMAL(12,2)"),
         ("data_ultima_sincronizacao", "ALTER TABLE clientes ADD COLUMN data_ultima_sincronizacao DATETIME"),
+        ("em_atendimento_por", "ALTER TABLE clientes ADD COLUMN em_atendimento_por INT NULL"),
+        ("em_atendimento_ate", "ALTER TABLE clientes ADD COLUMN em_atendimento_ate DATETIME NULL"),
     ]
 
     for column_name, campo_sql in campos_oracle:

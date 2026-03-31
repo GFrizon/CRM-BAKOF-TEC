@@ -57,11 +57,6 @@ def _resolver_consultor_id(
     if nome_norm and nome_norm in mapa_nome_para_id:
         return mapa_nome_para_id[nome_norm]
 
-    if nome_norm:
-        for nome_usr_norm, usr_id in mapa_nome_para_id.items():
-            if nome_norm in nome_usr_norm or nome_usr_norm in nome_norm:
-                return usr_id
-
     if codigo and codigo in mapa_codigo_para_id:
         return mapa_codigo_para_id[codigo]
 
@@ -166,6 +161,7 @@ def sincronizacao_automatica_diaria():
             mapa_codigo_nome = {
                 '100': 'Roseleia Basso',
                 '002': 'Rodrigo Crespan',
+                '007': 'Janine de Mello',
                 '012': 'Sandra Vendruscolo da Silva',
                 '001': 'Elisabete Haus',
                 '003': 'Iara Sponchiado',
@@ -372,6 +368,9 @@ def sincronizacao_automatica_diaria():
 
                                     # Preserva carteira operacional de televendas quando já houve
                                     # contato/retorno no app para evitar "sumiço" de listas.
+                                    preservar_carteira_manual = (
+                                        str(getattr(cliente_mysql, 'origem', '') or '').strip().lower() == 'manual'
+                                    )
                                     manter_carteira_televendas = False
                                     dono_atual = db.session.get(Usuario, cliente_mysql.consultor_id) if cliente_mysql.consultor_id else None
                                     if dono_atual and dono_atual.tipo == 'televendas':
@@ -388,7 +387,7 @@ def sincronizacao_automatica_diaria():
                                             cliente_mysql.proxima_ligacao is not None or teve_ligacao_tv
                                         )
 
-                                    if not manter_carteira_televendas:
+                                    if not preservar_carteira_manual and not manter_carteira_televendas:
                                         cliente_mysql.consultor_id = consultor_id  # ATUALIZAR CONSULTOR
 
                                     dt_pedido = cliente_oracle.get('dt_pedido')

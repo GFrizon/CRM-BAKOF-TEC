@@ -1,20 +1,213 @@
 from datetime import datetime, timedelta
+import threading
+import unicodedata
 
 from flask import jsonify, request
 from flask_login import current_user, login_required
 
 from core.extensions import db
 from core.models import Cliente, Usuario
-from oracle_service import get_clientes_oracle, get_valor_total_365dias, test_oracle_connection
+from sqlalchemy import or_
+from oracle_service import get_clientes_inativos_oracle, get_clientes_oracle, get_valor_total_365dias, test_oracle_connection
 from telefone_utils import identificar_ddd_padrao, padronizar_telefone
 
 
 def register_oracle_routes(app):
+    sync_lock = threading.Lock()
+    sync_state = {
+        "running": False,
+        "started_at": None,
+        "finished_at": None,
+        "last_success": None,
+        "last_error": None,
+    }
+
+    def _iniciar_sync_oracle_background():
+        """Inicia sync em background e evita execucoes concorrentes."""
+        if not sync_lock.acquire(blocking=False):
+            return False, "Sincronizacao ja esta em andamento. Aguarde terminar."
+
+        from sincronizacao_automatica import sincronizacao_automatica_diaria
+
+        sync_state["running"] = True
+        sync_state["started_at"] = datetime.now()
+        sync_state["finished_at"] = None
+        sync_state["last_error"] = None
+
+        def sincronizar_background():
+            try:
+                ok = sincronizacao_automatica_diaria()
+                sync_state["last_success"] = bool(ok)
+                if not ok:
+                    sync_state["last_error"] = "Sincronizacao finalizou com falha."
+            except Exception as e:
+                sync_state["last_success"] = False
+                sync_state["last_error"] = str(e)
+                print(f"Erro na sincronizacao background: {e}")
+            finally:
+                sync_state["running"] = False
+                sync_state["finished_at"] = datetime.now()
+                sync_lock.release()
+
+        try:
+            thread = threading.Thread(target=sincronizar_background)
+            thread.daemon = True
+            thread.start()
+            return True, "Sincronizacao iniciada com sucesso! Aguarde alguns minutos para ver os resultados."
+        except Exception as e:
+            sync_state["running"] = False
+            sync_state["finished_at"] = datetime.now()
+            sync_state["last_success"] = False
+            sync_state["last_error"] = f"Nao foi possivel iniciar a thread de sincronizacao: {e}"
+            sync_lock.release()
+            return False, "Falha ao iniciar sincronizacao em background."
+
     def _limpar_texto(valor):
         if valor is None:
             return None
         texto = str(valor).strip()
         return texto or None
+
+    def _normalizar_nome(valor: str) -> str:
+        if not valor:
+            return ""
+        txt = unicodedata.normalize("NFKD", str(valor))
+        txt = "".join(c for c in txt if not unicodedata.combining(c))
+        return " ".join(txt.upper().strip().split())
+
+    def _extrair_nome_consultor_oracle(valor: str) -> str:
+        if not valor:
+            return ""
+        # Ex.: "005 - CARLA - C42" -> "CARLA"
+        partes = [p.strip() for p in str(valor).split("-") if p.strip()]
+        if len(partes) >= 2:
+            return partes[1]
+        return partes[0] if partes else ""
+
+    def _resolver_consultor_oracle(valor_oracle: str, mapa_nome: dict, mapa_primeiro_nome: dict):
+        nome_oracle = _extrair_nome_consultor_oracle(valor_oracle)
+        if not nome_oracle:
+            return None
+
+        nome_norm = _normalizar_nome(nome_oracle)
+        if not nome_norm:
+            return None
+
+        consultor = mapa_nome.get(nome_norm)
+        if consultor:
+            return consultor
+
+        primeiro = nome_norm.split()[0]
+        return mapa_primeiro_nome.get(primeiro)
+
+    def _montar_resposta_detalhes_oracle(cliente, cd_cliente_oracle: str, janela_dias: int = 365):
+        from oracle_service import (
+            get_cliente_oracle_por_codigo,
+            get_centralizadora_cliente_oracle,
+            get_itens_cliente_oracle,
+            get_pedidos_cliente_oracle,
+        )
+
+        origem_cliente = str(getattr(cliente, "origem", "") or "").strip().lower() if cliente else ""
+        eh_especial = origem_cliente in ("manual", "importado_csv")
+
+        pedidos_oracle = get_pedidos_cliente_oracle(
+            cd_cliente_oracle,
+            janela_dias=janela_dias,
+            modo_especial=eh_especial,
+        )
+        itens_oracle = get_itens_cliente_oracle(
+            cd_cliente_oracle,
+            janela_dias=janela_dias,
+            modo_especial=eh_especial,
+        )
+        detalhes_oracle = get_cliente_oracle_por_codigo(cd_cliente_oracle) or {}
+        centralizadora = get_centralizadora_cliente_oracle(cd_cliente_oracle) or {}
+
+        def _pick(local_val, oracle_val):
+            if local_val is None:
+                return oracle_val
+            if isinstance(local_val, str) and not local_val.strip():
+                return oracle_val
+            return local_val
+
+        ultimo_pedido_lista = pedidos_oracle[0] if pedidos_oracle else {}
+
+        if cliente:
+            if eh_especial:
+                dt_pedido = (
+                    ultimo_pedido_lista.get("dt_pedido")
+                    or detalhes_oracle.get("dt_pedido")
+                    or cliente.ultimo_pedido_oracle
+                )
+                valor_ultimo = (
+                    ultimo_pedido_lista.get("total_pedido")
+                    or detalhes_oracle.get("total_pedido")
+                    or cliente.valor_ultimo_pedido
+                )
+                situacao_ultimo = (
+                    ultimo_pedido_lista.get("situacao")
+                    or detalhes_oracle.get("situacao")
+                    or cliente.situacao_ultimo_pedido
+                )
+            else:
+                dt_pedido = cliente.ultimo_pedido_oracle or detalhes_oracle.get("dt_pedido")
+                valor_ultimo = _pick(cliente.valor_ultimo_pedido, detalhes_oracle.get("total_pedido"))
+                situacao_ultimo = _pick(cliente.situacao_ultimo_pedido, detalhes_oracle.get("situacao"))
+            cliente_payload = {
+                "id": cliente.id,
+                "nome": _pick(cliente.nome, detalhes_oracle.get("cliente")),
+                "cnpj": _pick(cliente.cnpj, detalhes_oracle.get("cnpj")),
+                "telefone": _pick(cliente.telefone, detalhes_oracle.get("telefone1")),
+                "telefone2": _pick(cliente.telefone2, detalhes_oracle.get("telefone2")),
+                "cd_cliente_oracle": cliente.cd_cliente_oracle or cd_cliente_oracle,
+                "categoria_consultor": _pick(cliente.categoria_consultor, detalhes_oracle.get("consultor")),
+                "conceito": _pick(cliente.conceito, detalhes_oracle.get("conceito")),
+                "ultimo_pedido_oracle": dt_pedido.strftime('%d/%m/%Y') if dt_pedido else None,
+                "valor_ultimo_pedido": float(valor_ultimo) if valor_ultimo is not None else None,
+                "situacao_ultimo_pedido": situacao_ultimo,
+                "representante_oracle": _pick(cliente.representante_oracle, detalhes_oracle.get("representante")),
+                "municipio": _pick(cliente.municipio, detalhes_oracle.get("municipio")),
+                "uf": _pick(cliente.uf, detalhes_oracle.get("uf")),
+                "contato": _pick(cliente.contato, detalhes_oracle.get("contato")),
+                "data_ultima_sincronizacao": cliente.data_ultima_sincronizacao.strftime('%d/%m/%Y %H:%M') if cliente.data_ultima_sincronizacao else None,
+                "cd_centralizado": centralizadora.get("cd_centralizado"),
+                "nome_centralizadora": centralizadora.get("nome_centralizadora"),
+            }
+        else:
+            dt_pedido = ultimo_pedido_lista.get("dt_pedido") or detalhes_oracle.get("dt_pedido")
+            valor_ultimo = ultimo_pedido_lista.get("total_pedido") or detalhes_oracle.get("total_pedido")
+            situacao_ultimo = ultimo_pedido_lista.get("situacao") or detalhes_oracle.get("situacao")
+            cliente_payload = {
+                "id": None,
+                "nome": detalhes_oracle.get("cliente") or f"Cliente Oracle {cd_cliente_oracle}",
+                "cnpj": detalhes_oracle.get("cnpj"),
+                "telefone": detalhes_oracle.get("telefone1"),
+                "telefone2": detalhes_oracle.get("telefone2"),
+                "cd_cliente_oracle": cd_cliente_oracle,
+                "categoria_consultor": detalhes_oracle.get("consultor"),
+                "conceito": detalhes_oracle.get("conceito"),
+                "ultimo_pedido_oracle": dt_pedido.strftime('%d/%m/%Y') if dt_pedido else None,
+                "valor_ultimo_pedido": float(valor_ultimo) if valor_ultimo is not None else None,
+                "situacao_ultimo_pedido": situacao_ultimo,
+                "representante_oracle": detalhes_oracle.get("representante"),
+                "municipio": detalhes_oracle.get("municipio"),
+                "uf": detalhes_oracle.get("uf"),
+                "contato": detalhes_oracle.get("contato"),
+                "data_ultima_sincronizacao": None,
+                "cd_centralizado": centralizadora.get("cd_centralizado"),
+                "nome_centralizadora": centralizadora.get("nome_centralizadora"),
+            }
+
+        return jsonify({
+            "success": True,
+            "cliente": cliente_payload,
+            "pedidos_oracle": pedidos_oracle,
+            "itens_oracle": itens_oracle,
+            "janela_dias": janela_dias,
+            "total_pedidos": len(pedidos_oracle),
+            "total_itens": len(itens_oracle)
+        })
 
     @app.route('/test-oracle')
     @login_required
@@ -57,142 +250,78 @@ def register_oracle_routes(app):
                 "message": f"Erro ao buscar clientes: {str(e)}"
             }), 500
 
+    @app.route('/clientes-inativos-oracle')
+    @login_required
+    def clientes_inativos_oracle_route():
+        """Rota para testar busca de clientes inativos (181 dias a 2 anos) no Oracle"""
+        if current_user.tipo not in ('televendas', 'supervisor'):
+            return jsonify({"erro": "Acesso permitido somente para televendas e supervisores"}), 403
+
+        try:
+            clientes = get_clientes_inativos_oracle()
+            return jsonify({
+                "success": True,
+                "total": len(clientes),
+                "clientes": clientes[:5],  # Mostra só os 5 primeiros para teste
+                "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            })
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "message": f"Erro ao buscar clientes inativos: {str(e)}"
+            }), 500
+
     @app.route('/sincronizar-oracle', methods=['POST'])
     @login_required
     def sincronizar_oracle():
-        """Rota para sincronizar clientes do Oracle com o MySQL"""
+        """Dispara sincronizacao Oracle em background e retorna imediatamente."""
         if current_user.tipo != 'supervisor':
             return jsonify({"erro": "Acesso permitido somente para supervisores"}), 403
 
         try:
-            clientes_oracle = get_clientes_oracle()
-            ddd_padrao = identificar_ddd_padrao(
-                [
-                    c.get('telefone1')
-                    for c in clientes_oracle
-                ] + [
-                    c.get('telefone2')
-                    for c in clientes_oracle
-                ]
-            )
-
-            sincronizados = 0
-            atualizados = 0
-            erros = []
-
-            for cliente_oracle in clientes_oracle:
-                try:
-                    cd_cliente = str(cliente_oracle.get('cd_cliente', ''))
-                    if not cd_cliente:
-                        continue
-
-                    cnpj_oracle = _limpar_texto(cliente_oracle.get('cnpj'))
-                    telefone1_oracle = _limpar_texto(cliente_oracle.get('telefone1'))
-                    telefone2_oracle = _limpar_texto(cliente_oracle.get('telefone2'))
-                    telefone1_padronizado = padronizar_telefone(telefone1_oracle, ddd_padrao)
-                    telefone2_padronizado = padronizar_telefone(telefone2_oracle, ddd_padrao)
-                    telefone_principal = telefone1_padronizado or telefone2_padronizado
-
-                    cliente_mysql = Cliente.query.filter_by(cd_cliente_oracle=cd_cliente).first()
-                    valor_total_365 = get_valor_total_365dias(cd_cliente)
-
-                    if cliente_mysql:
-                        if cnpj_oracle:
-                            cliente_mysql.cnpj = cnpj_oracle
-                        if telefone_principal:
-                            cliente_mysql.telefone = telefone_principal
-                        if telefone2_padronizado:
-                            cliente_mysql.telefone2 = telefone2_padronizado
-
-                        cliente_mysql.categoria_consultor = cliente_oracle.get('consultor')
-                        cliente_mysql.conceito = cliente_oracle.get('conceito')
-                        cliente_mysql.representante_oracle = cliente_oracle.get('representante')
-                        cliente_mysql.municipio = _limpar_texto(cliente_oracle.get('municipio'))
-                        cliente_mysql.uf = _limpar_texto(cliente_oracle.get('uf'))
-                        cliente_mysql.contato = _limpar_texto(cliente_oracle.get('contato'))
-                        cliente_mysql.valor_ultimo_pedido = cliente_oracle.get('total_pedido')
-                        cliente_mysql.valor_total_365dias = valor_total_365
-                        cliente_mysql.situacao_ultimo_pedido = cliente_oracle.get('situacao')
-
-                        dt_pedido = cliente_oracle.get('dt_pedido')
-                        if dt_pedido:
-                            cliente_mysql.ultimo_pedido_oracle = dt_pedido
-
-                        cliente_mysql.data_ultima_sincronizacao = datetime.now()
-                        atualizados += 1
-                    else:
-                        nome_consultor = cliente_oracle.get('consultor', '')
-                        consultor = None
-
-                        if nome_consultor:
-                            if ' - ' in nome_consultor:
-                                nome_consultor = nome_consultor.split(' - ', 1)[1]
-
-                            consultor = Usuario.query.filter_by(
-                                nome=nome_consultor.strip(),
-                                tipo='consultor',
-                                ativo=True
-                            ).first()
-
-                        if not consultor:
-                            consultor = current_user
-
-                        novo_cliente = Cliente(
-                            nome=cliente_oracle.get('cliente', '')[:200],
-                            cnpj=cnpj_oracle,
-                            telefone=telefone_principal,
-                            telefone2=telefone2_padronizado,
-                            cd_cliente_oracle=cd_cliente,
-                            categoria_consultor=cliente_oracle.get('consultor'),
-                            conceito=cliente_oracle.get('conceito'),
-                            representante_oracle=cliente_oracle.get('representante'),
-                            municipio=_limpar_texto(cliente_oracle.get('municipio')),
-                            uf=_limpar_texto(cliente_oracle.get('uf')),
-                            contato=_limpar_texto(cliente_oracle.get('contato')),
-                            valor_ultimo_pedido=cliente_oracle.get('total_pedido'),
-                            valor_total_365dias=valor_total_365,
-                            situacao_ultimo_pedido=cliente_oracle.get('situacao'),
-                            consultor_id=consultor.id,
-                            origem='importado_csv',
-                            ativo=True
-                        )
-
-                        dt_pedido = cliente_oracle.get('dt_pedido')
-                        if dt_pedido:
-                            novo_cliente.ultimo_pedido_oracle = dt_pedido
-
-                        novo_cliente.data_ultima_sincronizacao = datetime.now()
-                        db.session.add(novo_cliente)
-                        sincronizados += 1
-
-                except Exception as e:
-                    erros.append(f"Cliente {cd_cliente}: {str(e)}")
-                    continue
-
-            db.session.commit()
+            ok, msg = _iniciar_sync_oracle_background()
+            if not ok:
+                return jsonify({
+                    "success": False,
+                    "message": msg
+                }), 409
 
             return jsonify({
                 "success": True,
-                "message": "Sincronização concluída com sucesso!",
-                "total_oracle": len(clientes_oracle),
-                "sincronizados": sincronizados,
-                "atualizados": atualizados,
-                "erros": len(erros),
-                "detalhes_erros": erros[:5],
-                "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                "message": msg
             })
 
         except Exception as e:
             return jsonify({
                 "success": False,
-                "message": f"Erro ao buscar detalhes: {str(e)}"
+                "message": f"Erro na sincronizacao: {str(e)}"
             }), 500
 
+    @app.route('/sincronizar-oracle-status', methods=['GET'])
+    @login_required
+    def sincronizar_oracle_status():
+        if current_user.tipo != 'supervisor':
+            return jsonify({"ok": False, "mensagem": "Acesso permitido apenas para supervisores"}), 403
+
+        return jsonify({
+            "ok": True,
+            "running": bool(sync_state["running"]),
+            "started_at": (sync_state["started_at"].strftime("%d/%m/%Y %H:%M:%S") if sync_state["started_at"] else None),
+            "finished_at": (sync_state["finished_at"].strftime("%d/%m/%Y %H:%M:%S") if sync_state["finished_at"] else None),
+            "last_success": sync_state["last_success"],
+            "last_error": sync_state["last_error"],
+        })
     @app.route('/detalhes-cliente-oracle/<int:cliente_id>')
     @login_required
     def detalhes_cliente_oracle(cliente_id: int):
         """Busca detalhes completos do cliente Oracle"""
         try:
+            janela_dias = request.args.get('janela_dias', type=int) or 365
+            if janela_dias < 30:
+                janela_dias = 30
+            if janela_dias > 730:
+                janela_dias = 730
+
             cliente = db.session.get(Cliente, cliente_id)
             if not cliente:
                 return jsonify({"success": False, "message": "Cliente não encontrado"}), 404
@@ -219,40 +348,126 @@ def register_oracle_routes(app):
                     "mensagem": "Cliente não possui dados Oracle"
                 })
 
-            from oracle_service import get_itens_cliente_oracle, get_pedidos_cliente_oracle
-            pedidos_oracle = get_pedidos_cliente_oracle(cliente.cd_cliente_oracle)
-            itens_oracle = get_itens_cliente_oracle(cliente.cd_cliente_oracle)
-
-            return jsonify({
-                "success": True,
-                "cliente": {
-                    "id": cliente.id,
-                    "nome": cliente.nome,
-                    "cnpj": cliente.cnpj,
-                    "telefone": cliente.telefone,
-                    "telefone2": cliente.telefone2,
-                    "cd_cliente_oracle": cliente.cd_cliente_oracle,
-                    "categoria_consultor": cliente.categoria_consultor,
-                    "conceito": cliente.conceito,
-                    "ultimo_pedido_oracle": cliente.ultimo_pedido_oracle.strftime('%d/%m/%Y') if cliente.ultimo_pedido_oracle else None,
-                    "valor_ultimo_pedido": float(cliente.valor_ultimo_pedido) if cliente.valor_ultimo_pedido else None,
-                    "situacao_ultimo_pedido": cliente.situacao_ultimo_pedido,
-                    "representante_oracle": cliente.representante_oracle,
-                    "municipio": cliente.municipio,
-                    "uf": cliente.uf,
-                    "contato": cliente.contato,
-                    "data_ultima_sincronizacao": cliente.data_ultima_sincronizacao.strftime('%d/%m/%Y %H:%M') if cliente.data_ultima_sincronizacao else None
-                },
-                "pedidos_oracle": pedidos_oracle,
-                "itens_oracle": itens_oracle,
-                "total_pedidos": len(pedidos_oracle),
-                "total_itens": len(itens_oracle)
-            })
+            return _montar_resposta_detalhes_oracle(
+                cliente,
+                str(cliente.cd_cliente_oracle).strip(),
+                janela_dias=janela_dias
+            )
 
         except Exception as e:
             return jsonify({
                 "success": False,
                 "message": f"Erro ao buscar detalhes: {str(e)}"
+            }), 500
+
+    @app.route('/detalhes-cliente-oracle-cd/<cd_cliente>')
+    @login_required
+    def detalhes_cliente_oracle_por_codigo(cd_cliente: str):
+        """Busca detalhes Oracle por código do cliente (fallback quando não há ID local)."""
+        try:
+            janela_dias = request.args.get('janela_dias', type=int) or 365
+            if janela_dias < 30:
+                janela_dias = 30
+            if janela_dias > 730:
+                janela_dias = 730
+
+            cd_cliente_limpo = str(cd_cliente or '').strip()
+            if not cd_cliente_limpo:
+                return jsonify({"success": False, "message": "Código do cliente inválido"}), 400
+
+            cliente = Cliente.query.filter_by(cd_cliente_oracle=cd_cliente_limpo).first()
+
+            if cliente and current_user.tipo == 'consultor' and cliente.consultor_id != current_user.id:
+                return jsonify({"success": False, "message": "Sem permissão para este cliente"}), 403
+
+            if not cliente and current_user.tipo == 'consultor':
+                return jsonify({"success": False, "message": "Sem permissão para este cliente"}), 403
+
+            return _montar_resposta_detalhes_oracle(
+                cliente,
+                cd_cliente_limpo,
+                janela_dias=janela_dias
+            )
+
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "message": f"Erro ao buscar detalhes: {str(e)}"
+            }), 500
+
+    @app.route('/garantir-cliente-local-oracle', methods=['POST'])
+    @login_required
+    def garantir_cliente_local_oracle():
+        """Garante vínculo local para permitir registro de ligação em clientes Oracle."""
+        try:
+            if current_user.tipo not in ('televendas', 'supervisor'):
+                return jsonify({"success": False, "message": "Sem permissao"}), 403
+
+            payload = request.get_json(silent=True) or {}
+            cd_cliente = str(payload.get('cd_cliente_oracle') or '').strip()
+            if not cd_cliente:
+                return jsonify({"success": False, "message": "Codigo Oracle obrigatorio"}), 400
+
+            cliente_existente = Cliente.query.filter_by(cd_cliente_oracle=cd_cliente, ativo=True).first()
+            if cliente_existente:
+                if current_user.tipo == 'consultor' and cliente_existente.consultor_id != current_user.id:
+                    return jsonify({"success": False, "message": "Cliente vinculado a outro usuario"}), 403
+                return jsonify({
+                    "success": True,
+                    "cliente": {
+                        "id": cliente_existente.id,
+                        "nome": cliente_existente.nome,
+                        "telefone": cliente_existente.telefone or cliente_existente.telefone2
+                    }
+                })
+
+            nome = str(payload.get('nome') or f"Cliente Oracle {cd_cliente}").strip()[:200]
+            telefone = _limpar_texto(payload.get('telefone'))
+            telefone2 = _limpar_texto(payload.get('telefone2'))
+            cnpj = _limpar_texto(payload.get('cnpj'))
+            representante_nome = _limpar_texto(payload.get('representante_nome'))
+            categoria_consultor = _limpar_texto(payload.get('categoria_consultor'))
+            conceito = _limpar_texto(payload.get('conceito'))
+            municipio = _limpar_texto(payload.get('municipio'))
+            uf = _limpar_texto(payload.get('uf'))
+            contato = _limpar_texto(payload.get('contato'))
+            representante_oracle = _limpar_texto(payload.get('representante_oracle'))
+
+            novo_cliente = Cliente(
+                nome=nome or f"Cliente Oracle {cd_cliente}",
+                cnpj=cnpj,
+                telefone=telefone or telefone2,
+                telefone2=telefone2,
+                representante_nome=representante_nome,
+                consultor_id=current_user.id,
+                ativo=True,
+                origem='importado_csv',
+                cd_cliente_oracle=cd_cliente,
+                categoria_consultor=categoria_consultor,
+                conceito=conceito,
+                representante_oracle=representante_oracle,
+                municipio=municipio,
+                uf=uf,
+                contato=contato,
+            )
+
+            db.session.add(novo_cliente)
+            db.session.commit()
+
+            return jsonify({
+                "success": True,
+                "cliente": {
+                    "id": novo_cliente.id,
+                    "nome": novo_cliente.nome,
+                    "telefone": novo_cliente.telefone or novo_cliente.telefone2
+                }
+            })
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                "success": False,
+                "message": f"Erro ao garantir cliente local: {str(e)}"
             }), 500
 
     @app.route('/test-filtros-oracle')
@@ -325,29 +540,19 @@ def register_oracle_routes(app):
     @app.route('/sincronizar-oracle-async', methods=['POST'])
     @login_required
     def sincronizar_oracle_manual():
-        """Sincronização manual dos clientes Oracle"""
+        """Sincronizacao manual dos clientes Oracle"""
         if current_user.tipo != 'supervisor':
             return jsonify({"ok": False, "mensagem": "Acesso permitido apenas para supervisores"}), 403
 
         try:
-            from sincronizacao_automatica import sincronizacao_automatica_diaria
-
-            import threading
-
-            def sincronizar_background():
-                try:
-                    sincronizacao_automatica_diaria()
-                except Exception as e:
-                    print(f"Erro na sincronização background: {e}")
-
-            thread = threading.Thread(target=sincronizar_background)
-            thread.daemon = True
-            thread.start()
+            ok, msg = _iniciar_sync_oracle_background()
+            if not ok:
+                return jsonify({"ok": False, "mensagem": msg}), 409
 
             return jsonify({
                 "ok": True,
-                "mensagem": "Sincronização iniciada com sucesso! Aguarde alguns minutos para ver os resultados."
+                "mensagem": msg
             })
 
         except Exception as e:
-            return jsonify({"ok": False, "mensagem": f"Erro ao iniciar sincronização: {str(e)}"}), 500
+            return jsonify({"ok": False, "mensagem": f"Erro ao iniciar sincronizacao: {str(e)}"}), 500

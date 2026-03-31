@@ -8,6 +8,28 @@ from functools import wraps
 from typing import Callable, Type, Tuple, Union, Any
 from sqlalchemy.exc import OperationalError, IntegrityError, DatabaseError
 
+try:
+    import oracledb as _oracledb
+    _oracle_exceptions = tuple(
+        cls for cls in (
+            getattr(_oracledb, 'DatabaseError', None),
+            getattr(_oracledb, 'InterfaceError', None),
+            getattr(_oracledb, 'OperationalError', None),
+        ) if cls is not None
+    )
+except ImportError:
+    try:
+        import cx_Oracle as _oracledb
+        _oracle_exceptions = tuple(
+            cls for cls in (
+                getattr(_oracledb, 'DatabaseError', None),
+                getattr(_oracledb, 'InterfaceError', None),
+                getattr(_oracledb, 'OperationalError', None),
+            ) if cls is not None
+        )
+    except ImportError:
+        _oracle_exceptions = ()
+
 logger = logging.getLogger(__name__)
 
 def retry_database(
@@ -18,8 +40,8 @@ def retry_database(
         OperationalError,
         DatabaseError,
         ConnectionError,
-        TimeoutError
-    )
+        TimeoutError,
+    ) + _oracle_exceptions
 ):
     """
     Decorator para retry pattern em operações de banco de dados
@@ -94,7 +116,11 @@ def retry_oracle_connection(
                         keyword in error_msg 
                         for keyword in [
                             'connection', 'timeout', 'network', 
-                            'unavailable', 'refused', 'closed'
+                            'unavailable', 'refused', 'closed',
+                            'dpy-1001', 'dpi-1010', 'dpy-4011',
+                            'ora-03113', 'ora-03114', 'ora-12541',
+                            'ora-12543', 'ora-01012', 'not connected',
+                            'broken pipe', 'pool',
                         ]
                     )
                     

@@ -145,7 +145,7 @@ def identificar_tipo_telefone(telefone: str) -> str:
     
     # Extrair número após o DDD (com ou sem zero)
     # Padrão: (0XX) XXXXXXXX ou (XX) XXXXXXXX
-    match = re.search(r'\(0?\d{2}\)\s+(\d+)', telefone)
+    match = re.search(r'\(0\d{2}\)\s+(\d+)', telefone)
     if not match:
         return 'desconhecido'
     

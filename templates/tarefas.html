@@ -19,7 +19,7 @@
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="minhasTarefas" 
                                {% if apenas_minhas %}checked{% endif %} 
-                               onchange="window.location.href='?minhas=' + (this.checked ? '1' : '0')">
+                               onchange="window.location.href='minhas=' + (this.checked '1' : '0')">
                         <label class="form-check-label" for="minhasTarefas">
                             Minhas tarefas
                         </label>
@@ -97,7 +97,7 @@
                     <div class="row align-items-center">
                         <div class="col-md-4">
                             <label class="form-label">Filtrar por Status:</label>
-                            <select class="form-select" id="statusFilter" onchange="window.location.href='?status=' + this.value">
+                            <select class="form-select" id="statusFilter" onchange="window.location.href='status=' + this.value">
                                 <option value="">Todos os status</option>
                                 <option value="pendente" {% if status_atual == 'pendente' %}selected{% endif %}>Pendente</option>
                                 <option value="em_andamento" {% if status_atual == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
@@ -106,7 +106,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Filtrar por Prioridade:</label>
-                            <select class="form-select" id="prioridadeFilter" onchange="window.location.href='?prioridade=' + this.value">
+                            <select class="form-select" id="prioridadeFilter" onchange="window.location.href='prioridade=' + this.value">
                                 <option value="">Todas as prioridades</option>
                                 <option value="baixa" {% if prioridade_atual == 'baixa' %}selected{% endif %}>Baixa</option>
                                 <option value="media" {% if prioridade_atual == 'media' %}selected{% endif %}>Média</option>
@@ -315,7 +315,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Tem certeza que deseja cancelar esta tarefa?</p>
+                <p>Tem certeza que deseja cancelar esta tarefa</p>
                 <p class="text-muted">Esta ação não poderá ser desfeita.</p>
             </div>
             <div class="modal-footer">
@@ -337,7 +337,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Tem certeza que deseja concluir esta tarefa?</p>
+                <p>Tem certeza que deseja concluir esta tarefa</p>
                 <p class="text-muted">A tarefa será marcada como concluída e movida para a lista de tarefas concluídas.</p>
             </div>
             <div class="modal-footer">

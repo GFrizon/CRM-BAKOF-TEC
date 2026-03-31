@@ -311,7 +311,8 @@ class OracleService:
             join dexpara DPA on DPA.cd_operacao_resultado_de = PED.cd_tipo_operaca
             where DPA.cd_operacao_resultado_para not in ('20','21')
               and PED.controle not in ('85','96','99','86')
-              and upper(trim(nvl(to_char(PED.situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')
+              and upper(trim(nvl(to_char(PED.situacao), ''))) = 'F'
+              and nvl(PED.gerou_faturamen, 0) = 1
         ),
         clientes_alvo as (
             select *
@@ -450,7 +451,7 @@ class OracleService:
             logger.error(f"Erro ao buscar clientes proximos de inativacao: {str(e)}")
             raise
 
-    def get_resumo_pedidos_cliente(self, cd_cliente: str, janela_dias: int = 365) -> List[Dict]:
+    def get_resumo_pedidos_cliente(self, cd_cliente: str, janela_dias: int = 365, modo_especial: bool = False) -> List[Dict]:
         """
         Busca resumo de pedidos de um cliente específico
         
@@ -466,7 +467,12 @@ class OracleService:
         if dias > 730:
             dias = 730
 
-        query = """
+        filtro_faturamento = (
+            "and nvl(gerou_faturamen, 0) = 1 "
+            "and upper(trim(nvl(to_char(situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')"
+        )
+
+        query = f"""
         select 
             dt_pedido,
             total_pedido,
@@ -476,7 +482,7 @@ class OracleService:
         from fapedido
         where cd_cliente = :cd_cliente
           and dt_pedido >= (sysdate - :janela_dias)
-          and upper(trim(nvl(to_char(situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')
+          {filtro_faturamento}
         order by dt_pedido desc
         """
         
@@ -488,7 +494,7 @@ class OracleService:
             logger.error(f"Erro ao buscar pedidos do cliente {cd_cliente}: {str(e)}")
             raise
     
-    def get_itens_pedido_oracle(self, cd_cliente: str, janela_dias: int = 365) -> List[Dict]:
+    def get_itens_pedido_oracle(self, cd_cliente: str, janela_dias: int = 365, modo_especial: bool = False) -> List[Dict]:
         """
         Busca itens dos pedidos de um cliente específico com nomes dos produtos
         
@@ -504,7 +510,12 @@ class OracleService:
         if dias > 730:
             dias = 730
 
-        query = """
+        filtro_faturamento = (
+            "AND nvl(p.gerou_faturamen, 0) = 1 "
+            "AND upper(trim(nvl(to_char(p.situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')"
+        )
+
+        query = f"""
         SELECT 
             i.cd_material as idproduto,
             i.quantidade,
@@ -522,7 +533,7 @@ class OracleService:
         LEFT JOIN esmateri m ON m.cd_material = i.cd_material
         WHERE p.cd_cliente = :cd_cliente
           AND p.dt_pedido between (sysdate - :janela_dias) and sysdate
-          AND upper(trim(nvl(to_char(p.situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')
+          {filtro_faturamento}
           AND i.ROWID = (
             SELECT MIN(i2.ROWID)
             FROM FAITEMPE i2
@@ -548,6 +559,8 @@ class OracleService:
         FROM fapedido p
         WHERE p.cd_cliente = :cd_cliente
           AND p.dt_pedido >= ADD_MONTHS(SYSDATE, -12)
+          AND upper(trim(nvl(to_char(p.situacao), ''))) = 'F'
+          AND nvl(p.gerou_faturamen, 0) = 1
           AND upper(trim(nvl(to_char(p.situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')
         """
         
@@ -620,6 +633,8 @@ class OracleService:
             join dexpara DPA on DPA.cd_operacao_resultado_de = PED.cd_tipo_operaca
             where DPA.cd_operacao_resultado_para not in ('20','21')
               and PED.controle not in ('85','96','99','86')
+              and upper(trim(nvl(to_char(PED.situacao), ''))) = 'F'
+              and nvl(PED.gerou_faturamen, 0) = 1
               and upper(trim(nvl(to_char(PED.situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')
         ),
         ultimo_pedido as (
@@ -668,6 +683,81 @@ class OracleService:
         except Exception as e:
             logger.error(f"Erro ao buscar cliente por CNPJ no Oracle ({cnpj_digits}): {str(e)}")
             return None
+
+    def get_cliente_por_codigo(self, cd_cliente: str) -> Optional[Dict]:
+        """
+        Busca um cliente Oracle por codigo e retorna dados principais para detalhes.
+        """
+        cd_limpo = str(cd_cliente or "").strip()
+        if not cd_limpo:
+            return None
+
+        query = """
+        with pedidos_validos as (
+            select
+              PED.cd_cliente,
+              PED.dt_pedido,
+              PED.cd_pedido,
+              PED.total_pedido,
+              PED.situacao,
+              PED.desc_cond_pagto,
+              row_number() over (
+                partition by PED.cd_cliente
+                order by PED.dt_pedido desc, PED.cd_pedido desc nulls last
+              ) as rn
+            from fapedido PED
+            join dexpara DPA on DPA.cd_operacao_resultado_de = PED.cd_tipo_operaca
+            where DPA.cd_operacao_resultado_para not in ('20','21')
+              and PED.controle not in ('85','96','99','86')
+              and upper(trim(nvl(to_char(PED.situacao), ''))) = 'F'
+              and nvl(PED.gerou_faturamen, 0) = 1
+              and upper(trim(nvl(to_char(PED.situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')
+        ),
+        ultimo_pedido as (
+            select *
+            from pedidos_validos
+            where rn = 1
+        )
+        select
+          CLI.cd_empresa as cd_cliente,
+          CLI.nome_completo as cliente,
+          CLI.cnpj_cpf as cnpj,
+          CLI.fone as telefone1,
+          CLI.fax_fone as telefone2,
+          CLI.municipio as municipio,
+          CLI.uf as uf,
+          CLI.contato as contato,
+          REP.nome_completo || ' - ' || CLI.cd_representant as representante,
+          coalesce(TGS.categoria,'999') || ' - ' || TG1.desc_categoria as consultor,
+          UPE.dt_pedido,
+          UPE.total_pedido,
+          UPE.situacao,
+          UPE.desc_cond_pagto,
+          case
+             when CLI.conceito = 'L' then 'LIBERADO'
+             when CLI.conceito = 'B' then 'INADIMPLENTE'
+             when trim(CLI.conceito) is null then 'SEM CONCEITO'
+             else 'SEM CONCEITO'
+          end as conceito
+        from geempres CLI
+        left join ultimo_pedido UPE on UPE.cd_cliente = CLI.cd_empresa
+        left join Geelemen TGS on TGS.cd_tg = 634 and TGS.elemento = CLI.cd_representant
+        left join Gecatego TG1 on TG1.cd_tg = 634 and TG1.categoria = coalesce(TGS.categoria,'999')
+        left join geempres REP on REP.cd_empresa = CLI.cd_representant
+        where to_char(CLI.cd_empresa) = :cd_cliente
+          and CLI.pessoa = '0'
+          and CLI.tipo_de_empresa = 'R'
+        fetch first 1 rows only
+        """
+
+        try:
+            results = self.execute_query(query, {"cd_cliente": cd_limpo})
+            if not results:
+                return None
+            return results[0]
+        except Exception as e:
+            logger.error(f"Erro ao buscar cliente por codigo no Oracle ({cd_limpo}): {str(e)}")
+            return None
 # Instância global do serviço
 oracle_service = OracleService()
 
@@ -680,13 +770,13 @@ def get_clientes_oracle():
     """Busca clientes alvo no Oracle"""
     return oracle_service.get_clientes_alvo()
 
-def get_pedidos_cliente_oracle(cd_cliente: str, janela_dias: int = 365):
+def get_pedidos_cliente_oracle(cd_cliente: str, janela_dias: int = 365, modo_especial: bool = False):
     """Busca pedidos de um cliente específico no Oracle"""
-    return oracle_service.get_resumo_pedidos_cliente(cd_cliente, janela_dias=janela_dias)
+    return oracle_service.get_resumo_pedidos_cliente(cd_cliente, janela_dias=janela_dias, modo_especial=modo_especial)
 
-def get_itens_cliente_oracle(cd_cliente: str, janela_dias: int = 365):
+def get_itens_cliente_oracle(cd_cliente: str, janela_dias: int = 365, modo_especial: bool = False):
     """Busca itens de pedidos de um cliente específico no Oracle"""
-    return oracle_service.get_itens_pedido_oracle(cd_cliente, janela_dias=janela_dias)
+    return oracle_service.get_itens_pedido_oracle(cd_cliente, janela_dias=janela_dias, modo_especial=modo_especial)
 
 def get_valor_total_365dias(cd_cliente: str):
     """Busca valor total dos pedidos dos últimos 365 dias de um cliente"""
@@ -714,3 +804,8 @@ def get_centralizadora_cliente_oracle(cd_cliente: str):
 def get_cliente_oracle_por_cnpj(cnpj: str):
     """Busca cliente Oracle por CNPJ para pre-preenchimento de cadastro manual"""
     return oracle_service.get_cliente_por_cnpj(cnpj)
+
+
+def get_cliente_oracle_por_codigo(cd_cliente: str):
+    """Busca cliente Oracle por codigo para detalhes de cliente."""
+    return oracle_service.get_cliente_por_codigo(cd_cliente)

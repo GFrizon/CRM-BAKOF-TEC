@@ -1,10 +1,12 @@
 ﻿# Core do Flask
 flask==3.0.3
+flask-sqlalchemy==3.1.1
 flask-login==0.6.3
 flask-wtf==1.2.1
 itsdangerous==2.2.0
 jinja2==3.1.4
 werkzeug==3.0.3
+waitress==3.0.2
 
 # Banco de Dados MySQL
 pymysql==1.1.1
@@ -38,3 +40,4 @@ plotly==5.24.1
 # oracledb==2.1.0  # Precisa Visual C++ Build Tools
 # Usando versão mais recente que pode ter wheels pré-compilados
 oracledb>=2.0.0
+

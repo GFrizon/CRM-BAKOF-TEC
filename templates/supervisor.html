@@ -106,13 +106,128 @@
   </div>
 </div>
 
-<!-- Graficos -->
+<!-- KPI Operacionais -->
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <a href="{{ url_for('meus_clientes', aba='oracle') }}" class="text-decoration-none">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="bi bi-database"></i>
+        </div>
+        <div class="stat-value">{{ total_sem_pedido_90_120 }}</div>
+        <div class="stat-label">Sem Pedido 90-120d</div>
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}" class="text-decoration-none">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="bi bi-exclamation-triangle"></i>
+        </div>
+        <div class="stat-value">{{ total_proximos_inativacao }}</div>
+        <div class="stat-label">Próximos Inativação</div>
+        {% if total_carteira_risco > 0 %}
+        <small class="text-danger fw-semibold"><i class="bi bi-shield-exclamation"></i> {{ total_carteira_risco }} sem contato 30d</small>
+        {% else %}
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
+        {% endif %}
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="{{ url_for('meus_clientes', aba='inativos') }}" class="text-decoration-none">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="bi bi-person-slash"></i>
+        </div>
+        <div class="stat-value">{{ total_inativos }}</div>
+        <div class="stat-label">Clientes Inativos</div>
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card {% if total_retorno_atrasado > 0 %}border-danger{% endif %}" style="{% if total_retorno_atrasado > 0 %}border-left: 4px solid #dc2626;{% endif %}">
+      <a href="{{ url_for('meus_clientes', aba='retornar') }}" class="text-decoration-none">
+        <div class="stat-icon" style="{% if total_retorno_atrasado > 0 %}color:#dc2626;{% endif %}">
+          <i class="bi bi-alarm"></i>
+        </div>
+        <div class="stat-value" style="{% if total_retorno_atrasado > 0 %}color:#dc2626;{% endif %}">{{ total_retorno_atrasado }}</div>
+        <div class="stat-label">Retornos Atrasados</div>
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver retornos</small>
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<!-- Meta Diária dos Consultores -->
+{% if progresso %}
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-bullseye"></i> Meta Diária — Hoje</span>
+    <small class="text-muted">Ligações realizadas vs meta configurada</small>
+  </div>
+  <div class="table-container">
+    <table class="table table-hover m-0">
+      <thead>
+        <tr>
+          <th>Consultor</th>
+          <th class="text-center">Ligações Hoje</th>
+          <th class="text-center">Meta</th>
+          <th style="width:220px">Progresso</th>
+          <th class="text-center">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in progresso %}
+        <tr>
+          <td class="fw-bold">{{ p.nome }}</td>
+          <td class="text-center">
+            <span class="badge bg-primary">{{ p.feitas }}</span>
+          </td>
+          <td class="text-center">
+            <span class="text-muted">{{ p.meta }}</span>
+          </td>
+          <td>
+            {% if p.meta > 0 %}
+            <div class="progress" style="height:10px;border-radius:5px;">
+              <div class="progress-bar
+                {% if p.percentual >= 100 %}bg-success
+                {% elif p.percentual >= 50 %}bg-warning
+                {% else %}bg-danger{% endif %}"
+                style="width:{{ [p.percentual, 100]|min }}%;transition:width .4s;">
+              </div>
+            </div>
+            {% else %}
+            <span class="text-muted" style="font-size:.8rem;">Sem meta</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <span class="badge
+              {% if p.percentual >= 100 %}bg-success
+              {% elif p.percentual >= 50 %}bg-warning
+              {% else %}bg-secondary{% endif %}">
+              {{ p.percentual }}%
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Gráficos -->
 
 <div class="row g-4 mb-4">
   <div class="col-md-8">
     <div class="card">
       <div class="card-header">
-        <i class="bi bi-graph-up"></i> Ligacoes nos ultimos 7 dias
+        <i class="bi bi-graph-up"></i> Ligações nos últimos 7 dias
       </div>
       <div class="card-body">
         <canvas id="chartLigacoesDias" height="80"></canvas>
@@ -376,9 +491,21 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+let _reqFiltroMesToken = 0;
+let _reqLigacoesMesToken = 0;
+let _chartLigacoesDias = null;
+let _chartResultados = null;
+
 document.addEventListener('DOMContentLoaded', () => {
+  if (window.__supervisorDashboardInit) return;
+  window.__supervisorDashboardInit = true;
   aplicarFiltroMes();
   carregarLigacoesMes();
+});
+
+window.addEventListener('pageshow', () => {
+  if (_chartLigacoesDias) _chartLigacoesDias.resize();
+  if (_chartResultados) _chartResultados.resize();
 });
 
 // 🆕 FECHAR POP-UP DE NOVIDADES
@@ -407,9 +534,11 @@ async function aplicarFiltroMes() {
     </tr>
   `;
   
+  const token = ++_reqFiltroMesToken;
   try {
     const r = await fetch(`/api/resultados-por-mes?mes=${mes}&ano=${ano}`);
     const data = await r.json();
+    if (token !== _reqFiltroMesToken) return;
     
     if (!data.ok) {
       throw new Error(data.erro || 'Erro ao buscar dados');
@@ -499,9 +628,11 @@ async function carregarLigacoesMes() {
   const params = new URLSearchParams({ mes, ano });
   if (consultorId) params.append('consultor_id', consultorId);
 
+  const token = ++_reqLigacoesMesToken;
   try {
     const r = await fetch(`/api/supervisor/ligacoes-por-mes?${params.toString()}`);
     const data = await r.json();
+    if (token !== _reqLigacoesMesToken) return;
     if (!data.ok) throw new Error(data.erro || 'Erro ao carregar ligações');
 
     const est = data.estatisticas || {};
@@ -552,6 +683,9 @@ async function carregarLigacoesMes() {
   }
 }
 
+if (typeof Chart === 'undefined') {
+  console.error('Chart.js nao carregou no painel do supervisor.');
+} else {
 // Configuração dos gráficos
 Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 Chart.defaults.font.size = 13;
@@ -560,8 +694,11 @@ Chart.defaults.font.size = 13;
 const ctxDias = document.getElementById('chartLigacoesDias');
 if (ctxDias) {
   const ligacoesDias = {{ ligacoes_por_dia|tojson|safe }};
+  if (_chartLigacoesDias) {
+    _chartLigacoesDias.destroy();
+  }
   
-  new Chart(ctxDias, {
+  _chartLigacoesDias = new Chart(ctxDias, {
     type: 'line',
     data: {
       labels: ligacoesDias.map(d => d.data).reverse(),
@@ -611,8 +748,11 @@ if (ctxDias) {
 const ctxResultados = document.getElementById('chartResultados');
 if (ctxResultados) {
   const resultados = {{ resultados_chart|tojson|safe }};
+  if (_chartResultados) {
+    _chartResultados.destroy();
+  }
   
-  new Chart(ctxResultados, {
+  _chartResultados = new Chart(ctxResultados, {
     type: 'doughnut',
     data: {
       labels: ['Comprou', 'Não Comprou', 'Retornar', 'Sem Interesse', 'Relacionamento', 'Cliente Inativo'],
@@ -666,6 +806,7 @@ if (ctxResultados) {
       }
     }
   });
+}
 }
 </script>
 {% endblock %}

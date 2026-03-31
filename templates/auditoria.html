@@ -151,7 +151,7 @@
                                     {% for p in range(1, total_paginas + 1) %}
                                         <li class="page-item {{ 'active' if p == pagina else '' }}">
                                             <a class="page-link" 
-                                               href="?pagina={{ p }}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if acao_filtro %}&acao={{ acao_filtro }}{% endif %}{% if tabela_filtro %}&tabela={{ tabela_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}">
+                                               href="pagina={{ p }}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if acao_filtro %}&acao={{ acao_filtro }}{% endif %}{% if tabela_filtro %}&tabela={{ tabela_filtro }}{% endif %}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}">
                                                 {{ p }}
                                             </a>
                                         </li>

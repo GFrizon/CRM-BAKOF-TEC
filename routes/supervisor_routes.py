@@ -66,6 +66,76 @@ def register_supervisor_routes(app):
         total_ligacoes = Ligacao.query.count()
         ligacoes_hoje = Ligacao.query.filter(func.date(Ligacao.data_hora) == hoje).count()
 
+        agora = datetime.now()
+        limite_90 = agora - timedelta(days=90)
+        limite_120 = agora - timedelta(days=120)
+        limite_151 = agora - timedelta(days=151)
+        limite_180 = agora - timedelta(days=180)
+        limite_181 = agora - timedelta(days=181)
+        limite_730 = agora - timedelta(days=730)
+
+        total_sem_pedido_90_120 = (
+            Cliente.query
+            .filter(
+                Cliente.ativo == True,
+                Cliente.cd_cliente_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.between(limite_120, limite_90),
+            )
+            .count()
+        )
+        total_proximos_inativacao = (
+            Cliente.query
+            .filter(
+                Cliente.ativo == True,
+                Cliente.cd_cliente_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
+            )
+            .count()
+        )
+        total_inativos = (
+            Cliente.query
+            .filter(
+                Cliente.ativo == True,
+                Cliente.cd_cliente_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.between(limite_730, limite_181),
+            )
+            .count()
+        )
+
+        # Retornos vencidos: clientes com proxima_ligacao no passado (equipe não ligou).
+        total_retorno_atrasado = (
+            Cliente.query
+            .filter(
+                Cliente.ativo == True,
+                Cliente.proxima_ligacao.isnot(None),
+                Cliente.proxima_ligacao < agora,
+            )
+            .count()
+        )
+
+        # Carteira em risco: proximos inativação (151-180d) sem qualquer ligação nos últimos 30d.
+        limite_30d = agora - timedelta(days=30)
+        ids_com_contato_recente = (
+            db.session.query(Ligacao.cliente_id)
+            .filter(Ligacao.data_hora >= limite_30d)
+            .distinct()
+            .subquery()
+        )
+        total_carteira_risco = (
+            Cliente.query
+            .filter(
+                Cliente.ativo == True,
+                Cliente.cd_cliente_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
+                Cliente.id.notin_(ids_com_contato_recente),
+            )
+            .count()
+        )
+
         rows = (
             db.session.query(Usuario.nome, func.count(Ligacao.id))
             .join(Ligacao, Ligacao.consultor_id == Usuario.id, isouter=True)
@@ -93,6 +163,9 @@ def register_supervisor_routes(app):
             .all()
         )
         resultados_chart = {(r or "nao_comprou"): int(c) for r, c in res}
+        total_resultados_30d = sum(int(v or 0) for v in resultados_chart.values())
+        total_vendas_30d = int(resultados_chart.get("comprou", 0))
+        taxa_conversao_geral_30d = round(_percent(total_vendas_30d, total_resultados_30d), 1) if total_resultados_30d else 0.0
 
         progresso = []
         consultores = Usuario.query.filter_by(tipo="consultor", ativo=True).order_by(Usuario.nome).all()
@@ -148,6 +221,13 @@ def register_supervisor_routes(app):
             total_clientes=total_clientes,
             total_ligacoes=total_ligacoes,
             ligacoes_hoje=ligacoes_hoje,
+            total_sem_pedido_90_120=total_sem_pedido_90_120,
+            total_proximos_inativacao=total_proximos_inativacao,
+            total_inativos=total_inativos,
+            total_retorno_atrasado=total_retorno_atrasado,
+            total_carteira_risco=total_carteira_risco,
+            total_vendas_30d=total_vendas_30d,
+            taxa_conversao_geral_30d=taxa_conversao_geral_30d,
             ranking=ranking,
             ligacoes_por_dia=lig_por_dia,
             resultados_chart=resultados_chart,
@@ -287,7 +367,7 @@ def register_supervisor_routes(app):
             if not nome or not email or not senha:
                 return jsonify({"ok": False, "mensagem": "Nome, email e senha são obrigatórios"}), 400
 
-            if tipo not in ("consultor", "supervisor"):
+            if tipo not in ("consultor", "supervisor", "televendas"):
                 return jsonify({"ok": False, "mensagem": "Tipo inválido"}), 400
 
             if Usuario.query.filter_by(email=email).first():
@@ -331,7 +411,7 @@ def register_supervisor_routes(app):
             if not nome or not email:
                 return jsonify({"ok": False, "mensagem": "Nome e email são obrigatórios"}), 400
 
-            if tipo not in ("consultor", "supervisor"):
+            if tipo not in ("consultor", "supervisor", "televendas"):
                 return jsonify({"ok": False, "mensagem": "Tipo inválido"}), 400
 
             email_existe = Usuario.query.filter(Usuario.email == email, Usuario.id != usuario_id).first()
@@ -493,4 +573,3 @@ def register_supervisor_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
-

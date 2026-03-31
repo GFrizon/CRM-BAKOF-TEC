@@ -21,11 +21,12 @@ def register_auth_routes(app):
         if request.method == "POST":
             email = s(request.form.get("email"))
             senha = request.form.get("senha") or ""
+            lembrar = (request.form.get("lembrar") == "1")
 
             user = Usuario.query.filter_by(email=email, ativo=True).first()
             if not user:
                 flash("Usuario nao encontrado ou inativo.", "danger")
-                return render_template("login.html")
+                return render_template("login.html", lembrar=lembrar)
 
             try:
                 okpwd = check_password_hash(user.senha_hash, senha)
@@ -34,13 +35,13 @@ def register_auth_routes(app):
 
             if not okpwd:
                 flash("Senha invalida.", "danger")
-                return render_template("login.html")
+                return render_template("login.html", lembrar=lembrar)
 
-            login_user(user, remember=False, duration=timedelta(hours=4))
+            login_user(user, remember=lembrar, duration=timedelta(days=30) if lembrar else None)
             flash("Login realizado com sucesso!", "success")
             return redirect(url_for("index"))
 
-        return render_template("login.html")
+        return render_template("login.html", lembrar=False)
 
     @app.route("/logout")
     def logout():

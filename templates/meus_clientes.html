@@ -904,6 +904,7 @@ code {
      ============================================================ -->
 {% if current_user.tipo in ('consultor', 'televendas') and stats %}
 <div class="row g-3 mb-4">
+  {% if current_user.tipo == 'consultor' %}
   <div class="col-6 col-md-3">
     <div class="card stat-card h-100">
       <div class="card-body">
@@ -915,6 +916,20 @@ code {
       </div>
     </div>
   </div>
+  {% endif %}
+  {% if current_user.tipo == 'consultor' %}
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">90-120 dias</span>
+          <i class="bi bi-arrow-repeat"></i>
+        </div>
+        <div class="stat-value">{{ stats.clientes_90_120 or total_oracle }}</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
   <div class="col-6 col-md-3">
     <div class="card stat-card h-100">
       <div class="card-body">
@@ -932,7 +947,7 @@ code {
     <div class="card stat-card h-100">
       <div class="card-body">
         <div class="d-flex align-items-center justify-content-between">
-          <span class="text-muted">Ãšltimos 7 dias</span>
+          <span class="text-muted">Últimos 7 dias</span>
           <i class="bi bi-calendar-week"></i>
         </div>
         <div class="stat-value">{{ stats.ligacoes_semana }}</div>
@@ -943,10 +958,33 @@ code {
     <div class="card stat-card h-100">
       <div class="card-body">
         <div class="d-flex align-items-center justify-content-between">
-          <span class="text-muted">Ãšltimos 30 dias</span>
+          <span class="text-muted">Últimos 30 dias</span>
           <i class="bi bi-calendar3"></i>
         </div>
         <div class="stat-value">{{ stats.ligacoes_mes }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Positivo 30d</span>
+          <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <div class="stat-value" style="color:#2563eb;">{{ stats.positivos_30 or 0 }}</div>
+        <small class="text-muted" style="font-size:.7rem;">{{ stats.taxa_positiva_30 or 0 }}%</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Converteu 30d</span>
+          <i class="bi bi-trophy"></i>
+        </div>
+        <div class="stat-value" style="color:#16a34a;">{{ stats.converteu_30 or 0 }}</div>
       </div>
     </div>
   </div>
@@ -1337,7 +1375,7 @@ code {
       <select class="form-select" name="filtro" onchange="this.form.submit()">
         <option value="">Todos</option>
         <option value="antigos"  {% if request.args.get('filtro') == 'antigos'  %}selected{% endif %}>+30 dias sem contato</option>
-        <option value="recentes" {% if request.args.get('filtro') == 'recentes' %}selected{% endif %}>Recentes (â‰¤7 dias)</option>
+        <option value="recentes" {% if request.args.get('filtro') == 'recentes' %}selected{% endif %}>Recentes (≤7 dias)</option>
       </select>
     </div>
     {% endif %}
@@ -1391,9 +1429,6 @@ code {
         <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
           <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
         </a>
-        <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
-          <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
-        </a>
         <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
           <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
         </a>
@@ -1404,6 +1439,9 @@ code {
           {% endif %}
         </a>
         {% else %}
+        <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
+          <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
+        </a>
         <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
           <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
         </a>
@@ -1557,7 +1595,7 @@ code {
                     {% if aba == 'inativos' and c.ultima_ligacao_por %}
                     <div class="oracle-cliente-meta-row">
                       <span class="oracle-cliente-meta-item">
-                        <i class="bi bi-telephone-outbound"></i>Ultima ligacao por: {{ c.ultima_ligacao_por }}
+                        <i class="bi bi-telephone-outbound"></i>Última ligação por: {{ c.ultima_ligacao_por }}
                       </span>
                     </div>
                     {% endif %}
@@ -1745,9 +1783,6 @@ code {
       <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
         <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
-      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
-        <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
-      </a>
       <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
         <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
       </a>
@@ -1759,14 +1794,20 @@ code {
       </a>
       {% else %}
       <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
+        {% if current_user.tipo in ('consultor', 'supervisor') %}
+        <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
+        {% else %}
         <i class="bi bi-clock"></i><span class="tab-label">Pendentes</span><span class="tab-count">{{ total_pendentes }}</span>
+        {% endif %}
       </a>
       <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
         <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
       </a>
+      {% if current_user.tipo != 'consultor' %}
       <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
         <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
+      {% endif %}
       <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
         <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
       </a>
@@ -1863,16 +1904,16 @@ code {
           </td>
           <td><small style="color:var(--text-2);">{{ c.representante_nome or '-' }}</small></td>
           {% if aba != 'pendentes' %}
-          <td>
+          <td data-col="ultima-ligacao">
             {% if c.ultima_ligacao %}
             <span style="font-size:.8rem;">{{ c.ultima_ligacao.strftime('%d/%m/%Y %H:%M') }}</span>
             {% else %}-{% endif %}
           </td>
           {% endif %}
           {% if aba == 'retornar' %}
-          <td>
-            {% if c.proxima_ligacao %}
+          <td data-col="proxima-ligacao">
             {% set agora = now() %}
+            {% if c.proxima_ligacao %}
             {% if c.proxima_ligacao < agora %}
             <span class="text-danger fw-bold" style="font-size:.8rem;">
               <i class="bi bi-exclamation-triangle-fill me-1"></i>
@@ -1899,7 +1940,7 @@ code {
                       title="Registrar Ligação">
                 <i class="bi bi-telephone-plus"></i>
               </button>
-              {% if aba != 'pendentes' %}
+              {% if aba != 'pendentes' or (c.total_ligacoes or 0) > 0 %}
               <button class="action-btn btn btn-outline-secondary"
                       onclick="historico({{ c.id }})"
                       title="Histórico">
@@ -1944,6 +1985,7 @@ code {
         </div>
         <div class="modal-body">
           <input type="hidden" id="cliId">
+          <input type="hidden" id="cliCdClienteOracle">
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label">Cliente</label>
@@ -2262,8 +2304,11 @@ async function fecharNovidades() {
   document.getElementById('modalNovidades').style.display = 'none';
 }
 
-function abrirForm(id, nome, telefone) {
+function abrirForm(id, nome, telefone, cdClienteOracle = '') {
   document.getElementById('cliId').value = id;
+  const row = id ? document.querySelector(`tr[data-cliente-id="${id}"]`) : null;
+  const cdNaLinha = row ? (row.getAttribute('data-cd-cliente-oracle') || '').trim() : '';
+  document.getElementById('cliCdClienteOracle').value = (cdClienteOracle || cdNaLinha || '').toString().trim();
   document.getElementById('cliNome').value = nome;
   document.getElementById('cliTelefone').value = telefone || '';
   document.getElementById('contato_nome').value = '';
@@ -2377,7 +2422,8 @@ async function garantirClienteLocalEAbrirForm(clienteOracle) {
     abrirForm(
       data.cliente.id,
       data.cliente.nome || (clienteOracle && clienteOracle.nome) || 'Cliente',
-      data.cliente.telefone || (clienteOracle && (clienteOracle.telefone || clienteOracle.telefone2)) || ''
+      data.cliente.telefone || (clienteOracle && (clienteOracle.telefone || clienteOracle.telefone2)) || '',
+      (clienteOracle && clienteOracle.cd_cliente_oracle) || ''
     );
   } catch (erro) {
     console.error('Erro ao garantir cliente local:', erro);
@@ -2448,6 +2494,7 @@ async function confirmarLimpeza() {
 async function salvarLigacao(e) {
   e.preventDefault();
   const id = document.getElementById('cliId').value;
+  const cdClienteOracle = (document.getElementById('cliCdClienteOracle').value || '').trim();
   const payload = {
     contato_nome: document.getElementById('contato_nome').value,
     resultado:    document.getElementById('resultado').value,
@@ -2469,13 +2516,59 @@ async function salvarLigacao(e) {
     modalLigacao.hide(); 
     mostrarToastMensagem(j.mensagem || 'Ligacao registrada!', 'success');
 
-    const retornoAgendado = Boolean(payload.data_retorno || payload.dias_retorno);
-    if (ABA_ATUAL === 'inativos' || ABA_ATUAL === 'oracle') {
-      _removerClienteDaTela(id);
-      _ajustarContadorAba(ABA_ATUAL === 'inativos' ? 'Clientes Inativos' : 'Sem Pedido 90-120d', -1);
+    const retornoAgendado = Boolean(j.proxima_ligacao || payload.data_retorno || payload.dias_retorno);
+
+    // Na aba Oracle (90-120d), manter cliente na lista e apenas atualizar status local.
+    if (ABA_ATUAL === 'oracle') {
+      _atualizarLinhaEmPlace(id, j.proxima_ligacao);
       const abaDestino = retornoAgendado ? 'Retornar' : 'Contatados';
       _ajustarContadorAba(abaDestino, +1);
       _destacarAbaDestino(abaDestino);
+      atualizarInfoQuickActions();
+      return;
+    }
+
+    // Abas onde o cliente sempre sai da lista atual apos o contato
+    if (ABA_ATUAL === 'inativos' ||
+        ABA_ATUAL === 'pendentes' || ABA_ATUAL === 'proximos_inativacao') {
+      const _rotuloAtual = {
+        inativos:            'Clientes Inativos',
+        pendentes:           _rotuloAbaPendentes(),
+        proximos_inativacao: 'Próximos Inativação'
+      }[ABA_ATUAL];
+      _removerClienteDaTela(id, cdClienteOracle);
+      _ajustarContadorAba(_rotuloAtual, -1);
+      const abaDestino = retornoAgendado ? 'Retornar' : 'Contatados';
+      _ajustarContadorAba(abaDestino, +1);
+      _destacarAbaDestino(abaDestino);
+      atualizarInfoQuickActions();
+      return;
+    }
+
+    // Aba Contatados: move para Retornar se agendou retorno, senao atualiza in-place
+    if (ABA_ATUAL === 'contatados') {
+      if (retornoAgendado) {
+        _removerClienteDaTela(id);
+        _ajustarContadorAba('Contatados', -1);
+        _ajustarContadorAba('Retornar', +1);
+        _destacarAbaDestino('Retornar');
+      } else {
+        _atualizarLinhaEmPlace(id, null);
+      }
+      atualizarInfoQuickActions();
+      return;
+    }
+
+    // Aba Retornar: move para Contatados se nao agendou retorno, senao atualiza in-place
+    if (ABA_ATUAL === 'retornar') {
+      if (retornoAgendado) {
+        _atualizarLinhaEmPlace(id, j.proxima_ligacao);
+      } else {
+        _removerClienteDaTela(id);
+        _ajustarContadorAba('Retornar', -1);
+        _ajustarContadorAba('Contatados', +1);
+        _destacarAbaDestino('Contatados');
+      }
       atualizarInfoQuickActions();
       return;
     }
@@ -2667,11 +2760,16 @@ function _destacarAbaDestino(rotulo) {
   });
 }
 
-function _removerClienteDaTela(clienteId) {
+function _removerClienteDaTela(clienteId, cdClienteOracle = '') {
   const id = String(clienteId || '').trim();
-  if (!id) return;
-  const rows = Array.from(document.querySelectorAll(`tr[data-cliente-id="${id}"]`));
-  rows.forEach((row) => {
+  const cd = String(cdClienteOracle || '').trim();
+  if (!id && !cd) return;
+  const rows = [
+    ...(id ? Array.from(document.querySelectorAll(`tr[data-cliente-id="${id}"]`)) : []),
+    ...(cd ? Array.from(document.querySelectorAll(`tr[data-cd-cliente-oracle="${cd}"]`)) : []),
+  ];
+  const rowsUnicos = Array.from(new Set(rows));
+  rowsUnicos.forEach((row) => {
     const tbody = row.closest('tbody');
     row.remove();
     if (!tbody) return;
@@ -2680,6 +2778,51 @@ function _removerClienteDaTela(clienteId) {
       tbody.innerHTML = "<tr><td colspan='8' class='text-center text-muted py-3'>Sem clientes neste grupo.</td></tr>";
     }
   });
+}
+
+function _rotuloAbaPendentes() {
+  const el = document.querySelector('.modern-tabs .nav-link.tab-pendentes .tab-label');
+  return el ? (el.textContent || '').trim() : 'Clientes Especiais';
+}
+
+function _atualizarLinhaEmPlace(clienteId, novaProximaLigacaoIso) {
+  const id = String(clienteId || '').trim();
+  if (!id) return;
+  const row = document.querySelector(`tr[data-cliente-id="${id}"]`);
+  if (!row) return;
+
+  const totalAtual = parseInt(row.dataset.totalLigacoes || '0', 10);
+  const novoTotal = totalAtual + 1;
+  row.dataset.totalLigacoes = String(novoTotal);
+  const badge = row.querySelector('.badge-count');
+  if (badge) badge.textContent = String(novoTotal);
+
+  const agora = new Date();
+  const p2 = n => String(n).padStart(2, '0');
+  const isoStr = `${agora.getFullYear()}-${p2(agora.getMonth()+1)}-${p2(agora.getDate())} ${p2(agora.getHours())}:${p2(agora.getMinutes())}:${p2(agora.getSeconds())}`;
+  const fmtDt  = d => `${p2(d.getDate())}/${p2(d.getMonth()+1)}/${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+
+  row.dataset.ultimaLigacao = isoStr;
+  const tdUltima = row.querySelector('td[data-col="ultima-ligacao"]');
+  if (tdUltima) tdUltima.innerHTML = `<span style="font-size:.8rem;">${fmtDt(agora)}</span>`;
+
+  if (novaProximaLigacaoIso) {
+    try {
+      const proxData = new Date(novaProximaLigacaoIso);
+      if (!isNaN(proxData.getTime())) {
+        row.dataset.proximaLigacao = novaProximaLigacaoIso.replace('T', ' ').slice(0, 19);
+        const atrasado = agora >= proxData;
+        row.dataset.retornoAtrasado = atrasado ? '1' : '0';
+        const tdProxima = row.querySelector('td[data-col="proxima-ligacao"]');
+        if (tdProxima) {
+          const fmtProx = fmtDt(proxData);
+          tdProxima.innerHTML = atrasado
+            ? `<span class="text-danger fw-bold" style="font-size:.8rem;"><i class="bi bi-exclamation-triangle-fill me-1"></i>${fmtProx}</span>`
+            : `<span style="font-size:.8rem;">${fmtProx}</span>`;
+        }
+      }
+    } catch (_) {}
+  }
 }
 
 function normalizarNumeroWhatsApp(telefone) {
@@ -3010,10 +3153,11 @@ document.addEventListener('DOMContentLoaded', async function() {
           const stats = data.estatisticas;
           resultadosDiv.innerHTML = `
             <div class="row g-3">
-              <div class="col-md-3"><div class="card stat-card"><div class="card-body"><div class="text-muted">Total Ligações</div><div class="stat-value">${stats.total_ligacoes}</div></div></div></div>
-              <div class="col-md-3"><div class="card stat-card"><div class="card-body"><div class="text-muted">Vendas</div><div class="stat-value" style="color:#16a34a;">${stats.vendas}</div></div></div></div>
-              <div class="col-md-3"><div class="card stat-card"><div class="card-body"><div class="text-muted">Conversão</div><div class="stat-value">${stats.taxa_conversao}%</div></div></div></div>
-              <div class="col-md-3"><div class="card stat-card"><div class="card-body"><div class="text-muted">Receita</div><div class="stat-value" style="font-size:1.1rem;">${stats.receita_fmt}</div></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Total Ligações</div><div class="stat-value">${stats.total_ligacoes}</div></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Positivo</div><div class="stat-value" style="color:#2563eb;">${stats.positivos || 0}</div><small class="text-muted">${stats.taxa_positiva || 0}%</small></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Converteu</div><div class="stat-value" style="color:#16a34a;">${stats.vendas}</div></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Conversão</div><div class="stat-value">${stats.taxa_conversao}%</div></div></div></div>
+              <div class="col-md-4"><div class="card stat-card"><div class="card-body"><div class="text-muted">Receita</div><div class="stat-value" style="font-size:1.1rem;">${stats.receita_fmt}</div></div></div></div>
             </div>
             ${data.ligacoes.length > 0 ? `
               <div class="mt-3">
@@ -3075,7 +3219,7 @@ async function buscarClientesTempoReal(termo) {
     }
     const apenas_meus = {{ 'true' if current_user.tipo in ('consultor', 'televendas') else 'false' }};
     const params = new URLSearchParams({ q: termo, aba, meus: apenas_meus ? '1' : '0' });
-    const response = await fetch(`/api/busca-clientes${params}`);
+    const response = await fetch(`/api/busca-clientes?${params}`);
     const data = await response.json();
     if (data.ok) {
       atualizarTabelaClientes(data.clientes);
@@ -3122,10 +3266,10 @@ function atualizarTabelaClientes(clientes) {
       <td>${renderContatoItem(c.telefone || c.telefone2, c.nome, c.id, c.cd_cliente_oracle) || '-'}</td>
       <td><small style="color:var(--text-2);">${c.representante_nome || '-'}</small></td>
       {% if aba != 'pendentes' %}
-      <td style="font-size:.8rem;">${c.ultima_ligacao || '-'}</td>
+      <td data-col="ultima-ligacao" style="font-size:.8rem;">${c.ultima_ligacao || '-'}</td>
       {% endif %}
       {% if aba == 'retornar' %}
-      <td style="font-size:.8rem;">
+      <td data-col="proxima-ligacao" style="font-size:.8rem;">
         ${c.retorno_atrasado ? 
           `<span class="text-danger fw-bold">
             <i class="bi bi-exclamation-triangle-fill me-1"></i>
@@ -3140,9 +3284,9 @@ function atualizarTabelaClientes(clientes) {
         <div class="d-flex gap-1">
           <button class="action-btn btn btn-outline-secondary" onclick="abrirDetalhesClienteComSync(${c.id}, '${(c.cd_cliente_oracle || '').replace(/'/g,"\\'")}', '${(c.cnpj || '').replace(/'/g,"\\'")}')" title="Ver Detalhes Oracle"><i class="bi bi-eye"></i></button>
           <button class="action-btn btn btn-primary" onclick="abrirForm(${c.id}, '${c.nome.replace(/'/g,"\\'")}', '${c.telefone || ''}')" title="Registrar Ligação"><i class="bi bi-telephone-plus"></i></button>
-          {% if aba != 'pendentes' %}
-          <button class="action-btn btn btn-outline-secondary" onclick="historico(${c.id})" title="Histórico"><i class="bi bi-clock-history"></i></button>
-          {% endif %}
+          ${(ABA_ATUAL !== 'pendentes' || Number(c.total_ligacoes || 0) > 0)
+            ? `<button class="action-btn btn btn-outline-secondary" onclick="historico(${c.id})" title="Histórico"><i class="bi bi-clock-history"></i></button>`
+            : ''}
           <button class="action-btn btn btn-outline-danger" onclick="removerCliente(${c.id}, '${c.nome.replace(/'/g,"\\'")}')"><i class="bi bi-trash"></i></button>
         </div>
       </td>
@@ -3494,6 +3638,7 @@ function renderizarDetalhesOracle(data) {
   const janelaDias = Number(data.janela_dias || 365);
   const labelJanela = janelaDias >= 730 ? '24 meses' : '365 dias';
   const situacaoPedidoMap = {
+    S: 'Faturado',
     F: 'Faturado',
     A: 'Aprovado',
     C: 'Cancelado',
@@ -3684,7 +3829,3 @@ function getCookie(name) {
 
 </script>
 {% endblock %}
-
-
-
-

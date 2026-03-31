@@ -31,11 +31,20 @@ except AttributeError:
 # =============================================================================
 app = Flask(__name__, template_folder='templates', static_folder='static')
 apply_app_config(app)
+app.config["JSON_AS_ASCII"] = False
 mail.init_app(app)
 db.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 app.jinja_env.filters['formatar_dinheiro'] = formatar_dinheiro_filter
+
+
+@app.after_request
+def garantir_charset_utf8(response):
+    ctype = (response.headers.get("Content-Type") or "").lower()
+    if ("text/html" in ctype or "text/plain" in ctype) and "charset=" not in ctype:
+        response.headers["Content-Type"] = f"{response.mimetype}; charset=utf-8"
+    return response
 
 
 @login_manager.user_loader

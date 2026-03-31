@@ -11,7 +11,7 @@ class Usuario(UserMixin, db.Model):
     nome = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     senha_hash = db.Column(db.String(512), nullable=False)
-    tipo = db.Column(db.Enum("consultor", "supervisor"), default="consultor")
+    tipo = db.Column(db.Enum("consultor", "supervisor", "televendas"), default="consultor")
     ativo = db.Column(db.Boolean, default=True)
     data_cadastro = db.Column(db.DateTime, default=datetime.now)
     meta_diaria = db.Column(db.Integer, default=10)
@@ -44,8 +44,11 @@ class Cliente(db.Model):
     contato = db.Column(db.String(200))
     valor_total_365dias = db.Column(db.Numeric(12, 2))
     data_ultima_sincronizacao = db.Column(db.DateTime)
+    em_atendimento_por = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    em_atendimento_ate = db.Column(db.DateTime, nullable=True)
 
     consultor = db.relationship("Usuario", backref="meus_clientes", foreign_keys=[consultor_id])
+    atendimento_usuario = db.relationship("Usuario", foreign_keys=[em_atendimento_por])
 
 
 class Ligacao(db.Model):
@@ -97,3 +100,13 @@ class Banner(db.Model):
     criado_por = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
 
     criador = db.relationship("Usuario", foreign_keys=[criado_por])
+
+
+class SyncResumoDiario(db.Model):
+    __tablename__ = "sync_resumo_diario"
+    id = db.Column(db.Integer, primary_key=True)
+    data_ref = db.Column(db.Date, nullable=False, unique=True, index=True)
+    inativos_entraram = db.Column(db.Integer, nullable=False, default=0)
+    inativos_sairam = db.Column(db.Integer, nullable=False, default=0)
+    total_inativos = db.Column(db.Integer, nullable=False, default=0)
+    atualizado_em = db.Column(db.DateTime, default=datetime.now, nullable=False)

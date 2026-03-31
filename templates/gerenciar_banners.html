@@ -203,7 +203,7 @@ document.getElementById('formCriarBanner').addEventListener('submit', async func
 
 // Toggle Status
 async function toggleStatus(bannerId) {
-  if (!confirm('Tem certeza que deseja alterar o status deste banner?')) {
+  if (!confirm('Tem certeza que deseja alterar o status deste banner')) {
     return;
   }
   
@@ -229,7 +229,7 @@ async function toggleStatus(bannerId) {
 
 // Excluir Banner
 async function excluirBanner(bannerId) {
-  if (!confirm('Tem certeza que deseja excluir este banner? Esta ação não pode ser desfeita.')) {
+  if (!confirm('Tem certeza que deseja excluir este bannerEsta ação não pode ser desfeita.')) {
     return;
   }
   
