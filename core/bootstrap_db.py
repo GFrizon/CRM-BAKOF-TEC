@@ -33,6 +33,68 @@ def _run_ddl(sql, ok_msg=None):
         print(f"[WARN] Erro ao executar DDL: {sql} - {e}")
 
 
+def _parse_mysql_enum_values(column_type):
+    if not column_type:
+        return []
+    normalized = str(column_type).strip()
+    if not normalized.lower().startswith("enum(") or not normalized.endswith(")"):
+        return []
+    raw_values = normalized[5:-1]
+    values = []
+    for item in raw_values.split(","):
+        cleaned = item.strip().strip("'").replace("\\'", "'")
+        if cleaned:
+            values.append(cleaned)
+    return values
+
+
+def _get_column_type(table_name, column_name):
+    row = db.session.execute(
+        text(
+            """
+            SELECT COLUMN_TYPE
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND COLUMN_NAME = :column_name
+            LIMIT 1
+            """
+        ),
+        {"table_name": table_name, "column_name": column_name},
+    ).first()
+    return row[0] if row else None
+
+
+def _ensure_usuarios_tipo_enum():
+    required_values = ["consultor", "supervisor", "televendas", "supervisor_repr"]
+    try:
+        column_type = _get_column_type("usuarios", "tipo")
+        current_values = _parse_mysql_enum_values(column_type)
+        merged_values = list(current_values)
+
+        for value in required_values:
+            if value not in merged_values:
+                merged_values.append(value)
+
+        if merged_values == current_values:
+            print("[OK] Campo usuarios.tipo ja contem os valores necessarios no ENUM")
+            return
+
+        enum_sql = ",".join(f"'{value}'" for value in merged_values)
+        db.session.execute(
+            text(
+                "ALTER TABLE usuarios MODIFY COLUMN tipo "
+                f"ENUM({enum_sql}) "
+                "NOT NULL DEFAULT 'consultor'"
+            )
+        )
+        db.session.commit()
+        print("[OK] Campo usuarios.tipo atualizado com ENUM compativel")
+    except Exception as e:
+        db.session.rollback()
+        print(f"[WARN] Erro ao atualizar enum usuarios.tipo (pode ja estar atualizado): {e}")
+
+
 def bootstrap_app_database():
     db.create_all()
 
@@ -62,20 +124,7 @@ def bootstrap_app_database():
     if not _column_exists("clientes", "telefone2"):
         _run_ddl("ALTER TABLE clientes ADD COLUMN telefone2 VARCHAR(20)")
 
-    # Update usuarios.tipo enum to include 'televendas' (MySQL syntax)
-    try:
-        db.session.execute(
-            text(
-                "ALTER TABLE usuarios MODIFY COLUMN tipo "
-                "ENUM('consultor', 'supervisor', 'televendas') "
-                "NOT NULL DEFAULT 'consultor'"
-            )
-        )
-        db.session.commit()
-        print("[OK] Campo usuarios.tipo atualizado para incluir 'televendas'")
-    except Exception as e:
-        db.session.rollback()
-        print(f"[WARN] Erro ao atualizar enum usuarios.tipo (pode já estar atualizado): {e}")
+    _ensure_usuarios_tipo_enum()
 
     try:
         db.session.execute(
