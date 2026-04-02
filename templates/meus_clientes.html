@@ -332,6 +332,13 @@ body { background: #f0f4f8 !important; }
   color: #78350f;
 }
 .modern-tabs .nav-link.tab-proximos.active { background: linear-gradient(135deg, #b45309, #d97706) !important; border-color: transparent !important; }
+
+body {
+  transition: opacity .12s ease;
+}
+body.tab-switching {
+  opacity: .7;
+}
 @media (max-width: 768px) {
   .modern-tabs {
     gap: 6px;
@@ -1424,20 +1431,20 @@ code {
     <div class="panel-body" style="padding-bottom:0;">
       <div class="modern-tabs nav">
         {% if current_user.tipo == 'consultor' %}
-        <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
+        <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes') }}">
           <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
         </a>
-        <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
+        <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle') }}">
           <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
         </a>
-        <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
+        <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
           <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
         </a>
         {% if current_user.tipo != 'supervisor_repr' %}
-        <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+        <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados') }}">
           <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
         </a>
-        <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+        <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar') }}">
           <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
           {% if total_retornar and total_retornar > 0 %}
           <i class="bi bi-dot tab-alert"></i>
@@ -1445,13 +1452,13 @@ code {
         </a>
         {% endif %}
         {% elif current_user.tipo == 'televendas' %}
-        <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
+        <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos') }}">
           <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
         </a>
-        <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+        <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados') }}">
           <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
         </a>
-        <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+        <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar') }}">
           <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
           {% if total_retornar and total_retornar > 0 %}
           <i class="bi bi-dot tab-alert"></i>
@@ -1459,26 +1466,26 @@ code {
         </a>
         {% else %}
         {% if current_user.tipo != 'supervisor_repr' %}
-        <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
+        <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes') }}">
           <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
         </a>
         {% endif %}
-        <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
+        <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle') }}">
           <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
         </a>
         {% if current_user.tipo == 'supervisor' %}
-        <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
+        <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos') }}">
           <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
         </a>
         {% endif %}
-        <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
+        <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
           <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
         </a>
         {% if current_user.tipo != 'supervisor_repr' %}
-        <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+        <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados') }}">
           <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
         </a>
-        <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+        <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar') }}">
           <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
           {% if total_retornar and total_retornar > 0 %}
           <i class="bi bi-dot tab-alert"></i>
@@ -1823,14 +1830,14 @@ code {
     <!-- Tabs modernas -->
     <div class="modern-tabs nav">
       {% if current_user.tipo == 'televendas' %}
-      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos') }}">
         <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
       {% if current_user.tipo != 'supervisor_repr' %}
-      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados') }}">
         <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
       </a>
-      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar') }}">
         <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
         {% if total_retornar and total_retornar > 0 %}
         <i class="bi bi-dot tab-alert"></i>
@@ -1839,7 +1846,7 @@ code {
       {% endif %}
       {% else %}
       {% if current_user.tipo != 'supervisor_repr' %}
-      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
+      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes') }}">
         {% if current_user.tipo in ('consultor', 'supervisor') %}
         <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
         {% else %}
@@ -1847,21 +1854,21 @@ code {
         {% endif %}
       </a>
       {% endif %}
-      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
+      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle') }}">
         <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
       </a>
       {% if current_user.tipo == 'supervisor' %}
-      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos') }}">
         <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
       {% endif %}
-      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
+      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
         <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
       </a>
-      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados') }}">
         <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
       </a>
-      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" href="{{ url_for('meus_clientes', aba='retornar') }}">
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar') }}">
         <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
         {% if total_retornar and total_retornar > 0 %}
         <i class="bi bi-dot tab-alert"></i>
@@ -2574,7 +2581,7 @@ async function salvarLigacao(e) {
     // Na aba Oracle (90-120d), manter cliente na lista e apenas atualizar status local.
     if (ABA_ATUAL === 'oracle') {
       _atualizarLinhaEmPlace(id, j.proxima_ligacao);
-      const abaDestino = retornoAgendado ? 'Retornar' : 'Contatados';
+      const abaDestino = retornoAgendado ? 'retornar' : 'contatados';
       _ajustarContadorAba(abaDestino, +1);
       _destacarAbaDestino(abaDestino);
       atualizarInfoQuickActions();
@@ -2584,14 +2591,9 @@ async function salvarLigacao(e) {
     // Abas onde o cliente sempre sai da lista atual apos o contato
     if (ABA_ATUAL === 'inativos' ||
         ABA_ATUAL === 'pendentes' || ABA_ATUAL === 'proximos_inativacao') {
-      const _rotuloAtual = {
-        inativos:            'Clientes Inativos',
-        pendentes:           _rotuloAbaPendentes(),
-        proximos_inativacao: 'Próximos Inativação'
-      }[ABA_ATUAL];
       _removerClienteDaTela(id, cdClienteOracle);
-      _ajustarContadorAba(_rotuloAtual, -1);
-      const abaDestino = retornoAgendado ? 'Retornar' : 'Contatados';
+      _ajustarContadorAba(ABA_ATUAL, -1);
+      const abaDestino = retornoAgendado ? 'retornar' : 'contatados';
       _ajustarContadorAba(abaDestino, +1);
       _destacarAbaDestino(abaDestino);
       atualizarInfoQuickActions();
@@ -2602,9 +2604,9 @@ async function salvarLigacao(e) {
     if (ABA_ATUAL === 'contatados') {
       if (retornoAgendado) {
         _removerClienteDaTela(id);
-        _ajustarContadorAba('Contatados', -1);
-        _ajustarContadorAba('Retornar', +1);
-        _destacarAbaDestino('Retornar');
+        _ajustarContadorAba('contatados', -1);
+        _ajustarContadorAba('retornar', +1);
+        _destacarAbaDestino('retornar');
       } else {
         _atualizarLinhaEmPlace(id, null);
       }
@@ -2618,9 +2620,9 @@ async function salvarLigacao(e) {
         _atualizarLinhaEmPlace(id, j.proxima_ligacao);
       } else {
         _removerClienteDaTela(id);
-        _ajustarContadorAba('Retornar', -1);
-        _ajustarContadorAba('Contatados', +1);
-        _destacarAbaDestino('Contatados');
+        _ajustarContadorAba('retornar', -1);
+        _ajustarContadorAba('contatados', +1);
+        _destacarAbaDestino('contatados');
       }
       atualizarInfoQuickActions();
       return;
@@ -2787,23 +2789,18 @@ function filtrarPorOrigem() {
   atualizarInfoQuickActions();
 }
 
-function _ajustarContadorAba(rotulo, delta) {
+function _ajustarContadorAba(abaKey, delta) {
   if (!delta) return;
-  document.querySelectorAll('.modern-tabs .nav-link').forEach((link) => {
-    const label = link.querySelector('.tab-label');
+  document.querySelectorAll(`.modern-tabs .nav-link[data-aba="${abaKey}"]`).forEach((link) => {
     const count = link.querySelector('.tab-count');
-    if (!label || !count) return;
-    if ((label.textContent || '').trim() !== rotulo) return;
+    if (!count) return;
     const atual = parseInt((count.textContent || '0').replace(/\D+/g, ''), 10) || 0;
     count.textContent = String(Math.max(0, atual + delta));
   });
 }
 
-function _destacarAbaDestino(rotulo) {
-  document.querySelectorAll('.modern-tabs .nav-link').forEach((link) => {
-    const label = link.querySelector('.tab-label');
-    if (!label) return;
-    if ((label.textContent || '').trim() !== rotulo) return;
+function _destacarAbaDestino(abaKey) {
+  document.querySelectorAll(`.modern-tabs .nav-link[data-aba="${abaKey}"]`).forEach((link) => {
     link.classList.add('shadow');
     link.style.boxShadow = '0 0 0 3px rgba(37,99,235,.22), 0 8px 20px rgba(37,99,235,.25)';
     setTimeout(() => {
@@ -2833,9 +2830,21 @@ function _removerClienteDaTela(clienteId, cdClienteOracle = '') {
   });
 }
 
-function _rotuloAbaPendentes() {
-  const el = document.querySelector('.modern-tabs .nav-link.tab-pendentes .tab-label');
-  return el ? (el.textContent || '').trim() : 'Clientes Especiais';
+function _habilitarTransicaoAbas() {
+  document.querySelectorAll('.modern-tabs .nav-link[data-aba]').forEach((link) => {
+    if (link.dataset.tabTransitionBound === '1') return;
+    link.dataset.tabTransitionBound = '1';
+    link.addEventListener('click', (ev) => {
+      if (ev.defaultPrevented) return;
+      if (ev.button !== 0) return;
+      if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+      const href = link.getAttribute('href');
+      if (!href || link.classList.contains('active')) return;
+      ev.preventDefault();
+      document.body.classList.add('tab-switching');
+      setTimeout(() => { window.location.href = href; }, 90);
+    });
+  });
 }
 
 function _atualizarLinhaEmPlace(clienteId, novaProximaLigacaoIso) {
@@ -3189,6 +3198,7 @@ function limparFiltroMesConsultor() {
 
 // CARREGAR DADOS DO MÃŠS SELECIONADO
 document.addEventListener('DOMContentLoaded', async function() {
+  _habilitarTransicaoAbas();
   iniciarAutoSyncIndicadoresInativos();
   iniciarMonitorSyncOracle();
   atualizarInfoQuickActions();
