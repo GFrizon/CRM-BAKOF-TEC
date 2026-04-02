@@ -13,14 +13,15 @@ from routes.clientes_ligacoes.listagem_filters import (
     corresponde_termo_busca,
     extrair_filtros_listagem,
 )
+from routes.clientes_ligacoes.listagem_permissions import (
+    consultor_categoria_permitido_para_usuario,
+    representante_oracle_permitido_para_usuario,
+)
 from routes.clientes_ligacoes.consultor_mapping import (
     carregar_mapa_nome_para_id_usuarios_ativos,
     construir_mapa_codigo_para_id,
 )
 from routes.clientes_ligacoes.domain_utils import (
-    _codigo_representante_de_texto,
-    _normalizar_codigo_representante,
-    _resolver_consultor_id_por_categoria,
     normalizar_conceito,
 )
 from routes.clientes_ligacoes.listagem_grouping_utils import consolidar_dados_grupos
@@ -114,14 +115,14 @@ def render_aba_inativos(
 
         if not corresponde_consultor_filtro(consultor_filtro, consultor_cliente):
             continue
-        if filtrar_inativos_por_categoria and consultor_cliente:
-            consultor_esperado = _resolver_consultor_id_por_categoria(
-                consultor_cliente,
-                mapa_codigo_para_id=mapa_codigo_para_id_inativos,
-                mapa_nome_para_id=mapa_nome_para_id_inativos,
-            )
-            if consultor_esperado and consultor_esperado != current_user.id:
-                continue
+        if filtrar_inativos_por_categoria and not consultor_categoria_permitido_para_usuario(
+            tipo_usuario=current_user.tipo,
+            consultor_cliente=consultor_cliente,
+            current_user_id=current_user.id,
+            mapa_codigo_para_id=mapa_codigo_para_id_inativos,
+            mapa_nome_para_id=mapa_nome_para_id_inativos,
+        ):
+            continue
 
         if not corresponde_termo_busca(
             termo,
@@ -143,13 +144,12 @@ def render_aba_inativos(
         cd_cliente = str(cliente_oracle.get("cd_cliente") or "").strip()
         cliente_local = clientes_locais_por_cd.get(cd_cliente) if cd_cliente else None
 
-        if current_user.tipo == "supervisor_repr":
-            representante_str = str(cliente_oracle.get("representante") or "")
-            cd_representante = _normalizar_codigo_representante(
-                _codigo_representante_de_texto(representante_str)
-            )
-            if not cd_representante or cd_representante not in codigos_representantes_vinculados:
-                continue
+        if not representante_oracle_permitido_para_usuario(
+            tipo_usuario=current_user.tipo,
+            representante_texto=str(cliente_oracle.get("representante") or ""),
+            codigos_representantes_vinculados=codigos_representantes_vinculados,
+        ):
+            continue
 
         stats_lig = (
             stats_ligacoes_por_cliente_id.get(cliente_local.id, {})
