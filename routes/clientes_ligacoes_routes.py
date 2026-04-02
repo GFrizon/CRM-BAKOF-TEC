@@ -10,6 +10,7 @@ from core.extensions import db
 from core.helpers import _percent, formatar_dinheiro, get_pos, s, so_digits
 from core.models import Cliente, Ligacao, Nota, SyncResumoDiario, Usuario
 from routes.clientes_ligacoes.access_control import bloquear_escrita_supervisor_repr
+from routes.clientes_ligacoes.agrupamento_view import montar_representantes_agrupados
 from routes.clientes_ligacoes.badges import (
     calcular_total_inativos_badge_com_cache,
     _total_oracle_badge,
@@ -910,70 +911,11 @@ def register_clientes_ligacoes_routes(app):
             (current_user.tipo in ('supervisor', 'consultor') and aba == 'pendentes') or
             (current_user.tipo in ('consultor', 'supervisor', 'supervisor_repr') and aba not in ('contatados', 'retornar', 'pendentes'))
         ):
-            agora_grp = datetime.now()
-            agrupar_por_consultor = (current_user.tipo == 'supervisor' and aba == 'pendentes')
-            mapa_consultor_nome = {}
-            if agrupar_por_consultor:
-                mapa_consultor_nome = {
-                    int(uid): (nome or '').strip()
-                    for uid, nome in (
-                        db.session.query(Usuario.id, Usuario.nome)
-                        .filter(Usuario.ativo == True)
-                        .all()
-                    )
-                }
-            grupo_sem_nome = 'SEM CONSULTOR' if agrupar_por_consultor else 'SEM REPRESENTANTE'
-            representantes_data_grp = {}
-            for item in clientes:
-                if agrupar_por_consultor:
-                    consultor_id_item = item.get('consultor_id')
-                    rep_nome = (
-                        mapa_consultor_nome.get(int(consultor_id_item))
-                        if consultor_id_item else None
-                    ) or grupo_sem_nome
-                else:
-                    rep_nome = (
-                        str(item.get('representante_oracle') or item.get('representante_nome') or '').strip()
-                        or grupo_sem_nome
-                    )
-                if rep_nome not in representantes_data_grp:
-                    representantes_data_grp[rep_nome] = {
-                        'nome': rep_nome,
-                        'clientes': [],
-                        'total_clientes': 0,
-                        'liberados': 0,
-                        'inadimplentes': 0,
-                        'sem_conceito': 0,
-                        'ticket_medio': 0,
-                        'dias_medio': 0,
-                        'consultores_internos': {}
-                    }
-                representantes_data_grp[rep_nome]['clientes'].append(item)
-
-            for _rep, dados_rep in representantes_data_grp.items():
-                cls_r = dados_rep['clientes']
-                dados_rep['total_clientes'] = len(cls_r)
-                dados_rep['liberados'] = sum(1 for c in cls_r if c.get('conceito') == 'LIBERADO')
-                dados_rep['inadimplentes'] = sum(1 for c in cls_r if c.get('conceito') == 'INADIMPLENTE')
-                dados_rep['sem_conceito'] = sum(1 for c in cls_r if c.get('conceito') in ('', 'SEM CONCEITO', None))
-                vals_r = [c.get('valor_ultimo_pedido', 0) for c in cls_r if c.get('valor_ultimo_pedido')]
-                dados_rep['ticket_medio'] = sum(vals_r) / len(vals_r) if vals_r else 0
-                dias_r = [
-                    (agora_grp - c['ultimo_pedido_oracle']).days
-                    for c in cls_r if c.get('ultimo_pedido_oracle')
-                ]
-                dados_rep['dias_medio'] = sum(dias_r) / len(dias_r) if dias_r else 0
-
-            if current_user.tipo == 'consultor' and aba == 'pendentes':
-                representantes_ordenados_grp = sorted(
-                    representantes_data_grp.items(),
-                    key=lambda x: (-x[1]['total_clientes'], x[0] == grupo_sem_nome, x[0])
-                )
-            else:
-                representantes_ordenados_grp = sorted(
-                    representantes_data_grp.items(),
-                    key=lambda x: (-x[1]['total_clientes'], x[0] == grupo_sem_nome, x[0])
-                )
+            representantes_ordenados_grp = montar_representantes_agrupados(
+                clientes=clientes,
+                tipo_usuario=current_user.tipo,
+                aba=aba,
+            )
 
             return render_template(
                 'meus_clientes.html',
