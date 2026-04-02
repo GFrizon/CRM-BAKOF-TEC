@@ -11,7 +11,7 @@ from core.helpers import _percent, formatar_dinheiro, get_pos, s, so_digits
 from core.models import Cliente, Ligacao, Nota, SyncResumoDiario, Usuario
 from routes.clientes_ligacoes.access_control import bloquear_escrita_supervisor_repr
 from routes.clientes_ligacoes.badges import (
-    _total_inativos_badge,
+    calcular_total_inativos_badge_com_cache,
     _total_oracle_badge,
     _total_oracle_badge_supervisor_repr,
     _total_proximos_badge,
@@ -897,22 +897,12 @@ def register_clientes_ligacoes_routes(app):
         # Gerar lista de meses/anos disponíveis para o filtro do consultor e televendas
         meses_disponiveis_consultor = montar_meses_disponiveis(current_user.tipo)
 
-        total_inativos_badge = 0
-        if current_user.tipo in ('televendas', 'supervisor'):
-            cache = _INATIVOS_COUNT_CACHE.get(current_user.id)
-            if cache and cache.get("ts"):
-                idade = (datetime.now() - cache["ts"]).total_seconds()
-                if idade <= _INATIVOS_COUNT_CACHE_TTL_SECONDS:
-                    total_inativos_badge = int(cache.get("count") or 0)
-            if total_inativos_badge == 0:
-                # Televendas vê todos os inativos na aba (sem filtro por consultor_id),
-                # então o badge deve refletir o total global, não apenas os do usuário.
-                consultor_inativos = current_user.id if (apenas_meus and current_user.tipo == 'consultor') else None
-                total_inativos_badge = _total_inativos_badge(consultor_inativos)
-                _INATIVOS_COUNT_CACHE[current_user.id] = {
-                    "count": int(total_inativos_badge),
-                    "ts": datetime.now(),
-                }
+        total_inativos_badge = calcular_total_inativos_badge_com_cache(
+            current_user=current_user,
+            apenas_meus=apenas_meus,
+            cache_store=_INATIVOS_COUNT_CACHE,
+            cache_ttl_seconds=_INATIVOS_COUNT_CACHE_TTL_SECONDS,
+        )
 
         # Para consultores: converter para vista agrupada por representante
         # (mantendo contatados/retornar na lista simples original).

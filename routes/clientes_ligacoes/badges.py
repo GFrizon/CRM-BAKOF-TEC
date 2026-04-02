@@ -114,3 +114,23 @@ def _total_proximos_badge(consultor_id=None):
     if consultor_id:
         q = q.filter(Cliente.consultor_id == consultor_id)
     return q.count()
+
+
+def calcular_total_inativos_badge_com_cache(current_user, apenas_meus, cache_store, cache_ttl_seconds):
+    total_inativos_badge = 0
+    if current_user.tipo in ("televendas", "supervisor"):
+        cache = cache_store.get(current_user.id)
+        if cache and cache.get("ts"):
+            idade = (datetime.now() - cache["ts"]).total_seconds()
+            if idade <= cache_ttl_seconds:
+                total_inativos_badge = int(cache.get("count") or 0)
+        if total_inativos_badge == 0:
+            # Televendas vê todos os inativos na aba (sem filtro por consultor_id),
+            # então o badge deve refletir o total global, não apenas os do usuário.
+            consultor_inativos = current_user.id if (apenas_meus and current_user.tipo == "consultor") else None
+            total_inativos_badge = _total_inativos_badge(consultor_inativos)
+            cache_store[current_user.id] = {
+                "count": int(total_inativos_badge),
+                "ts": datetime.now(),
+            }
+    return total_inativos_badge
