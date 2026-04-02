@@ -74,6 +74,7 @@ from routes.clientes_ligacoes.ligacao_helpers import (
     normalizar_resultado_ligacao,
     parse_valor_venda,
 )
+from routes.clientes_ligacoes.maintenance_helpers import inativar_clientes_do_consultor
 from routes.clientes_ligacoes.lock_helpers import (
     buscar_locks_por_cd_oracle,
     extrair_cds_da_requisicao,
@@ -1719,12 +1720,9 @@ def register_clientes_ligacoes_routes(app):
             if not consultor_id:
                 return jsonify({"ok": False, "mensagem": "Consultor não informado"}), 400
 
-            clientes = Cliente.query.filter_by(consultor_id=consultor_id, ativo=True).all()
-            for cli in clientes:
-                cli.ativo = False
-
+            total = inativar_clientes_do_consultor(consultor_id)
             db.session.commit()
-            return jsonify({"ok": True, "mensagem": f"{len(clientes)} clientes removidos com sucesso."})
+            return jsonify({"ok": True, "mensagem": f"{total} clientes removidos com sucesso."})
 
         except Exception as e:
             db.session.rollback()
