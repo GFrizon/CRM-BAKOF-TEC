@@ -80,9 +80,8 @@ from routes.clientes_ligacoes.lock_helpers import (
     extrair_cds_da_requisicao,
     tentar_assumir_lock_cliente,
 )
-from routes.clientes_ligacoes.oracle_sync_helpers import (
-    montar_payload_cliente_oracle,
-    sugerir_consultor_por_categoria_oracle,
+from routes.clientes_ligacoes.oracle_prefill_service import (
+    buscar_dados_oracle_para_preenchimento,
 )
 from routes.clientes_ligacoes.oracle_sync_service import (
     sincronizar_clientes_manuais_oracle_service,
@@ -1013,26 +1012,8 @@ def register_clientes_ligacoes_routes(app):
     def preencher_cliente_oracle_por_cnpj():
         try:
             payload = request.get_json(silent=True) or {}
-            cnpj = so_digits(payload.get('cnpj'))
-            if not cnpj or len(cnpj) < 7:
-                return jsonify({"ok": False, "mensagem": "Informe um CNPJ valido (minimo 7 digitos)"}), 400
-
-            from oracle_service import get_cliente_oracle_por_cnpj
-            cliente_oracle = get_cliente_oracle_por_cnpj(cnpj)
-            if not cliente_oracle:
-                return jsonify({
-                    "ok": True,
-                    "encontrado": False,
-                    "mensagem": "CNPJ nao encontrado no Oracle"
-                })
-
-            consultor_sugerido = sugerir_consultor_por_categoria_oracle(cliente_oracle.get("consultor"))
-
-            return jsonify({
-                "ok": True,
-                "encontrado": True,
-                "dados": montar_payload_cliente_oracle(cnpj, cliente_oracle, consultor_sugerido),
-            })
+            resposta, status = buscar_dados_oracle_para_preenchimento(payload.get("cnpj"))
+            return jsonify(resposta), status
         except Exception as e:
             return jsonify({"ok": False, "mensagem": f"Erro ao buscar no Oracle: {str(e)}"}), 500
 
