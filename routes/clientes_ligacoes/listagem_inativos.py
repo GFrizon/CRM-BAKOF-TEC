@@ -38,6 +38,7 @@ def render_aba_inativos(
     codigos_representantes_vinculados,
     apenas_meus: bool,
     total_oracle_badge: int,
+    total_inativos_badge: int,
     total_proximos_badge: int,
     cache_store: dict,
 ):
@@ -277,7 +278,7 @@ def render_aba_inativos(
         total_contatados=total_contatados,
         total_retornar=total_retornar,
         total_oracle=total_oracle_badge,
-        total_inativos=total_inativos,
+        total_inativos=total_inativos_badge,
         total_proximos=total_proximos_badge,
         usar_vista_agrupada=True,
         is_supervisor=current_user.tipo == "supervisor",

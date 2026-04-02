@@ -33,6 +33,7 @@ def render_aba_oracle(
     current_user,
     codigos_representantes_vinculados,
     apenas_meus: bool,
+    total_inativos_badge: int,
     total_proximos_badge: int,
 ):
     # REGRA VALIDADA (2026-03): usar Oracle como fonte de verdade da lista 90-120d.
@@ -223,7 +224,7 @@ def render_aba_oracle(
         total_contatados=total_contatados,
         total_retornar=total_retornar,
         total_oracle=total_oracle,
-        total_inativos=0,
+        total_inativos=total_inativos_badge,
         total_proximos=total_proximos_badge,
         usar_vista_agrupada=True,
         is_supervisor=current_user.tipo == "supervisor",
