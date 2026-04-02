@@ -2,7 +2,7 @@
 
 from flask import render_template, request
 from flask_login import current_user
-from sqlalchemy import and_, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
 from core.extensions import db
@@ -12,7 +12,6 @@ from routes.clientes_ligacoes.agrupamento_view import montar_representantes_agru
 from routes.clientes_ligacoes.badges import (
     calcular_total_inativos_badge_com_cache,
 )
-from routes.clientes_ligacoes.client_metrics import carregar_stats_e_locks_por_cliente_id
 from routes.clientes_ligacoes.consultor_mapping import (
     carregar_mapa_nome_para_id_usuarios_ativos,
     construir_mapa_codigo_para_id,
@@ -27,18 +26,11 @@ from routes.clientes_ligacoes.domain_utils import (
     _normalizar_codigo_representante,
     _resolver_consultor_id_por_categoria,
 )
-from routes.clientes_ligacoes.grouping_stats import (
-    calcular_stats_gerais_grupos,
-    extrair_consultores_dos_grupos,
-)
 from routes.clientes_ligacoes.listagem_access import preparar_contexto_inicial_listagem
 from routes.clientes_ligacoes.listagem_inativos import render_aba_inativos
-from routes.clientes_ligacoes.lista_operacional import (
-    filtrar_listas_por_termo,
-    ordenar_clientes_por_aba,
-)
+from routes.clientes_ligacoes.listagem_oracle import render_aba_oracle
+from routes.clientes_ligacoes.lista_operacional import filtrar_listas_por_termo, ordenar_clientes_por_aba
 from routes.clientes_ligacoes.listagem_proximos import render_aba_proximos_inativacao
-from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
 from routes.supervisor_routes import get_banners_ativos
 
 _INATIVOS_COUNT_CACHE = {}
@@ -59,256 +51,15 @@ def register_clientes_ligacoes_listagem_routes(app):
         
         # Tratar aba Oracle
         if aba == 'oracle':
-            # REGRA VALIDADA (2026-03): usar Oracle como fonte de verdade da lista 90-120d.
-            # Nao voltar para filtro principal via MySQL local.
-            periodo_oracle = request.args.get('periodo_oracle')
-            conceito_filtro = (request.args.get('conceito_filtro') or '').strip().upper()
-            consultor_filtro = (request.args.get('consultor_filtro') or '').strip()
-            termo = (request.args.get('q') or '').strip().lower()
-            clientes_oracle = carregar_clientes_oracle_deduplicados(app.logger, periodo_oracle)
-
-            codigos_oracle = [
-                str(c.get('cd_cliente')).strip()
-                for c in clientes_oracle
-                if c.get('cd_cliente')
-            ]
-
-            clientes_locais_por_cd = {}
-            stats_ligacoes_por_cliente_id = {}
-            locks_por_cliente_id = {}
-            filtrar_oracle_por_categoria = (current_user.tipo == 'consultor')
-            mapa_nome_para_id_oracle = {}
-            mapa_codigo_para_id_oracle = {}
-            if filtrar_oracle_por_categoria:
-                _, mapa_nome_para_id_oracle = carregar_mapa_nome_para_id_usuarios_ativos()
-                mapa_codigo_para_id_oracle = construir_mapa_codigo_para_id(mapa_nome_para_id_oracle)
-            if codigos_oracle:
-                clientes_locais = (
-                    Cliente.query
-                    .filter(
-                        Cliente.cd_cliente_oracle.in_(codigos_oracle),
-                        Cliente.ativo == True
-                    )
-                    .all()
-                )
-                clientes_locais_por_cd = {
-                    str(c.cd_cliente_oracle): c
-                    for c in clientes_locais if c.cd_cliente_oracle
-                }
-
-                ids_locais = [c.id for c in clientes_locais if c.id]
-                if ids_locais:
-                    locks_por_cliente_id, stats_ligacoes_por_cliente_id = carregar_stats_e_locks_por_cliente_id(
-                        ids_locais
-                    )
-
-            representantes_data = {}
-            for cliente_oracle in clientes_oracle:
-                conceito_cliente = (str(cliente_oracle.get('conceito') or '').strip().upper())
-                consultor_cliente = (str(cliente_oracle.get('consultor') or '').strip())
-
-                if conceito_filtro:
-                    if conceito_filtro in ('SEM_CONCEITO', 'SEM CONCEITO'):
-                        if conceito_cliente not in ('', 'SEM CONCEITO'):
-                            continue
-                    elif conceito_cliente != conceito_filtro:
-                        continue
-
-                if consultor_filtro and consultor_filtro.lower() not in consultor_cliente.lower():
-                    continue
-
-                if termo:
-                    base_busca = ' '.join([
-                        str(cliente_oracle.get('cliente') or ''),
-                        str(cliente_oracle.get('cnpj') or ''),
-                        str(cliente_oracle.get('telefone1') or ''),
-                        str(cliente_oracle.get('telefone2') or ''),
-                        str(cliente_oracle.get('representante') or ''),
-                        str(cliente_oracle.get('consultor') or ''),
-                        str(cliente_oracle.get('cd_centralizado') or ''),
-                        str(cliente_oracle.get('nome_centralizadora') or ''),
-                        str(cliente_oracle.get('conceito') or ''),
-                        str(cliente_oracle.get('municipio') or ''),
-                        str(cliente_oracle.get('uf') or ''),
-                    ]).lower()
-                    if termo not in base_busca:
-                        continue
-
-                cd_cliente = str(cliente_oracle.get('cd_cliente') or '').strip()
-                cliente_local = clientes_locais_por_cd.get(cd_cliente) if cd_cliente else None
-
-                # Filtro para supervisor_repr: apenas clientes dos representantes vinculados
-                if current_user.tipo == 'supervisor_repr':
-                    representante_str = str(cliente_oracle.get('representante') or '')
-                    cd_representante = _normalizar_codigo_representante(
-                        _codigo_representante_de_texto(representante_str)
-                    )
-                    if not cd_representante or cd_representante not in codigos_representantes_vinculados:
-                        continue
-
-                if apenas_meus and current_user.tipo != 'supervisor_repr':
-                    if not cliente_local or cliente_local.consultor_id != current_user.id:
-                        continue
-                if filtrar_oracle_por_categoria and consultor_cliente:
-                    consultor_esperado = _resolver_consultor_id_por_categoria(
-                        consultor_cliente,
-                        mapa_codigo_para_id=mapa_codigo_para_id_oracle,
-                        mapa_nome_para_id=mapa_nome_para_id_oracle,
-                    )
-                    if consultor_esperado and consultor_esperado != current_user.id:
-                        continue
-
-                stats_lig = (
-                    stats_ligacoes_por_cliente_id.get(cliente_local.id, {})
-                    if cliente_local and cliente_local.id else {}
-                )
-                lock_info = (
-                    locks_por_cliente_id.get(cliente_local.id, {})
-                    if cliente_local and cliente_local.id else {}
-                )
-                ultima_local = stats_lig.get('ultima_ligacao')
-                total_ligacoes_local = stats_lig.get('total_ligacoes', 0)
-
-                representante = (str(cliente_oracle.get('representante') or '').strip()) or 'SEM REPRESENTANTE'
-
-                if representante not in representantes_data:
-                    representantes_data[representante] = {
-                        'nome': representante,
-                        'clientes': [],
-                        'total_clientes': 0,
-                        'liberados': 0,
-                        'inadimplentes': 0,
-                        'sem_conceito': 0,
-                        'ticket_medio': 0,
-                        'dias_medio': 0,
-                        'consultores_internos': {}
-                    }
-
-                dados_cliente = {
-                    "id": cliente_local.id if cliente_local else None,
-                    "nome": cliente_oracle.get('cliente', ''),
-                    "cnpj": cliente_oracle.get('cnpj', ''),
-                    "telefone": (cliente_local.telefone if cliente_local and cliente_local.telefone else (cliente_oracle.get('telefone1') or cliente_oracle.get('telefone2'))),
-                    "telefone2": (cliente_local.telefone2 if cliente_local else cliente_oracle.get('telefone2')),
-                    "representante_nome": cliente_oracle.get('representante', 'SEM REPRESENTANTE'),
-                    "ultima_ligacao": ultima_local,
-                    "ultima_ligacao_por": stats_lig.get('ultima_ligacao_por'),
-                    "total_ligacoes": total_ligacoes_local,
-                    "proxima_ligacao": (cliente_local.proxima_ligacao if cliente_local else None),
-                    "origem": (getattr(cliente_local, 'origem', None) if cliente_local else 'oracle'),
-                    "cd_cliente_oracle": cliente_oracle.get('cd_cliente'),
-                    "categoria_consultor": cliente_oracle.get('consultor', ''),
-                    "centralizadora": (
-                        f"{cliente_oracle.get('cd_centralizado')} - {cliente_oracle.get('nome_centralizadora')}"
-                        if cliente_oracle.get('cd_centralizado') and cliente_oracle.get('nome_centralizadora')
-                        else (str(cliente_oracle.get('cd_centralizado') or '').strip() or '')
-                    ),
-                    "consultor_id": (cliente_local.consultor_id if cliente_local else None),
-                    "conceito": cliente_oracle.get('conceito', ''),
-                    "municipio": cliente_oracle.get('municipio', ''),
-                    "uf": cliente_oracle.get('uf', ''),
-                    "contato": cliente_oracle.get('contato', ''),
-                    "ultimo_pedido_oracle": cliente_oracle.get('dt_pedido'),
-                    "valor_ultimo_pedido": cliente_oracle.get('total_pedido'),
-                    "valor_total_365dias": (cliente_local.valor_total_365dias if cliente_local else 0),
-                    "situacao_ultimo_pedido": cliente_oracle.get('situacao', ''),
-                    "representante_oracle": cliente_oracle.get('representante', 'SEM REPRESENTANTE'),
-                    "em_atendimento_ativo": bool(lock_info.get('ativo')),
-                    "em_atendimento_por_nome": lock_info.get('por_nome'),
-                    "em_atendimento_ate": lock_info.get('ate'),
-                }
-
-                representantes_data[representante]['clientes'].append(dados_cliente)
-
-                if cliente_local and cliente_local.consultor:
-                    nome_consultor = cliente_local.consultor.nome
-                    reps = representantes_data[representante]['consultores_internos']
-                    if nome_consultor not in reps:
-                        reps[nome_consultor] = 0
-                    reps[nome_consultor] += 1
-
-            for representante, dados in representantes_data.items():
-                clientes_rep = dados['clientes']
-                dados['total_clientes'] = len(clientes_rep)
-                dados['liberados'] = sum(1 for c in clientes_rep if c.get('conceito') == 'LIBERADO')
-                dados['inadimplentes'] = sum(1 for c in clientes_rep if c.get('conceito') == 'INADIMPLENTE')
-                dados['sem_conceito'] = sum(1 for c in clientes_rep if c.get('conceito') in ['SEM CONCEITO', None])
-
-                valores = [c.get('valor_ultimo_pedido', 0) for c in clientes_rep if c.get('valor_ultimo_pedido')]
-                dados['ticket_medio'] = sum(valores) / len(valores) if valores else 0
-
-                hoje = datetime.now()
-                dias_sem_pedido = []
-                for c in clientes_rep:
-                    if c.get('ultimo_pedido_oracle'):
-                        dias = (hoje - c['ultimo_pedido_oracle']).days
-                        dias_sem_pedido.append(dias)
-                dados['dias_medio'] = sum(dias_sem_pedido) / len(dias_sem_pedido) if dias_sem_pedido else 0
-
-                dados['clientes'] = sorted(
-                    clientes_rep,
-                    key=lambda x: (
-                        float(x.get('valor_total_365dias') or 0),
-                        float(x.get('valor_ultimo_pedido') or 0)
-                    ),
-                    reverse=True
-                )
-
-            representantes_ordenados = sorted(
-                representantes_data.items(),
-                key=lambda x: (-x[1]['total_clientes'], x[0] == 'SEM REPRESENTANTE', x[0])
+            return render_aba_oracle(
+                app=app,
+                aba=aba,
+                request=request,
+                current_user=current_user,
+                codigos_representantes_vinculados=codigos_representantes_vinculados,
+                apenas_meus=apenas_meus,
+                total_proximos_badge=total_proximos_badge,
             )
-
-            consultores_oracle = extrair_consultores_dos_grupos(representantes_data)
-
-            todos_clientes = Cliente.query.filter_by(ativo=True)
-            if apenas_meus:
-                todos_clientes = todos_clientes.filter(Cliente.consultor_id == current_user.id)
-
-            base_pendentes = todos_clientes.filter(Cliente.id.notin_(
-                db.session.query(Ligacao.cliente_id).filter(
-                    Ligacao.consultor_id == current_user.id if apenas_meus else True
-                )
-            ))
-            if current_user.tipo == 'consultor':
-                # Mantém "Clientes Especiais" consistente em todas as abas:
-                # para consultor, remove da contagem operacional a campanha 90-120d.
-                limite_min_90_120 = datetime.now() - timedelta(days=120)
-                limite_max_90_120 = datetime.now() - timedelta(days=90)
-                base_pendentes = base_pendentes.filter(~and_(
-                    Cliente.cd_cliente_oracle.isnot(None),
-                    Cliente.ultimo_pedido_oracle.isnot(None),
-                    Cliente.ultimo_pedido_oracle.between(limite_min_90_120, limite_max_90_120),
-                ))
-            total_pendentes = base_pendentes.count()
-
-            total_contatados = todos_clientes.filter(Cliente.id.in_(
-                db.session.query(Ligacao.cliente_id).filter(
-                    Ligacao.consultor_id == current_user.id if apenas_meus else True
-                )
-            )).filter(Cliente.proxima_ligacao.is_(None)).count()
-
-            total_retornar = todos_clientes.filter(Cliente.proxima_ligacao.isnot(None)).count()
-            total_oracle, stats_oracle = calcular_stats_gerais_grupos(representantes_data)
-
-            return render_template('meus_clientes.html',
-                                 representantes=representantes_ordenados,
-                                 aba=aba,
-                                 total_pendentes=total_pendentes,
-                                 total_contatados=total_contatados,
-                                 total_retornar=total_retornar,
-                                 total_oracle=total_oracle,
-                                 total_inativos=0,
-                                 total_proximos=total_proximos_badge,
-                                 usar_vista_agrupada=True,
-                                 is_supervisor=current_user.tipo == 'supervisor',
-                                 stats={},
-                                 stats_oracle=stats_oracle,
-                                 consultores_oracle=consultores_oracle,
-                                 q=request.args.get('q', ''),
-                                 meses_disponiveis_consultor=[],
-                                 mes_filtro=None,
-                                 ano_filtro=None)
         
         # Tratar aba Inativos (181 dias a 2 anos sem pedidos) - televendas e supervisor
         if aba == 'inativos':
