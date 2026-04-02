@@ -15,10 +15,7 @@ from routes.clientes_ligacoes.domain_utils import (
     _normalizar_codigo_representante,
     _resolver_consultor_id_por_categoria,
 )
-from routes.clientes_ligacoes.grouping_stats import (
-    calcular_stats_gerais_grupos,
-    extrair_consultores_dos_grupos,
-)
+from routes.clientes_ligacoes.listagem_grouping_utils import consolidar_dados_grupos
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
 
 
@@ -205,39 +202,11 @@ def render_aba_oracle(
                 reps[nome_consultor] = 0
             reps[nome_consultor] += 1
 
-    for _, dados in representantes_data.items():
-        clientes_rep = dados["clientes"]
-        dados["total_clientes"] = len(clientes_rep)
-        dados["liberados"] = sum(1 for c in clientes_rep if c.get("conceito") == "LIBERADO")
-        dados["inadimplentes"] = sum(1 for c in clientes_rep if c.get("conceito") == "INADIMPLENTE")
-        dados["sem_conceito"] = sum(1 for c in clientes_rep if c.get("conceito") in ["SEM CONCEITO", None])
-
-        valores = [c.get("valor_ultimo_pedido", 0) for c in clientes_rep if c.get("valor_ultimo_pedido")]
-        dados["ticket_medio"] = sum(valores) / len(valores) if valores else 0
-
-        hoje = datetime.now()
-        dias_sem_pedido = []
-        for c in clientes_rep:
-            if c.get("ultimo_pedido_oracle"):
-                dias = (hoje - c["ultimo_pedido_oracle"]).days
-                dias_sem_pedido.append(dias)
-        dados["dias_medio"] = sum(dias_sem_pedido) / len(dias_sem_pedido) if dias_sem_pedido else 0
-
-        dados["clientes"] = sorted(
-            clientes_rep,
-            key=lambda x: (
-                float(x.get("valor_total_365dias") or 0),
-                float(x.get("valor_ultimo_pedido") or 0),
-            ),
-            reverse=True,
-        )
-
-    representantes_ordenados = sorted(
-        representantes_data.items(),
-        key=lambda x: (-x[1]["total_clientes"], x[0] == "SEM REPRESENTANTE", x[0]),
+    representantes_ordenados, consultores_oracle, total_oracle, stats_oracle = consolidar_dados_grupos(
+        representantes_data=representantes_data,
+        chave_sem_grupo="SEM REPRESENTANTE",
+        conceitos_sem_conceito=("SEM CONCEITO", None),
     )
-
-    consultores_oracle = extrair_consultores_dos_grupos(representantes_data)
 
     todos_clientes = Cliente.query.filter_by(ativo=True)
     if apenas_meus:
@@ -278,8 +247,6 @@ def render_aba_oracle(
     )
 
     total_retornar = todos_clientes.filter(Cliente.proxima_ligacao.isnot(None)).count()
-    total_oracle, stats_oracle = calcular_stats_gerais_grupos(representantes_data)
-
     return render_template(
         "meus_clientes.html",
         representantes=representantes_ordenados,

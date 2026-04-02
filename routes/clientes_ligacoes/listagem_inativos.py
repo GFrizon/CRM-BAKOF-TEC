@@ -16,10 +16,7 @@ from routes.clientes_ligacoes.domain_utils import (
     _resolver_consultor_id_por_categoria,
     normalizar_conceito,
 )
-from routes.clientes_ligacoes.grouping_stats import (
-    calcular_stats_gerais_grupos,
-    extrair_consultores_dos_grupos,
-)
+from routes.clientes_ligacoes.listagem_grouping_utils import consolidar_dados_grupos
 from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enriquecidos
 from routes.clientes_ligacoes.televendas_stats import montar_stats_produtividade_televendas
 
@@ -228,45 +225,11 @@ def render_aba_inativos(
             consultores_uf = representantes_data[uf_grupo]["consultores_internos"]
             consultores_uf[consultor_cliente] = consultores_uf.get(consultor_cliente, 0) + 1
 
-    for _, dados in representantes_data.items():
-        clientes_rep = dados["clientes"]
-        dados["total_clientes"] = len(clientes_rep)
-        dados["liberados"] = sum(1 for c in clientes_rep if c.get("conceito") == "LIBERADO")
-        dados["inadimplentes"] = sum(1 for c in clientes_rep if c.get("conceito") == "INADIMPLENTE")
-        dados["sem_conceito"] = sum(
-            1
-            for c in clientes_rep
-            if c.get("conceito") in ("", "SEM CONCEITO", None)
-        )
-
-        valores = [c.get("valor_ultimo_pedido", 0) for c in clientes_rep if c.get("valor_ultimo_pedido")]
-        dados["ticket_medio"] = sum(valores) / len(valores) if valores else 0
-
-        hoje = datetime.now()
-        dias_sem_pedido = []
-        for c in clientes_rep:
-            if c.get("ultimo_pedido_oracle"):
-                d = (hoje - c["ultimo_pedido_oracle"]).days
-                dias_sem_pedido.append(d)
-        dados["dias_medio"] = sum(dias_sem_pedido) / len(dias_sem_pedido) if dias_sem_pedido else 0
-
-        dados["clientes"] = sorted(
-            clientes_rep,
-            key=lambda x: (
-                float(x.get("valor_total_365dias") or 0),
-                float(x.get("valor_ultimo_pedido") or 0),
-            ),
-            reverse=True,
-        )
-
-    representantes_ordenados = sorted(
-        representantes_data.items(),
-        key=lambda x: (-x[1]["total_clientes"], x[0] == "SEM UF", x[0]),
+    representantes_ordenados, consultores_inativos, total_inativos, stats_inativos = consolidar_dados_grupos(
+        representantes_data=representantes_data,
+        chave_sem_grupo="SEM UF",
+        conceitos_sem_conceito=("", "SEM CONCEITO", None),
     )
-
-    consultores_inativos = extrair_consultores_dos_grupos(representantes_data)
-
-    total_inativos, stats_inativos = calcular_stats_gerais_grupos(representantes_data)
     cache_store[current_user.id] = {
         "count": total_inativos,
         "ts": datetime.now(),
