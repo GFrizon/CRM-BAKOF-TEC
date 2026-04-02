@@ -40,8 +40,7 @@ from routes.clientes_ligacoes.lista_operacional import (
     filtrar_listas_por_termo,
     ordenar_clientes_por_aba,
 )
-from routes.clientes_ligacoes.proximos_tab import preparar_contexto_proximos_inativacao
-from routes.clientes_ligacoes.proximos_totais import calcular_totais_abas_proximos
+from routes.clientes_ligacoes.listagem_proximos import render_aba_proximos_inativacao
 from routes.clientes_ligacoes.supervisor_repr import (
     contar_proximos_inativacao_supervisor_repr,
     obter_codigos_representantes_vinculados,
@@ -693,36 +692,12 @@ def register_clientes_ligacoes_listagem_routes(app):
         
         # Tratar aba Clientes próximos de inativação (151-180 dias sem pedido)
         if aba == 'proximos_inativacao':
-            representantes_ordenados_px, total_proximos_count, stats_proximos = (
-                preparar_contexto_proximos_inativacao(
-                    current_user,
-                    codigos_representantes_vinculados,
-                )
-            )
-
-            total_pendentes_px, total_contatados_px, total_retornar_px = calcular_totais_abas_proximos(
-                current_user,
-                codigos_representantes_vinculados,
-            )
-
-            return render_template(
-                'meus_clientes.html',
-                representantes=representantes_ordenados_px,
+            return render_aba_proximos_inativacao(
                 aba=aba,
-                total_pendentes=total_pendentes_px,
-                total_contatados=total_contatados_px,
-                total_retornar=total_retornar_px,
-                total_oracle=total_oracle_badge,
-                total_inativos=0,
-                total_proximos=total_proximos_count,
-                usar_vista_agrupada=True,
-                is_supervisor=(current_user.tipo == 'supervisor'),
-                stats={},
-                stats_proximos=stats_proximos,
+                current_user=current_user,
+                codigos_representantes_vinculados=codigos_representantes_vinculados,
+                total_oracle_badge=total_oracle_badge,
                 q=request.args.get('q', ''),
-                meses_disponiveis_consultor=[],
-                mes_filtro=None,
-                ano_filtro=None,
             )
 
         # Parâmetros de filtro mensal para consultores e televendas
