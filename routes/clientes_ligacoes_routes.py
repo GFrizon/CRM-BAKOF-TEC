@@ -51,6 +51,10 @@ from routes.clientes_ligacoes.import_helpers import (
     extrair_campos_linha,
     validar_campos_linha,
 )
+from routes.clientes_ligacoes.import_persistence import (
+    atualizar_ou_reativar_cliente_importado,
+    construir_cliente_importado,
+)
 from routes.clientes_ligacoes.interaction_serializers import (
     serializar_detalhes_ligacao,
     serializar_historico_ligacoes,
@@ -1617,40 +1621,18 @@ def register_clientes_ligacoes_routes(app):
 
                     if empresa_cnpj:
                         try:
-                            existente_ativo = Cliente.query.filter_by(cnpj=empresa_cnpj, ativo=True).first()
-                            if existente_ativo:
-                                mudou = False
-                                if telefone and (not existente_ativo.telefone or existente_ativo.telefone != telefone):
-                                    existente_ativo.telefone = telefone
-                                    mudou = True
-                                if nome_cliente and nome_cliente != existente_ativo.nome:
-                                    existente_ativo.nome = nome_cliente[:200]
-                                    mudou = True
-                                if representante and representante != existente_ativo.representante_nome:
-                                    existente_ativo.representante_nome = representante[:200]
-                                    mudou = True
-                                if consultor_id and existente_ativo.consultor_id != consultor_id:
-                                    existente_ativo.consultor_id = consultor_id
-                                    mudou = True
-                                if existente_ativo.origem != 'importado_csv':
-                                    existente_ativo.origem = 'importado_csv'
-                                    mudou = True
-
-                                if mudou:
-                                    total_inseridos += 1
-                                else:
-                                    pulados += 1
-                                continue
-
-                            existente_inativo = Cliente.query.filter_by(cnpj=empresa_cnpj, ativo=False).first()
-                            if existente_inativo:
-                                existente_inativo.nome = nome_cliente[:200] or existente_inativo.nome
-                                existente_inativo.telefone = telefone
-                                existente_inativo.representante_nome = (representante[:200] or None)
-                                existente_inativo.consultor_id = consultor_id
-                                existente_inativo.ativo = True
-                                existente_inativo.origem = 'importado_csv'
+                            acao = atualizar_ou_reativar_cliente_importado(
+                                empresa_cnpj=empresa_cnpj,
+                                nome_cliente=nome_cliente,
+                                telefone=telefone,
+                                representante=representante,
+                                consultor_id=consultor_id,
+                            )
+                            if acao == "atualizado" or acao == "reativado":
                                 total_inseridos += 1
+                                continue
+                            if acao == "inalterado":
+                                pulados += 1
                                 continue
                         except Exception as db_error:
                             app.logger.error(f"Erro de banco ao processar linha {i+2}: {str(db_error)}")
@@ -1659,14 +1641,12 @@ def register_clientes_ligacoes_routes(app):
 
                     # Adicionar ao batch em vez de inserir imediatamente
                     try:
-                        novo = Cliente(
-                            nome=nome_cliente[:200],
-                            cnpj=(empresa_cnpj[:18] or None),
+                        novo = construir_cliente_importado(
+                            nome_cliente=nome_cliente,
+                            empresa_cnpj=empresa_cnpj,
                             telefone=telefone,
-                            representante_nome=(representante[:200] or None),
+                            representante=representante,
                             consultor_id=consultor_id,
-                            ativo=True,
-                            origem='importado_csv'
                         )
                         batch_clientes.append(novo)
                         total_inseridos += 1
