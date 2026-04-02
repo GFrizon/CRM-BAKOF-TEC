@@ -67,9 +67,9 @@ from routes.clientes_ligacoes.lista_operacional import (
     ordenar_clientes_por_aba,
 )
 from routes.clientes_ligacoes.maintenance_helpers import inativar_clientes_do_consultor
-from routes.clientes_ligacoes.nota_helpers import (
-    buscar_notas_cliente,
-    criar_nota_cliente,
+from routes.clientes_ligacoes.notes_service import (
+    adicionar_nota_service,
+    listar_notas_service,
 )
 from routes.clientes_ligacoes.lock_helpers import (
     buscar_locks_por_cd_oracle,
@@ -1206,7 +1206,7 @@ def register_clientes_ligacoes_routes(app):
     def listar_notas(cliente_id: int):
         if not current_user.is_authenticated:
             return jsonify([])
-        notas = buscar_notas_cliente(cliente_id)
+        notas = listar_notas_service(cliente_id)
         return jsonify(serializar_notas(notas))
 
 
@@ -1225,15 +1225,8 @@ def register_clientes_ligacoes_routes(app):
         if not texto:
             return jsonify({"ok": False, "mensagem": "Texto obrigatório"}), 400
 
-        cli = db.session.get(Cliente, cliente_id)
-        if not cli:
-            return jsonify({"ok": False, "mensagem": "Cliente não encontrado"}), 404
-
-        if consultor_sem_permissao_no_cliente(current_user, cli):
-            return jsonify({"ok": False, "mensagem": "Sem permissão"}), 403
-
-        criar_nota_cliente(cliente_id=cliente_id, usuario_id=current_user.id, texto=texto)
-        return jsonify({"ok": True, "mensagem": "Nota adicionada!"})
+        resposta, status = adicionar_nota_service(cliente_id, current_user, texto)
+        return jsonify(resposta), status
 
     # =============================================================================
     # IMPORTACAO DE CLIENTES
