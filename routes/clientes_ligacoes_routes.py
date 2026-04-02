@@ -78,9 +78,12 @@ from routes.clientes_ligacoes.lock_helpers import (
     tentar_assumir_lock_cliente,
 )
 from routes.clientes_ligacoes.oracle_sync_helpers import (
-    aplicar_dados_oracle_no_cliente,
     montar_payload_cliente_oracle,
     sugerir_consultor_por_categoria_oracle,
+)
+from routes.clientes_ligacoes.oracle_sync_service import (
+    sincronizar_clientes_manuais_oracle_service,
+    sincronizar_cliente_oracle_por_id_service,
 )
 from routes.clientes_ligacoes.permission_helpers import (
     consultor_sem_permissao_na_ligacao,
@@ -1041,36 +1044,9 @@ def register_clientes_ligacoes_routes(app):
             if current_user.tipo != 'supervisor':
                 return jsonify({"ok": False, "mensagem": "Acesso permitido apenas para supervisores"}), 403
 
-            cliente = db.session.get(Cliente, cliente_id)
-            if not cliente:
-                return jsonify({"ok": False, "mensagem": "Cliente nao encontrado"}), 404
-
             payload = request.get_json(silent=True) or {}
-            cnpj = so_digits(payload.get('cnpj') or cliente.cnpj)
-            if not cnpj:
-                return jsonify({"ok": False, "mensagem": "Cliente sem CNPJ para sincronizar com Oracle"}), 400
-
-            from oracle_service import get_cliente_oracle_por_cnpj
-            cliente_oracle = get_cliente_oracle_por_cnpj(cnpj)
-            if not cliente_oracle:
-                return jsonify({"ok": False, "mensagem": "Cliente nao encontrado no Oracle para este CNPJ"}), 404
-
-            aplicar_dados_oracle_no_cliente(cliente, cliente_oracle)
-
-            db.session.add(cliente)
-            db.session.commit()
-
-            return jsonify({
-                "ok": True,
-                "mensagem": "Cliente sincronizado com Oracle",
-                "cliente": {
-                    "id": cliente.id,
-                    "cd_cliente_oracle": cliente.cd_cliente_oracle,
-                    "cnpj": cliente.cnpj,
-                    "nome": cliente.nome,
-                    "telefone": cliente.telefone,
-                }
-            })
+            resposta, status = sincronizar_cliente_oracle_por_id_service(cliente_id, payload)
+            return jsonify(resposta), status
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro ao sincronizar cliente com Oracle: {str(e)}"}), 500
@@ -1081,92 +1057,10 @@ def register_clientes_ligacoes_routes(app):
         try:
             if current_user.tipo != 'supervisor':
                 return jsonify({"ok": False, "mensagem": "Acesso permitido apenas para supervisores"}), 403
-
-            from oracle_service import get_cliente_oracle_por_cnpj
-            import logging
-            logger = logging.getLogger(__name__)
-
-            clientes_manuais = (
-                Cliente.query
-                .filter(
-                    Cliente.ativo == True,
-                    Cliente.origem == 'manual',
-                    Cliente.cnpj.isnot(None)
-                )
-                .all()
-            )
-
-            total_base = len(clientes_manuais)
-            logger.info(f"[Sync Manuais] Total de clientes manuais com CNPJ: {total_base}")
-            
-            atualizados = 0
-            nao_encontrados = 0
-            sem_cnpj = 0
-            lista_nao_encontrados = []  # Log dos CNPJs não encontrados
-
-            for cliente in clientes_manuais:
-                cnpj = so_digits(cliente.cnpj)
-                if not cnpj:
-                    sem_cnpj += 1
-                    continue
-
-                # Log do CNPJ sendo buscado
-                logger.info(f"[Sync Manuais] Buscando cliente '{cliente.nome}' com CNPJ: {cnpj}")
-                
-                # Tentar buscar com retry e delay para não esgotar o pool
-                row = None
-                max_tentativas = 3
-                for tentativa in range(max_tentativas):
-                    try:
-                        row = get_cliente_oracle_por_cnpj(cnpj)
-                        if row:
-                            break
-                        # Se não encontrou, não precisa retry
-                        break
-                    except Exception as e:
-                        logger.warning(f"[Sync Manuais] Erro na tentativa {tentativa+1} para {cnpj}: {e}")
-                        if tentativa < max_tentativas - 1:
-                            import time
-                            time.sleep(0.5)  # Aguardar 500ms antes de retry
-                
-                if not row:
-                    nao_encontrados += 1
-                    lista_nao_encontrados.append(f"{cliente.nome} ({cnpj})")
-                    logger.warning(f"[Sync Manuais] NÃO ENCONTRADO: {cliente.nome} - CNPJ: {cnpj}")
-                    continue
-
-                logger.info(f"[Sync Manuais] ENCONTRADO: {cliente.nome} -> cd_cliente: {row.get('cd_cliente')}")
-                
-                aplicar_dados_oracle_no_cliente(cliente, row)
-                db.session.add(cliente)
-                atualizados += 1
-
-            db.session.commit()
-            
-            # Log resumo
-            logger.info(f"[Sync Manuais] RESUMO: Total={total_base}, Atualizados={atualizados}, NaoEncontrados={nao_encontrados}, SemCNPJ={sem_cnpj}")
-            if lista_nao_encontrados:
-                logger.info(f"[Sync Manuais] Lista nao encontrados: {', '.join(lista_nao_encontrados[:10])}")  # Primeiros 10
-
-            return jsonify({
-                "ok": True,
-                "mensagem": (
-                    f"Sync manuais concluida. Base: {total_base} | "
-                    f"Atualizados: {atualizados} | "
-                    f"Nao encontrados no Oracle: {nao_encontrados} | "
-                    f"Sem CNPJ valido: {sem_cnpj}"
-                ),
-                "total_base": total_base,
-                "atualizados": atualizados,
-                "nao_encontrados": nao_encontrados,
-                "sem_cnpj": sem_cnpj,
-                "nao_encontrados_lista": lista_nao_encontrados[:20]  # Retorna lista para debug
-            })
+            resposta, status = sincronizar_clientes_manuais_oracle_service()
+            return jsonify(resposta), status
         except Exception as e:
             db.session.rollback()
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"[Sync Manuais] ERRO: {str(e)}")
             return jsonify({"ok": False, "mensagem": f"Erro no sync manual com Oracle: {str(e)}"}), 500
 
     @app.route('/clientes/criar', methods=['POST'])
