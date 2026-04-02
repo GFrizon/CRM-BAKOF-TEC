@@ -35,6 +35,10 @@ from routes.clientes_ligacoes.grouping_stats import (
     extrair_consultores_dos_grupos,
 )
 from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enriquecidos
+from routes.clientes_ligacoes.lista_operacional import (
+    filtrar_listas_por_termo,
+    ordenar_clientes_por_aba,
+)
 from routes.clientes_ligacoes.proximos_tab import preparar_contexto_proximos_inativacao
 from routes.clientes_ligacoes.proximos_totais import calcular_totais_abas_proximos
 from routes.clientes_ligacoes.supervisor_repr import (
@@ -872,60 +876,19 @@ def register_clientes_ligacoes_routes(app):
         total_retornar_badge = len(precisa_retornar)
 
         # Busca textual só na listagem atual (não afeta badges).
-        if termo:
-            termo_lower = termo.lower()
-
-            def _match_termo(item):
-                return any(
-                    termo_lower in str(item.get(chave) or '').lower()
-                    for chave in ('nome', 'cnpj', 'telefone', 'representante_nome', 'representante_oracle')
-                )
-
-            pendentes_view = [c for c in pendentes if _match_termo(c)]
-            contatados_view = [c for c in contatados if _match_termo(c)]
-            precisa_retornar_view = [c for c in precisa_retornar if _match_termo(c)]
-        else:
-            pendentes_view = pendentes
-            contatados_view = contatados
-            precisa_retornar_view = precisa_retornar
-
-        if aba == 'pendentes':
-            # Ordenar pendentes por valor (maior para menor)
-            clientes = sorted(
-                pendentes_view,
-                key=lambda x: (
-                    float(x.get('valor_total_365dias') or 0),
-                    float(x.get('valor_ultimo_pedido') or 0)
-                ), 
-                reverse=True
-            )
-        elif aba == 'retornar':
-            # Ordenar retornar por data, depois por valor
-            clientes = sorted(
-                precisa_retornar_view,
-                key=lambda x: (
-                    x['proxima_ligacao'] or datetime.max,
-                    float(x.get('valor_total_365dias') or 0),
-                    float(x.get('valor_ultimo_pedido') or 0)
-                )
-            )
-        else:
-            # Ordenar contatados por valor (maior para menor)
-            clientes = sorted(
-                contatados_view,
-                key=lambda x: (
-                    float(x.get('valor_total_365dias') or 0),
-                    float(x.get('valor_ultimo_pedido') or 0)
-                ), 
-                reverse=True
-            )
-            filtro = request.args.get('filtro')
-            if filtro == 'antigos':
-                limite = datetime.now() - timedelta(days=30)
-                clientes = [c for c in clientes if c['ultima_ligacao'] and c['ultima_ligacao'] < limite]
-            elif filtro == 'recentes':
-                limite = datetime.now() - timedelta(days=7)
-                clientes = [c for c in clientes if c['ultima_ligacao'] and c['ultima_ligacao'] >= limite]
+        pendentes_view, contatados_view, precisa_retornar_view = filtrar_listas_por_termo(
+            termo,
+            pendentes,
+            contatados,
+            precisa_retornar,
+        )
+        clientes = ordenar_clientes_por_aba(
+            aba,
+            pendentes_view,
+            contatados_view,
+            precisa_retornar_view,
+            request.args.get('filtro'),
+        )
 
         consultores = (Usuario.query
                        .filter_by(tipo='consultor', ativo=True)
