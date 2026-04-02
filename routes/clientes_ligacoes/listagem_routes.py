@@ -2,7 +2,7 @@
 
 from flask import render_template, request
 from flask_login import current_user
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload
 
 from core.extensions import db
@@ -39,6 +39,7 @@ from routes.clientes_ligacoes.lista_operacional import (
     ordenar_clientes_por_aba,
 )
 from routes.clientes_ligacoes.listagem_proximos import render_aba_proximos_inativacao
+from routes.clientes_ligacoes.televendas_stats import montar_stats_produtividade_televendas
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
 from routes.supervisor_routes import get_banners_ativos
 
@@ -579,53 +580,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                     .count()
                 )
 
-            # Painel simples de produtividade da equipe de televendas.
-            stats_televendas = []
-            hoje_date = datetime.now().date()
-            desde7 = datetime.now() - timedelta(days=7)
-            desde30 = datetime.now() - timedelta(days=30)
-            equipe_tv = (
-                Usuario.query
-                .filter(Usuario.tipo == 'televendas', Usuario.ativo == True)
-                .order_by(Usuario.nome.asc())
-                .all()
-            )
-            for tv in equipe_tv:
-                lig_hoje = (
-                    db.session.query(func.count(Ligacao.id))
-                    .filter(
-                        Ligacao.consultor_id == tv.id,
-                        func.date(Ligacao.data_hora) == hoje_date
-                    )
-                    .scalar() or 0
-                )
-                lig_semana = (
-                    db.session.query(func.count(Ligacao.id))
-                    .filter(
-                        Ligacao.consultor_id == tv.id,
-                        Ligacao.data_hora >= desde7
-                    )
-                    .scalar() or 0
-                )
-                lig_mes = (
-                    db.session.query(func.count(Ligacao.id))
-                    .filter(
-                        Ligacao.consultor_id == tv.id,
-                        Ligacao.data_hora >= desde30
-                    )
-                    .scalar() or 0
-                )
-                stats_televendas.append({
-                    "usuario_id": tv.id,
-                    "nome": tv.nome,
-                    "ligacoes_hoje": int(lig_hoje),
-                    "ligacoes_semana": int(lig_semana),
-                    "ligacoes_mes": int(lig_mes),
-                })
-            stats_televendas = sorted(
-                stats_televendas,
-                key=lambda x: (-x["ligacoes_hoje"], -x["ligacoes_semana"], x["nome"])
-            )
+            stats_televendas = montar_stats_produtividade_televendas()
 
             return render_template('meus_clientes.html',
                                    representantes=representantes_ordenados,
