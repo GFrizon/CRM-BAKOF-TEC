@@ -52,16 +52,19 @@ from routes.clientes_ligacoes.import_helpers import (
 )
 from routes.clientes_ligacoes.import_flow import executar_importacao_completa
 from routes.clientes_ligacoes.interaction_serializers import (
-    serializar_detalhes_ligacao,
-    serializar_historico_ligacoes,
     serializar_notas,
+)
+from routes.clientes_ligacoes.interactions_service import (
+    detalhes_ligacao_service,
+    editar_ligacao_service,
+    editar_observacao_ligacao_service,
+    historico_ligacoes_service,
 )
 from routes.clientes_ligacoes.lista_operacional import (
     filtrar_listas_por_termo,
     ordenar_clientes_por_aba,
 )
 from routes.clientes_ligacoes.ligacao_helpers import (
-    aplicar_payload_edicao_ligacao,
     calcular_proxima_ligacao,
     mensagem_sucesso_ligacao,
     normalizar_resultado_ligacao,
@@ -86,7 +89,6 @@ from routes.clientes_ligacoes.oracle_sync_service import (
     sincronizar_cliente_oracle_por_id_service,
 )
 from routes.clientes_ligacoes.permission_helpers import (
-    consultor_sem_permissao_na_ligacao,
     consultor_sem_permissao_no_cliente,
 )
 from routes.clientes_ligacoes.proximos_tab import preparar_contexto_proximos_inativacao
@@ -1225,21 +1227,14 @@ def register_clientes_ligacoes_routes(app):
                     "Usuários do tipo Supervisor de Representante não podem editar observações (somente visualização)."
                 )
 
-            ligacao = db.session.get(Ligacao, ligacao_id)
-            if not ligacao:
-                return jsonify({"ok": False, "mensagem": "Ligação não encontrada"}), 404
-            
-            # Verificar permissão
-            if consultor_sem_permissao_na_ligacao(current_user, ligacao):
-                return jsonify({"ok": False, "mensagem": "Sem permissão"}), 403
-            
             payload = request.get_json(silent=True) or {}
-            nova_obs = s(payload.get('observacao'))
-            
-            ligacao.observacao = nova_obs or None
-            db.session.commit()
-            
-            return jsonify({"ok": True, "mensagem": "Observação atualizada com sucesso!"})
+            resposta, status = editar_observacao_ligacao_service(
+                ligacao_id=ligacao_id,
+                current_user=current_user,
+                observacao=payload.get('observacao'),
+                normalizador_texto=s,
+            )
+            return jsonify(resposta), status
             
         except Exception as e:
             db.session.rollback()
@@ -1257,19 +1252,14 @@ def register_clientes_ligacoes_routes(app):
                     "Usuários do tipo Supervisor de Representante não podem editar ligações (somente visualização)."
                 )
 
-            ligacao = db.session.get(Ligacao, ligacao_id)
-            if not ligacao:
-                return jsonify({"ok": False, "mensagem": "Ligação não encontrada"}), 404
-            
-            # Verificar permissão: consultor e televendas só podem editar suas próprias ligações
-            if consultor_sem_permissao_na_ligacao(current_user, ligacao):
-                return jsonify({"ok": False, "mensagem": "Sem permissão para editar esta ligação"}), 403
-            
             payload = request.get_json(silent=True) or {}
-            aplicar_payload_edicao_ligacao(ligacao, payload, s)
-            
-            db.session.commit()
-            return jsonify({"ok": True, "mensagem": "Ligação atualizada com sucesso!"})
+            resposta, status = editar_ligacao_service(
+                ligacao_id=ligacao_id,
+                current_user=current_user,
+                payload=payload,
+                normalizador_texto=s,
+            )
+            return jsonify(resposta), status
             
         except Exception as e:
             db.session.rollback()
@@ -1282,15 +1272,8 @@ def register_clientes_ligacoes_routes(app):
     @login_required
     def api_detalhes_ligacao(ligacao_id: int):
         try:
-            ligacao = db.session.get(Ligacao, ligacao_id)
-            if not ligacao:
-                return jsonify({"erro": "Ligação não encontrada"}), 404
-            
-            # Verificar permissão
-            if consultor_sem_permissao_na_ligacao(current_user, ligacao):
-                return jsonify({"erro": "Sem permissão"}), 403
-            
-            return jsonify(serializar_detalhes_ligacao(ligacao, formatar_dinheiro))
+            resposta, status = detalhes_ligacao_service(ligacao_id, current_user, formatar_dinheiro)
+            return jsonify(resposta), status
             
         except Exception as e:
             return jsonify({"erro": f"Erro: {str(e)}"}), 500
@@ -1304,24 +1287,10 @@ def register_clientes_ligacoes_routes(app):
             return jsonify([])
 
         try:
-            cli = db.session.get(Cliente, cliente_id)
-            if not cli:
-                return jsonify([])
-
-            if consultor_sem_permissao_no_cliente(current_user, cli):
-                return jsonify([])
-
-            regs = (Ligacao.query
-                    .options(joinedload(Ligacao.consultor))
-                    .filter(Ligacao.cliente_id == cliente_id)
-                    .order_by(Ligacao.data_hora.desc())
-                    .all())
-
             return jsonify(
-                serializar_historico_ligacoes(
-                    registros=regs,
-                    current_user_tipo=current_user.tipo,
-                    current_user_id=current_user.id,
+                historico_ligacoes_service(
+                    cliente_id=cliente_id,
+                    current_user=current_user,
                     normalizador_texto=s,
                     formatar_dinheiro_fn=formatar_dinheiro,
                 )
