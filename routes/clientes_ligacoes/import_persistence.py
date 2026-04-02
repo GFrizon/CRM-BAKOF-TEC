@@ -1,3 +1,8 @@
+from datetime import datetime
+
+from sqlalchemy import text
+
+from core.extensions import db
 from core.models import Cliente
 
 
@@ -45,3 +50,54 @@ def construir_cliente_importado(nome_cliente, empresa_cnpj, telefone, representa
         ativo=True,
         origem="importado_csv",
     )
+
+
+def flush_batch_clientes(batch_clientes, logger, erros):
+    try:
+        db.session.add_all(batch_clientes)
+        db.session.flush()
+        logger.info(f"Processado batch de {len(batch_clientes)} clientes")
+        return []
+    except Exception as batch_error:
+        logger.error(f"Erro no batch processing: {str(batch_error)}")
+        db.session.rollback()
+        for cliente in batch_clientes:
+            try:
+                db.session.add(cliente)
+                db.session.flush()
+            except Exception as single_error:
+                logger.warning(f"Erro em cliente individual: {str(single_error)}")
+                erros.append(f"Erro ao inserir cliente: {str(single_error)}")
+        return []
+
+
+def flush_batch_final_clientes(batch_clientes, logger, erros):
+    if not batch_clientes:
+        return
+    try:
+        db.session.add_all(batch_clientes)
+        logger.info(f"Processado batch final de {len(batch_clientes)} clientes")
+    except Exception as final_batch_error:
+        logger.error(f"Erro no batch final: {str(final_batch_error)}")
+        db.session.rollback()
+        for cliente in batch_clientes:
+            try:
+                db.session.add(cliente)
+                db.session.flush()
+            except Exception as single_error:
+                logger.warning(f"Erro em cliente individual final: {str(single_error)}")
+                erros.append(f"Erro ao inserir cliente final: {str(single_error)}")
+
+
+def registrar_importacao(arquivo_nome, consultor_id, total_inseridos, logger):
+    try:
+        imp_nome = arquivo_nome or "upload"
+        db.session.execute(
+            text(
+                "INSERT INTO importacoes (arquivo_nome, consultor_id, registros_importados, data_importacao) "
+                "VALUES (:n, :c, :r, :d)"
+            ),
+            {"n": imp_nome, "c": consultor_id, "r": total_inseridos, "d": datetime.now()},
+        )
+    except Exception as import_error:
+        logger.warning(f"Erro ao registrar importação: {str(import_error)}")

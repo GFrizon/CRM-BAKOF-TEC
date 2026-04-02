@@ -2,7 +2,7 @@
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import and_, func, or_, text
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import joinedload
 
 from core.extensions import db
@@ -54,6 +54,9 @@ from routes.clientes_ligacoes.import_helpers import (
 from routes.clientes_ligacoes.import_persistence import (
     atualizar_ou_reativar_cliente_importado,
     construir_cliente_importado,
+    flush_batch_clientes,
+    flush_batch_final_clientes,
+    registrar_importacao,
 )
 from routes.clientes_ligacoes.interaction_serializers import (
     serializar_detalhes_ligacao,
@@ -1602,7 +1605,6 @@ def register_clientes_ligacoes_routes(app):
             for i, row in df.iterrows():
                 try:
                     campos = extrair_campos_linha(row, get_pos, s, so_digits)
-                    tipo = campos.get("tipo")
                     empresa_cnpj = campos.get("empresa_cnpj")
                     representante = campos.get("representante")
                     nome_cliente = campos.get("nome_cliente")
@@ -1653,23 +1655,7 @@ def register_clientes_ligacoes_routes(app):
                         
                         # Processar batch quando atingir o tamanho limite
                         if len(batch_clientes) >= batch_size:
-                            try:
-                                db.session.add_all(batch_clientes)
-                                db.session.flush()  # Flush sem commit para manter transação
-                                app.logger.info(f"Processado batch de {len(batch_clientes)} clientes")
-                                batch_clientes = []  # Limpar batch
-                            except Exception as batch_error:
-                                app.logger.error(f"Erro no batch processing: {str(batch_error)}")
-                                db.session.rollback()
-                                # Tentar inserir um por um se batch falhar
-                                for cliente in batch_clientes:
-                                    try:
-                                        db.session.add(cliente)
-                                        db.session.flush()
-                                    except Exception as single_error:
-                                        app.logger.warning(f"Erro em cliente individual: {str(single_error)}")
-                                        erros.append(f"Erro ao inserir cliente: {str(single_error)}")
-                                batch_clientes = []
+                            batch_clientes = flush_batch_clientes(batch_clientes, app.logger, erros)
                                 
                     except ValueError as val_error:
                         app.logger.warning(f"Valor inválido na linha {i+2}: {str(val_error)}")
@@ -1690,30 +1676,8 @@ def register_clientes_ligacoes_routes(app):
                     continue
 
             # Processar batch restante
-            if batch_clientes:
-                try:
-                    db.session.add_all(batch_clientes)
-                    app.logger.info(f"Processado batch final de {len(batch_clientes)} clientes")
-                except Exception as final_batch_error:
-                    app.logger.error(f"Erro no batch final: {str(final_batch_error)}")
-                    db.session.rollback()
-                    for cliente in batch_clientes:
-                        try:
-                            db.session.add(cliente)
-                            db.session.flush()
-                        except Exception as single_error:
-                            app.logger.warning(f"Erro em cliente individual final: {str(single_error)}")
-                            erros.append(f"Erro ao inserir cliente final: {str(single_error)}")
-
-            try:
-                imp_nome = filename or "upload"
-                db.session.execute(
-                    text("INSERT INTO importacoes (arquivo_nome, consultor_id, registros_importados, data_importacao) "
-                         "VALUES (:n, :c, :r, :d)"),
-                    {"n": imp_nome, "c": consultor_id, "r": total_inseridos, "d": datetime.now()}
-                )
-            except Exception as import_error:
-                app.logger.warning(f"Erro ao registrar importação: {str(import_error)}")
+            flush_batch_final_clientes(batch_clientes, app.logger, erros)
+            registrar_importacao(filename, consultor_id, total_inseridos, app.logger)
 
             try:
                 db.session.commit()
