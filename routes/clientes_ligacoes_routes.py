@@ -51,11 +51,8 @@ from routes.clientes_ligacoes.import_helpers import (
     carregar_dataframe_importacao,
 )
 from routes.clientes_ligacoes.import_flow import executar_importacao_completa
-from routes.clientes_ligacoes.interactions_service import (
-    detalhes_ligacao_service,
-    editar_ligacao_service,
-    editar_observacao_ligacao_service,
-    historico_ligacoes_service,
+from routes.clientes_ligacoes.interactions_routes import (
+    register_clientes_ligacoes_interactions_routes,
 )
 from routes.clientes_ligacoes.lista_operacional import (
     filtrar_listas_por_termo,
@@ -94,6 +91,7 @@ _INATIVOS_COUNT_CACHE_TTL_SECONDS = 600
 
 def register_clientes_ligacoes_routes(app):
     register_clientes_ligacoes_analytics_routes(app)
+    register_clientes_ligacoes_interactions_routes(app)
     register_clientes_ligacoes_notes_routes(app)
 
     @app.before_request
@@ -1111,90 +1109,6 @@ def register_clientes_ligacoes_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
-
-    # =============================================================================
-    # EDITAR OBSERVACAO DE LIGACAO
-    # =============================================================================
-    @app.route('/editar-observacao/<int:ligacao_id>', methods=['POST'])
-    @login_required
-    def editar_observacao(ligacao_id: int):
-        try:
-            if current_user.tipo == 'supervisor_repr':
-                return resposta_supervisor_repr_somente_leitura(
-                    "Usuários do tipo Supervisor de Representante não podem editar observações (somente visualização)."
-                )
-
-            payload = request.get_json(silent=True) or {}
-            resposta, status = editar_observacao_ligacao_service(
-                ligacao_id=ligacao_id,
-                current_user=current_user,
-                observacao=payload.get('observacao'),
-                normalizador_texto=s,
-            )
-            return jsonify(resposta), status
-            
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
-
-    # =============================================================================
-    # EDITAR LIGACAO COMPLETA (RESULTADO, VALOR, OBSERVACAO)
-    # =============================================================================
-    @app.route('/editar-ligacao/<int:ligacao_id>', methods=['POST'])
-    @login_required
-    def editar_ligacao(ligacao_id: int):
-        try:
-            if current_user.tipo == 'supervisor_repr':
-                return resposta_supervisor_repr_somente_leitura(
-                    "Usuários do tipo Supervisor de Representante não podem editar ligações (somente visualização)."
-                )
-
-            payload = request.get_json(silent=True) or {}
-            resposta, status = editar_ligacao_service(
-                ligacao_id=ligacao_id,
-                current_user=current_user,
-                payload=payload,
-                normalizador_texto=s,
-            )
-            return jsonify(resposta), status
-            
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
-
-    # =============================================================================
-    # OBTER DETALHES DA LIGACAO PARA EDICAO
-    # =============================================================================
-    @app.route('/api/detalhes-ligacao/<int:ligacao_id>')
-    @login_required
-    def api_detalhes_ligacao(ligacao_id: int):
-        try:
-            resposta, status = detalhes_ligacao_service(ligacao_id, current_user, formatar_dinheiro)
-            return jsonify(resposta), status
-            
-        except Exception as e:
-            return jsonify({"erro": f"Erro: {str(e)}"}), 500
-
-    # =============================================================================
-    # HISTORICO LIGACOES
-    # =============================================================================
-    @app.route('/historico-ligacoes/<int:cliente_id>')
-    def historico_ligacoes(cliente_id: int):
-        if not current_user.is_authenticated:
-            return jsonify([])
-
-        try:
-            return jsonify(
-                historico_ligacoes_service(
-                    cliente_id=cliente_id,
-                    current_user=current_user,
-                    normalizador_texto=s,
-                    formatar_dinheiro_fn=formatar_dinheiro,
-                )
-            )
-
-        except Exception:
-            return jsonify([])
 
     # =============================================================================
     # IMPORTACAO DE CLIENTES
