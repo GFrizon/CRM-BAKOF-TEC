@@ -43,6 +43,10 @@ from routes.clientes_ligacoes.lista_operacional import (
     filtrar_listas_por_termo,
     ordenar_clientes_por_aba,
 )
+from routes.clientes_ligacoes.lock_helpers import (
+    buscar_locks_por_cd_oracle,
+    extrair_cds_da_requisicao,
+)
 from routes.clientes_ligacoes.oracle_sync_helpers import (
     aplicar_dados_oracle_no_cliente,
     montar_payload_cliente_oracle,
@@ -1342,52 +1346,12 @@ def register_clientes_ligacoes_routes(app):
             if current_user.tipo not in ('televendas', 'supervisor'):
                 return jsonify({"ok": False, "mensagem": "Sem permissao"}), 403
 
-            cds = []
-            if request.method == 'POST':
-                payload = request.get_json(silent=True) or {}
-                for item in (payload.get('cds') or []):
-                    cd = str(item or '').strip()
-                    if cd:
-                        cds.append(cd)
-            else:
-                cds_raw = request.args.get('cds') or ''
-                for item in cds_raw.split(','):
-                    cd = str(item or '').strip()
-                    if cd:
-                        cds.append(cd)
-
-            # Remove duplicados mantendo ordem.
-            cds = list(dict.fromkeys(cds))
+            cds = extrair_cds_da_requisicao(request)
 
             if not cds:
                 return jsonify({"ok": True, "locks": {}})
 
-            rows = (
-                db.session.query(
-                    Cliente.cd_cliente_oracle.label('cd_cliente_oracle'),
-                    Cliente.em_atendimento_por.label('em_atendimento_por'),
-                    Usuario.nome.label('usuario_nome')
-                )
-                .outerjoin(Usuario, Usuario.id == Cliente.em_atendimento_por)
-                .filter(
-                    Cliente.ativo == True,
-                    Cliente.cd_cliente_oracle.in_(cds),
-                    Cliente.em_atendimento_por.isnot(None),
-                )
-                .all()
-            )
-
-            locks = {}
-            for row in rows:
-                cd = str(row.cd_cliente_oracle or '').strip()
-                if not cd:
-                    continue
-                if cd not in locks:
-                    locks[cd] = {
-                        "ativo": True,
-                        "por_nome": (row.usuario_nome or "Outro usuario"),
-                        "ate": None,
-                    }
+            locks = buscar_locks_por_cd_oracle(cds)
 
             return jsonify({"ok": True, "locks": locks})
         except Exception as e:
