@@ -3898,15 +3898,18 @@ function toggleRepresentante(index) {
     div.style.overflow = 'hidden';
     div.style.maxHeight = `${alturaAtual}px`;
     div.style.opacity = '1';
-    div.style.transition = 'max-height 260ms ease, opacity 180ms ease';
+    div.style.transform = 'translateY(0)';
+    div.style.transition = 'max-height 260ms ease, opacity 180ms ease, transform 180ms ease';
     requestAnimationFrame(() => {
       div.style.maxHeight = '0px';
       div.style.opacity = '0';
+      div.style.transform = 'translateY(-4px)';
     });
     setTimeout(() => {
       div.style.display = 'none';
       div.style.maxHeight = '';
       div.style.opacity = '';
+      div.style.transform = '';
       div.style.transition = '';
       div.style.overflow = '';
       div.dataset.animating = '0';
@@ -3919,18 +3922,22 @@ function toggleRepresentante(index) {
     div.style.overflow = 'hidden';
     div.style.maxHeight = '0px';
     div.style.opacity = '0';
-    div.style.transition = 'max-height 300ms ease, opacity 220ms ease';
+    div.style.transform = 'translateY(-6px)';
+    div.style.transition = 'max-height 340ms ease, opacity 240ms ease, transform 240ms ease';
+    void div.offsetHeight;
     requestAnimationFrame(() => {
       div.style.maxHeight = `${alturaFinal}px`;
       div.style.opacity = '1';
+      div.style.transform = 'translateY(0)';
     });
     setTimeout(() => {
       div.style.maxHeight = '';
       div.style.opacity = '';
+      div.style.transform = '';
       div.style.transition = '';
       div.style.overflow = '';
       div.dataset.animating = '0';
-    }, 320);
+    }, 360);
     icone.classList.add('open');
   }
   atualizarInfoQuickActions();
