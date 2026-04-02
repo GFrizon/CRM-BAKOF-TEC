@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 from core.extensions import db
 from core.helpers import _percent, formatar_dinheiro, get_pos, s, so_digits
 from core.models import Cliente, Ligacao, Nota, SyncResumoDiario, Usuario, SupervisorRepresentanteVinculo
+from routes.clientes_ligacoes.access_control import bloquear_escrita_supervisor_repr
 from routes.clientes_ligacoes.badges import (
     _total_inativos_badge,
     _total_oracle_badge,
@@ -30,33 +31,9 @@ _INATIVOS_COUNT_CACHE_TTL_SECONDS = 600
 
 
 def register_clientes_ligacoes_routes(app):
-    rotas_escrita_bloqueadas_supervisor_repr = {
-        'preencher_cliente_oracle_por_cnpj',
-        'sincronizar_cliente_oracle_por_id',
-        'sincronizar_clientes_manuais_oracle',
-        'criar_cliente_manual',
-        'iniciar_contato_cliente',
-        'registrar_ligacao',
-        'editar_observacao',
-        'editar_ligacao',
-        'adicionar_nota',
-        'limpar_clientes_consultor',
-    }
-
     @app.before_request
     def _bloquear_escrita_supervisor_repr_clientes():
-        if not current_user.is_authenticated:
-            return None
-        if current_user.tipo != 'supervisor_repr':
-            return None
-        if request.method not in ('POST', 'PUT', 'PATCH', 'DELETE'):
-            return None
-        if request.endpoint in rotas_escrita_bloqueadas_supervisor_repr:
-            return jsonify({
-                "ok": False,
-                "mensagem": "Perfil Supervisor de Representante possui acesso somente leitura."
-            }), 403
-        return None
+        return bloquear_escrita_supervisor_repr()
 
     # =============================================================================
     # LISTAGEM DE CLIENTES
