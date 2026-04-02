@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from core.extensions import db
 from core.helpers import _percent, formatar_dinheiro, get_pos, s, so_digits
-from core.models import Cliente, Ligacao, Nota, SyncResumoDiario, Usuario
+from core.models import Cliente, Ligacao, Nota, SyncResumoDiario, Usuario, SupervisorRepresentanteVinculo
 from routes.supervisor_routes import get_banners_ativos
 
 _INATIVOS_COUNT_CACHE = {}
@@ -20,8 +20,33 @@ def _normalizar_nome_consultor(txt: str) -> str:
     if not txt:
         return ""
     base = unicodedata.normalize("NFKD", str(txt))
-    base = "".join(c for c in base if not unicodedata.combining(c))
-    return " ".join(base.upper().strip().split())
+    base = "".join(ch for ch in base if not unicodedata.combining(ch))
+    return " ".join(base.lower().split())
+
+
+def _normalizar_codigo_representante(codigo) -> str:
+    valor = str(codigo or "").strip()
+    if not valor:
+        return ""
+    if valor.isdigit():
+        return str(int(valor))
+    return valor.lower()
+
+
+def _codigo_representante_de_texto(texto: str) -> str:
+    valor = str(texto or "").strip()
+    if not valor:
+        return ""
+    if " - " in valor:
+        return valor.split(" - ")[-1].strip()
+    return valor
+
+
+def _cliente_tem_representante_vinculado(cliente: Cliente, codigos_representantes_vinculados) -> bool:
+    codigo_rep_cliente = _normalizar_codigo_representante(
+        _codigo_representante_de_texto(cliente.representante_oracle or cliente.representante_nome)
+    )
+    return bool(codigo_rep_cliente and codigo_rep_cliente in codigos_representantes_vinculados)
 
 
 def _extrair_nome_oracle_consultor(valor_oracle: str) -> str:
@@ -75,6 +100,58 @@ def _total_oracle_badge():
     )
 
 
+def _total_oracle_badge_supervisor_repr(codigos_representantes_vinculados):
+    """Conta clientes 90-120d de supervisor_repr com a mesma fonte da aba Oracle."""
+    if not codigos_representantes_vinculados:
+        return 0
+
+    try:
+        from oracle_service import get_clientes_oracle
+
+        clientes_oracle_raw = get_clientes_oracle() or []
+        clientes_oracle_por_cd = {}
+        for row in clientes_oracle_raw:
+            cd = str(row.get('cd_cliente') or '').strip()
+            if not cd:
+                continue
+            atual = clientes_oracle_por_cd.get(cd)
+            if not atual:
+                clientes_oracle_por_cd[cd] = row
+                continue
+            dt_novo = row.get('dt_pedido')
+            dt_atual = atual.get('dt_pedido')
+            if dt_novo and (not dt_atual or dt_novo > dt_atual):
+                clientes_oracle_por_cd[cd] = row
+
+        clientes_oracle = list(clientes_oracle_por_cd.values())
+        return sum(
+            1
+            for row in clientes_oracle
+            if _normalizar_codigo_representante(
+                _codigo_representante_de_texto(str(row.get('representante') or ''))
+            ) in codigos_representantes_vinculados
+        )
+    except Exception:
+        agora = datetime.now()
+        limite_min = agora - timedelta(days=120)
+        limite_max = agora - timedelta(days=90)
+        clientes_oracle = (
+            Cliente.query
+            .filter(
+                Cliente.ativo == True,
+                Cliente.cd_cliente_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.between(limite_min, limite_max),
+            )
+            .all()
+        )
+        return sum(
+            1
+            for c in clientes_oracle
+            if _cliente_tem_representante_vinculado(c, codigos_representantes_vinculados)
+        )
+
+
 def _total_inativos_badge(consultor_id=None):
     """Conta clientes inativos (181 a 730 dias sem pedido) na base local sincronizada."""
     agora = datetime.now()
@@ -115,6 +192,34 @@ def _total_proximos_badge(consultor_id=None):
 
 
 def register_clientes_ligacoes_routes(app):
+    rotas_escrita_bloqueadas_supervisor_repr = {
+        'preencher_cliente_oracle_por_cnpj',
+        'sincronizar_cliente_oracle_por_id',
+        'sincronizar_clientes_manuais_oracle',
+        'criar_cliente_manual',
+        'iniciar_contato_cliente',
+        'registrar_ligacao',
+        'editar_observacao',
+        'editar_ligacao',
+        'adicionar_nota',
+        'limpar_clientes_consultor',
+    }
+
+    @app.before_request
+    def _bloquear_escrita_supervisor_repr_clientes():
+        if not current_user.is_authenticated:
+            return None
+        if current_user.tipo != 'supervisor_repr':
+            return None
+        if request.method not in ('POST', 'PUT', 'PATCH', 'DELETE'):
+            return None
+        if request.endpoint in rotas_escrita_bloqueadas_supervisor_repr:
+            return jsonify({
+                "ok": False,
+                "mensagem": "Perfil Supervisor de Representante possui acesso somente leitura."
+            }), 403
+        return None
+
     # =============================================================================
     # LISTAGEM DE CLIENTES
     # =============================================================================
@@ -123,11 +228,16 @@ def register_clientes_ligacoes_routes(app):
         if not current_user.is_authenticated:
             return redirect(url_for('login'))
 
-        if current_user.tipo not in ('consultor', 'supervisor', 'televendas'):
+        if current_user.tipo not in ('consultor', 'supervisor', 'televendas', 'supervisor_repr'):
             flash('Perfil sem acesso.', 'danger')
             return redirect(url_for('index'))
 
-        aba_padrao = 'inativos' if current_user.tipo == 'televendas' else 'pendentes'
+        if current_user.tipo == 'televendas':
+            aba_padrao = 'inativos'
+        elif current_user.tipo == 'supervisor_repr':
+            aba_padrao = 'oracle'
+        else:
+            aba_padrao = 'pendentes'
         aba = request.args.get('aba', aba_padrao)
         total_oracle_badge = _total_oracle_badge() if current_user.tipo != 'televendas' else 0
         total_proximos_badge = _total_proximos_badge(
@@ -135,12 +245,53 @@ def register_clientes_ligacoes_routes(app):
         )
         # Inativos e uma aba exclusiva de televendas e supervisor.
         if current_user.tipo not in ('televendas', 'supervisor') and aba == 'inativos':
-            return redirect(url_for('meus_clientes', aba='pendentes'))
+            aba_destino = 'oracle' if current_user.tipo == 'supervisor_repr' else 'pendentes'
+            return redirect(url_for('meus_clientes', aba=aba_destino))
         # Televendas não pode acessar pendentes/oracle/proximos_inativacao
         if current_user.tipo == 'televendas' and aba in ('pendentes', 'oracle', 'proximos_inativacao'):
             return redirect(url_for('meus_clientes', aba='inativos'))
+        # Supervisor de representante não acessa a aba pendentes/clientes especiais
+        if current_user.tipo == 'supervisor_repr' and aba in ('pendentes', 'contatados', 'retornar'):
+            return redirect(url_for('meus_clientes', aba='oracle'))
         
         apenas_meus = True if current_user.tipo in ('consultor', 'televendas') else (request.args.get('meus') == '1')
+        
+        # Buscar códigos de representantes vinculados ao supervisor_repr
+        codigos_representantes_vinculados = []
+        if current_user.tipo == 'supervisor_repr':
+            vinculos = SupervisorRepresentanteVinculo.query.filter_by(
+                supervisor_id=current_user.id,
+                ativo=True
+            ).all()
+            codigos_representantes_vinculados = [
+                _normalizar_codigo_representante(v.codigo_representante)
+                for v in vinculos
+                if _normalizar_codigo_representante(v.codigo_representante)
+            ]
+            if not codigos_representantes_vinculados:
+                flash('Nenhum representante vinculado a este supervisor. Entre em contato com o administrador.', 'warning')
+
+            agora_pr = datetime.now()
+            limite_max_pr = agora_pr - timedelta(days=151)
+            limite_min_pr = agora_pr - timedelta(days=180)
+            clientes_proximos_sr = (
+                Cliente.query
+                .filter(
+                    Cliente.ativo == True,
+                    Cliente.cd_cliente_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.between(limite_min_pr, limite_max_pr),
+                )
+                .all()
+            )
+            total_proximos_badge = sum(
+                1
+                for c in clientes_proximos_sr
+                if _cliente_tem_representante_vinculado(c, codigos_representantes_vinculados)
+            )
+            total_oracle_badge = _total_oracle_badge_supervisor_repr(
+                codigos_representantes_vinculados
+            )
         
         # Tratar aba Oracle
         if aba == 'oracle':
@@ -330,7 +481,16 @@ def register_clientes_ligacoes_routes(app):
                 cd_cliente = str(cliente_oracle.get('cd_cliente') or '').strip()
                 cliente_local = clientes_locais_por_cd.get(cd_cliente) if cd_cliente else None
 
-                if apenas_meus:
+                # Filtro para supervisor_repr: apenas clientes dos representantes vinculados
+                if current_user.tipo == 'supervisor_repr':
+                    representante_str = str(cliente_oracle.get('representante') or '')
+                    cd_representante = _normalizar_codigo_representante(
+                        _codigo_representante_de_texto(representante_str)
+                    )
+                    if not cd_representante or cd_representante not in codigos_representantes_vinculados:
+                        continue
+
+                if apenas_meus and current_user.tipo != 'supervisor_repr':
                     if not cliente_local or cliente_local.consultor_id != current_user.id:
                         continue
                 if filtrar_oracle_por_categoria and consultor_cliente:
@@ -777,6 +937,16 @@ def register_clientes_ligacoes_routes(app):
 
                 cd_cliente = str(cliente_oracle.get('cd_cliente') or '').strip()
                 cliente_local = clientes_locais_por_cd.get(cd_cliente) if cd_cliente else None
+                
+                # Filtro para supervisor_repr: apenas clientes dos representantes vinculados
+                if current_user.tipo == 'supervisor_repr':
+                    representante_str = str(cliente_oracle.get('representante') or '')
+                    cd_representante = _normalizar_codigo_representante(
+                        _codigo_representante_de_texto(representante_str)
+                    )
+                    if not cd_representante or cd_representante not in codigos_representantes_vinculados:
+                        continue
+                
                 stats_lig = (
                     stats_ligacoes_por_cliente_id.get(cliente_local.id, {})
                     if cliente_local and cliente_local.id else {}
@@ -1048,6 +1218,12 @@ def register_clientes_ligacoes_routes(app):
 
             clientes_proximos_raw = q_proximos.all()
 
+            if current_user.tipo == 'supervisor_repr':
+                clientes_proximos_raw = [
+                    c for c in clientes_proximos_raw
+                    if _cliente_tem_representante_vinculado(c, codigos_representantes_vinculados)
+                ]
+
             ids_proximos = [c.id for c in clientes_proximos_raw]
             stats_lig_px = {}
             if ids_proximos:
@@ -1069,7 +1245,7 @@ def register_clientes_ligacoes_routes(app):
                     for row in lig_agg_px
                 }
 
-            agrupar_por_representante_px = current_user.tipo in ('consultor', 'televendas')
+            agrupar_por_representante_px = current_user.tipo in ('consultor', 'televendas', 'supervisor_repr')
             grupos_px = {}
             for c in clientes_proximos_raw:
                 consultor_nome = (c.consultor.nome if c.consultor else None) or 'SEM CONSULTOR'
@@ -1184,16 +1360,36 @@ def register_clientes_ligacoes_routes(app):
             base_q_px = Cliente.query.filter_by(ativo=True)
             if apenas_meus_px:
                 base_q_px = base_q_px.filter(Cliente.consultor_id == current_user.id)
-            clig_px = (
-                db.session.query(Ligacao.cliente_id)
-                .filter(Ligacao.consultor_id == current_user.id)
-                .distinct()
-            ) if apenas_meus_px else db.session.query(Ligacao.cliente_id).distinct()
-            total_pendentes_px = base_q_px.filter(Cliente.id.notin_(clig_px)).count()
-            total_contatados_px = base_q_px.filter(
-                Cliente.id.in_(clig_px), Cliente.proxima_ligacao.is_(None)
-            ).count()
-            total_retornar_px = base_q_px.filter(Cliente.proxima_ligacao.isnot(None)).count()
+            if current_user.tipo == 'supervisor_repr':
+                base_clientes_px = [
+                    c for c in base_q_px.all()
+                    if _cliente_tem_representante_vinculado(c, codigos_representantes_vinculados)
+                ]
+                ids_px = [c.id for c in base_clientes_px if c.id]
+                ligados_ids_px = set()
+                if ids_px:
+                    rows_lig_px = (
+                        db.session.query(Ligacao.cliente_id)
+                        .filter(Ligacao.cliente_id.in_(ids_px))
+                        .distinct()
+                        .all()
+                    )
+                    ligados_ids_px = {row.cliente_id for row in rows_lig_px if row.cliente_id}
+
+                total_pendentes_px = sum(1 for c in base_clientes_px if c.id not in ligados_ids_px)
+                total_contatados_px = sum(1 for c in base_clientes_px if c.id in ligados_ids_px and c.proxima_ligacao is None)
+                total_retornar_px = sum(1 for c in base_clientes_px if c.proxima_ligacao is not None)
+            else:
+                clig_px = (
+                    db.session.query(Ligacao.cliente_id)
+                    .filter(Ligacao.consultor_id == current_user.id)
+                    .distinct()
+                ) if apenas_meus_px else db.session.query(Ligacao.cliente_id).distinct()
+                total_pendentes_px = base_q_px.filter(Cliente.id.notin_(clig_px)).count()
+                total_contatados_px = base_q_px.filter(
+                    Cliente.id.in_(clig_px), Cliente.proxima_ligacao.is_(None)
+                ).count()
+                total_retornar_px = base_q_px.filter(Cliente.proxima_ligacao.isnot(None)).count()
 
             return render_template(
                 'meus_clientes.html',
@@ -1282,6 +1478,13 @@ def register_clientes_ligacoes_routes(app):
                     mapa_codigo_para_id[codigo] = uid
 
         for c in clientes_todos:
+            if current_user.tipo == 'supervisor_repr':
+                codigo_rep_cliente = _normalizar_codigo_representante(
+                    _codigo_representante_de_texto(c.representante_oracle or c.representante_nome)
+                )
+                if not codigo_rep_cliente or codigo_rep_cliente not in codigos_representantes_vinculados:
+                    continue
+
             ligacoes_relevantes = (
                 [l for l in c.ligacoes if l.consultor_id == current_user.id]
                 if current_user.tipo in ('consultor', 'televendas')
@@ -1349,7 +1552,7 @@ def register_clientes_ligacoes_routes(app):
 
             # Regra de negocio: para consultor, cliente manual pertence a
             # "Clientes Especiais" (antiga aba Pendentes), mesmo com historico.
-            if current_user.tipo == 'consultor' and origem_cliente == 'manual':
+            if current_user.tipo in ('consultor', 'supervisor_repr') and origem_cliente == 'manual':
                 pendentes.append(dados)
                 continue
 
@@ -1357,7 +1560,7 @@ def register_clientes_ligacoes_routes(app):
                 # Evita misturar campanha 90-120d na aba operacional de pendentes
                 # e no badge "Clientes Especiais" do consultor.
                 if (
-                    current_user.tipo == 'consultor'
+                    current_user.tipo in ('consultor', 'supervisor_repr')
                     and c.cd_cliente_oracle
                     and c.ultimo_pedido_oracle
                     and limite_min_90_120 <= c.ultimo_pedido_oracle <= limite_max_90_120
@@ -1532,8 +1735,8 @@ def register_clientes_ligacoes_routes(app):
         # Para consultores: converter para vista agrupada por representante
         # (mantendo contatados/retornar na lista simples original).
         if (
-            (current_user.tipo == 'supervisor' and aba == 'pendentes') or
-            (current_user.tipo in ('consultor', 'supervisor') and aba not in ('contatados', 'retornar', 'pendentes'))
+            (current_user.tipo in ('supervisor', 'consultor') and aba == 'pendentes') or
+            (current_user.tipo in ('consultor', 'supervisor', 'supervisor_repr') and aba not in ('contatados', 'retornar', 'pendentes'))
         ):
             agora_grp = datetime.now()
             agrupar_por_consultor = (current_user.tipo == 'supervisor' and aba == 'pendentes')
@@ -1592,7 +1795,7 @@ def register_clientes_ligacoes_routes(app):
             if current_user.tipo == 'consultor' and aba == 'pendentes':
                 representantes_ordenados_grp = sorted(
                     representantes_data_grp.items(),
-                    key=lambda x: (x[0] == grupo_sem_nome, x[0].upper())
+                    key=lambda x: (-x[1]['total_clientes'], x[0] == grupo_sem_nome, x[0])
                 )
             else:
                 representantes_ordenados_grp = sorted(
@@ -1651,8 +1854,8 @@ def register_clientes_ligacoes_routes(app):
         try:
             payload = request.get_json(silent=True) or {}
             cnpj = so_digits(payload.get('cnpj'))
-            if not cnpj or len(cnpj) < 11:
-                return jsonify({"ok": False, "mensagem": "Informe um CNPJ valido"}), 400
+            if not cnpj or len(cnpj) < 7:
+                return jsonify({"ok": False, "mensagem": "Informe um CNPJ valido (minimo 7 digitos)"}), 400
 
             from oracle_service import get_cliente_oracle_por_cnpj
             cliente_oracle = get_cliente_oracle_por_cnpj(cnpj)
@@ -1782,6 +1985,8 @@ def register_clientes_ligacoes_routes(app):
                 return jsonify({"ok": False, "mensagem": "Acesso permitido apenas para supervisores"}), 403
 
             from oracle_service import get_cliente_oracle_por_cnpj
+            import logging
+            logger = logging.getLogger(__name__)
 
             clientes_manuais = (
                 Cliente.query
@@ -1794,9 +1999,12 @@ def register_clientes_ligacoes_routes(app):
             )
 
             total_base = len(clientes_manuais)
+            logger.info(f"[Sync Manuais] Total de clientes manuais com CNPJ: {total_base}")
+            
             atualizados = 0
             nao_encontrados = 0
             sem_cnpj = 0
+            lista_nao_encontrados = []  # Log dos CNPJs não encontrados
 
             for cliente in clientes_manuais:
                 cnpj = so_digits(cliente.cnpj)
@@ -1804,11 +2012,33 @@ def register_clientes_ligacoes_routes(app):
                     sem_cnpj += 1
                     continue
 
-                row = get_cliente_oracle_por_cnpj(cnpj)
+                # Log do CNPJ sendo buscado
+                logger.info(f"[Sync Manuais] Buscando cliente '{cliente.nome}' com CNPJ: {cnpj}")
+                
+                # Tentar buscar com retry e delay para não esgotar o pool
+                row = None
+                max_tentativas = 3
+                for tentativa in range(max_tentativas):
+                    try:
+                        row = get_cliente_oracle_por_cnpj(cnpj)
+                        if row:
+                            break
+                        # Se não encontrou, não precisa retry
+                        break
+                    except Exception as e:
+                        logger.warning(f"[Sync Manuais] Erro na tentativa {tentativa+1} para {cnpj}: {e}")
+                        if tentativa < max_tentativas - 1:
+                            import time
+                            time.sleep(0.5)  # Aguardar 500ms antes de retry
+                
                 if not row:
                     nao_encontrados += 1
+                    lista_nao_encontrados.append(f"{cliente.nome} ({cnpj})")
+                    logger.warning(f"[Sync Manuais] NÃO ENCONTRADO: {cliente.nome} - CNPJ: {cnpj}")
                     continue
 
+                logger.info(f"[Sync Manuais] ENCONTRADO: {cliente.nome} -> cd_cliente: {row.get('cd_cliente')}")
+                
                 nome_oracle = s(row.get('cliente')) or None
                 telefone1 = so_digits(row.get('telefone1')) or None
                 telefone2 = so_digits(row.get('telefone2')) or None
@@ -1836,6 +2066,11 @@ def register_clientes_ligacoes_routes(app):
                 atualizados += 1
 
             db.session.commit()
+            
+            # Log resumo
+            logger.info(f"[Sync Manuais] RESUMO: Total={total_base}, Atualizados={atualizados}, NaoEncontrados={nao_encontrados}, SemCNPJ={sem_cnpj}")
+            if lista_nao_encontrados:
+                logger.info(f"[Sync Manuais] Lista nao encontrados: {', '.join(lista_nao_encontrados[:10])}")  # Primeiros 10
 
             return jsonify({
                 "ok": True,
@@ -1849,15 +2084,22 @@ def register_clientes_ligacoes_routes(app):
                 "atualizados": atualizados,
                 "nao_encontrados": nao_encontrados,
                 "sem_cnpj": sem_cnpj,
+                "nao_encontrados_lista": lista_nao_encontrados[:20]  # Retorna lista para debug
             })
         except Exception as e:
             db.session.rollback()
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[Sync Manuais] ERRO: {str(e)}")
             return jsonify({"ok": False, "mensagem": f"Erro no sync manual com Oracle: {str(e)}"}), 500
 
     @app.route('/clientes/criar', methods=['POST'])
     @login_required
     def criar_cliente_manual():
         try:
+            if current_user.tipo == 'supervisor_repr':
+                return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem criar clientes (somente visualização)."}), 403
+
             payload = request.get_json(silent=True) or {}
             nome = s(payload.get('nome'))
             cnpj = so_digits(payload.get('cnpj')) or None
@@ -1966,6 +2208,9 @@ def register_clientes_ligacoes_routes(app):
     @login_required
     def iniciar_contato_cliente(cliente_id: int):
         try:
+            if current_user.tipo == 'supervisor_repr':
+                return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem iniciar contato (somente visualização)."}), 403
+
             payload = request.get_json(silent=True) or {}
             forcar = bool(payload.get('forcar'))
             aba_contexto = str(payload.get('aba') or '').strip().lower()
@@ -2115,6 +2360,10 @@ def register_clientes_ligacoes_routes(app):
         if not current_user.is_authenticated:
             return jsonify({"ok": False, "mensagem": "Não autenticado"}), 401
 
+        # Bloquear supervisor_repr de registrar ligações
+        if current_user.tipo == 'supervisor_repr':
+            return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem registrar ligações (somente visualização)."}), 403
+
         try:
             payload = request.get_json(silent=True) or {}
             obs = s(payload.get('observacao'))
@@ -2207,6 +2456,9 @@ def register_clientes_ligacoes_routes(app):
     @login_required
     def editar_observacao(ligacao_id: int):
         try:
+            if current_user.tipo == 'supervisor_repr':
+                return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem editar observações (somente visualização)."}), 403
+
             ligacao = db.session.get(Ligacao, ligacao_id)
             if not ligacao:
                 return jsonify({"ok": False, "mensagem": "Ligação não encontrada"}), 404
@@ -2234,6 +2486,9 @@ def register_clientes_ligacoes_routes(app):
     @login_required
     def editar_ligacao(ligacao_id: int):
         try:
+            if current_user.tipo == 'supervisor_repr':
+                return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem editar ligações (somente visualização)."}), 403
+
             ligacao = db.session.get(Ligacao, ligacao_id)
             if not ligacao:
                 return jsonify({"ok": False, "mensagem": "Ligação não encontrada"}), 404
@@ -2374,6 +2629,11 @@ def register_clientes_ligacoes_routes(app):
     def adicionar_nota(cliente_id: int):
         if not current_user.is_authenticated:
             return jsonify({"ok": False, "mensagem": "Não autenticado"}), 401
+        
+        # Bloquear supervisor_repr de adicionar notas
+        if current_user.tipo == 'supervisor_repr':
+            return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem adicionar notas (somente visualização)."}), 403
+        
         texto = s((request.get_json(silent=True) or {}).get('texto'))
         if not texto:
             return jsonify({"ok": False, "mensagem": "Texto obrigatório"}), 400

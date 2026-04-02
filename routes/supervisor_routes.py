@@ -8,7 +8,7 @@ from werkzeug.security import generate_password_hash
 
 from core.extensions import db
 from core.helpers import _percent, formatar_dinheiro, s
-from core.models import Banner, Cliente, Ligacao, Usuario
+from core.models import Banner, Cliente, Ligacao, Usuario, SupervisorRepresentanteVinculo
 
 
 def _ultimos_meses(qtd=12):
@@ -49,6 +49,85 @@ def get_banners_ativos():
 
 
 def register_supervisor_routes(app):
+    def _sincronizar_vinculos_tg650_supervisor_repr(supervisor_id: int, codigo_supervisor_tg650: str):
+        codigo_base = s(codigo_supervisor_tg650)
+        if not codigo_base:
+            return {
+                "ok": False,
+                "mensagem": "Código TG650 não configurado para este supervisor",
+                "novos": 0,
+                "atualizados": 0,
+            }
+
+        from oracle_service import get_vinculos_supervisor_representante_oracle
+
+        codigos_teste = [codigo_base]
+        if codigo_base.isdigit():
+            codigo_sem_zero = str(int(codigo_base))
+            codigo_3 = codigo_sem_zero.zfill(3)
+            for cand in (codigo_sem_zero, codigo_3):
+                if cand and cand not in codigos_teste:
+                    codigos_teste.append(cand)
+
+        vinculos_oracle = []
+        codigo_utilizado = codigo_base
+        for codigo_teste in codigos_teste:
+            dados = get_vinculos_supervisor_representante_oracle(codigo_teste)
+            if dados:
+                vinculos_oracle = dados
+                codigo_utilizado = codigo_teste
+                break
+
+        if not vinculos_oracle:
+            return {
+                "ok": False,
+                "mensagem": "Nenhum vínculo encontrado na TG 650",
+                "novos": 0,
+                "atualizados": 0,
+            }
+
+        novos = 0
+        atualizados = 0
+
+        for vinculo_oracle in vinculos_oracle:
+            cd_representante = str(vinculo_oracle.get("cd_representante") or "").strip()
+            if not cd_representante:
+                continue
+
+            nome_representante = vinculo_oracle.get("nome_representante")
+
+            vinculo_local = SupervisorRepresentanteVinculo.query.filter_by(
+                supervisor_id=supervisor_id,
+                codigo_representante=cd_representante,
+            ).first()
+
+            if vinculo_local:
+                vinculo_local.nome_representante = nome_representante
+                vinculo_local.sincronizado_tg650 = True
+                vinculo_local.ativo = True
+                vinculo_local.codigo_supervisor_tg650 = codigo_utilizado
+                atualizados += 1
+            else:
+                db.session.add(
+                    SupervisorRepresentanteVinculo(
+                        supervisor_id=supervisor_id,
+                        codigo_representante=cd_representante,
+                        nome_representante=nome_representante,
+                        ativo=True,
+                        sincronizado_tg650=True,
+                        codigo_supervisor_tg650=codigo_utilizado,
+                    )
+                )
+                novos += 1
+
+        db.session.commit()
+        return {
+            "ok": True,
+            "mensagem": f"Sincronização concluída! {novos} novos, {atualizados} atualizados.",
+            "novos": novos,
+            "atualizados": atualizados,
+        }
+
     @app.route("/supervisor", endpoint="dashboard_supervisor")
     @login_required
     def supervisor_dashboard():
@@ -343,6 +422,7 @@ def register_supervisor_routes(app):
                     "tipo": u.tipo,
                     "ativo": u.ativo,
                     "meta_diaria": u.meta_diaria or 0,
+                    "codigo_supervisor_tg650": u.codigo_supervisor_tg650,
                     "data_cadastro": u.data_cadastro,
                     "total_clientes": total_clientes,
                 }
@@ -363,11 +443,12 @@ def register_supervisor_routes(app):
             senha = payload.get("senha") or ""
             tipo = s(payload.get("tipo"))
             meta_diaria = int(payload.get("meta_diaria") or 10)
+            codigo_supervisor_tg650 = s(payload.get("codigo_supervisor_tg650"))
 
             if not nome or not email or not senha:
                 return jsonify({"ok": False, "mensagem": "Nome, email e senha são obrigatórios"}), 400
 
-            if tipo not in ("consultor", "supervisor", "televendas"):
+            if tipo not in ("consultor", "supervisor", "televendas", "supervisor_repr"):
                 return jsonify({"ok": False, "mensagem": "Tipo inválido"}), 400
 
             if Usuario.query.filter_by(email=email).first():
@@ -379,13 +460,25 @@ def register_supervisor_routes(app):
                 senha_hash=generate_password_hash(senha),
                 tipo=tipo,
                 meta_diaria=meta_diaria,
+                codigo_supervisor_tg650=codigo_supervisor_tg650 if tipo == "supervisor_repr" else None,
                 ativo=True,
             )
 
             db.session.add(novo_usuario)
             db.session.commit()
 
-            return jsonify({"ok": True, "mensagem": f"Usuário {nome} criado com sucesso!"})
+            mensagem = f"Usuário {nome} criado com sucesso!"
+            if tipo == "supervisor_repr" and codigo_supervisor_tg650:
+                try:
+                    sync_result = _sincronizar_vinculos_tg650_supervisor_repr(novo_usuario.id, codigo_supervisor_tg650)
+                    if sync_result.get("ok"):
+                        mensagem += f" TG650 sincronizada ({sync_result.get('novos', 0)} novos, {sync_result.get('atualizados', 0)} atualizados)."
+                    else:
+                        mensagem += f" TG650 não sincronizada: {sync_result.get('mensagem')}."
+                except Exception as sync_err:
+                    mensagem += f" TG650 não sincronizada: {str(sync_err)}."
+
+            return jsonify({"ok": True, "mensagem": mensagem})
 
         except Exception as e:
             db.session.rollback()
@@ -407,11 +500,12 @@ def register_supervisor_routes(app):
             email = s(payload.get("email"))
             tipo = s(payload.get("tipo"))
             meta_diaria = int(payload.get("meta_diaria") or 10)
+            codigo_supervisor_tg650 = s(payload.get("codigo_supervisor_tg650"))
 
             if not nome or not email:
                 return jsonify({"ok": False, "mensagem": "Nome e email são obrigatórios"}), 400
 
-            if tipo not in ("consultor", "supervisor", "televendas"):
+            if tipo not in ("consultor", "supervisor", "televendas", "supervisor_repr"):
                 return jsonify({"ok": False, "mensagem": "Tipo inválido"}), 400
 
             email_existe = Usuario.query.filter(Usuario.email == email, Usuario.id != usuario_id).first()
@@ -422,10 +516,22 @@ def register_supervisor_routes(app):
             usuario.email = email
             usuario.tipo = tipo
             usuario.meta_diaria = meta_diaria
+            usuario.codigo_supervisor_tg650 = codigo_supervisor_tg650 if tipo == "supervisor_repr" else None
 
             db.session.commit()
 
-            return jsonify({"ok": True, "mensagem": f"Usuário {nome} atualizado com sucesso!"})
+            mensagem = f"Usuário {nome} atualizado com sucesso!"
+            if tipo == "supervisor_repr" and codigo_supervisor_tg650:
+                try:
+                    sync_result = _sincronizar_vinculos_tg650_supervisor_repr(usuario.id, codigo_supervisor_tg650)
+                    if sync_result.get("ok"):
+                        mensagem += f" TG650 sincronizada ({sync_result.get('novos', 0)} novos, {sync_result.get('atualizados', 0)} atualizados)."
+                    else:
+                        mensagem += f" TG650 não sincronizada: {sync_result.get('mensagem')}."
+                except Exception as sync_err:
+                    mensagem += f" TG650 não sincronizada: {str(sync_err)}."
+
+            return jsonify({"ok": True, "mensagem": mensagem})
 
         except Exception as e:
             db.session.rollback()
@@ -573,3 +679,153 @@ def register_supervisor_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
+
+    @app.route("/supervisor/supervisores-representante")
+    @login_required
+    def gerenciar_supervisores_representante():
+        if current_user.tipo != "supervisor":
+            flash("Acesso negado.", "danger")
+            return redirect(url_for("index"))
+
+        supervisores_repr = Usuario.query.filter_by(tipo="supervisor_repr").order_by(Usuario.nome.asc()).all()
+
+        supervisores_data = []
+        for sup in supervisores_repr:
+            vinculos_ativos = SupervisorRepresentanteVinculo.query.filter_by(
+                supervisor_id=sup.id, 
+                ativo=True
+            ).count()
+            
+            supervisores_data.append({
+                "id": sup.id,
+                "nome": sup.nome,
+                "email": sup.email,
+                "ativo": sup.ativo,
+                "codigo_supervisor_tg650": sup.codigo_supervisor_tg650,
+                "data_cadastro": sup.data_cadastro,
+                "total_vinculos": vinculos_ativos,
+            })
+
+        return render_template("gerenciar_supervisores_representante.html", supervisores=supervisores_data)
+
+    @app.route("/supervisor/supervisores-representante/<int:supervisor_id>/vinculos")
+    @login_required
+    def listar_vinculos_supervisor_repr(supervisor_id):
+        if current_user.tipo != "supervisor":
+            return jsonify({"ok": False, "mensagem": "Acesso negado"}), 403
+
+        supervisor = db.session.get(Usuario, supervisor_id)
+        if not supervisor or supervisor.tipo != "supervisor_repr":
+            return jsonify({"ok": False, "mensagem": "Supervisor de representante não encontrado"}), 404
+
+        vinculos = SupervisorRepresentanteVinculo.query.filter_by(supervisor_id=supervisor_id).all()
+
+        vinculos_data = [{
+            "id": v.id,
+            "codigo_representante": v.codigo_representante,
+            "nome_representante": v.nome_representante,
+            "ativo": v.ativo,
+            "sincronizado_tg650": v.sincronizado_tg650,
+            "data_cadastro": v.data_cadastro.strftime("%d/%m/%Y %H:%M") if v.data_cadastro else None,
+        } for v in vinculos]
+
+        return jsonify({
+            "ok": True,
+            "supervisor": {
+                "id": supervisor.id,
+                "nome": supervisor.nome,
+                "codigo_supervisor_tg650": supervisor.codigo_supervisor_tg650,
+            },
+            "vinculos": vinculos_data
+        })
+
+    @app.route("/supervisor/supervisores-representante/<int:supervisor_id>/vinculos/adicionar", methods=["POST"])
+    @login_required
+    def adicionar_vinculo_supervisor_repr(supervisor_id):
+        if current_user.tipo != "supervisor":
+            return jsonify({"ok": False, "mensagem": "Acesso negado"}), 403
+
+        try:
+            supervisor = db.session.get(Usuario, supervisor_id)
+            if not supervisor or supervisor.tipo != "supervisor_repr":
+                return jsonify({"ok": False, "mensagem": "Supervisor de representante não encontrado"}), 404
+
+            payload = request.get_json(silent=True) or {}
+            codigo_representante = s(payload.get("codigo_representante"))
+            nome_representante = s(payload.get("nome_representante"))
+
+            if not codigo_representante:
+                return jsonify({"ok": False, "mensagem": "Código do representante é obrigatório"}), 400
+
+            vinculo_existente = SupervisorRepresentanteVinculo.query.filter_by(
+                supervisor_id=supervisor_id,
+                codigo_representante=codigo_representante
+            ).first()
+
+            if vinculo_existente:
+                if not vinculo_existente.ativo:
+                    vinculo_existente.ativo = True
+                    db.session.commit()
+                    return jsonify({"ok": True, "mensagem": "Vínculo reativado com sucesso!"})
+                return jsonify({"ok": False, "mensagem": "Vínculo já existe"}), 400
+
+            novo_vinculo = SupervisorRepresentanteVinculo(
+                supervisor_id=supervisor_id,
+                codigo_representante=codigo_representante,
+                nome_representante=nome_representante,
+                ativo=True,
+                sincronizado_tg650=False
+            )
+
+            db.session.add(novo_vinculo)
+            db.session.commit()
+
+            return jsonify({"ok": True, "mensagem": "Vínculo adicionado com sucesso!"})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
+
+    @app.route("/supervisor/supervisores-representante/<int:supervisor_id>/vinculos/<int:vinculo_id>/remover", methods=["POST"])
+    @login_required
+    def remover_vinculo_supervisor_repr(supervisor_id, vinculo_id):
+        if current_user.tipo != "supervisor":
+            return jsonify({"ok": False, "mensagem": "Acesso negado"}), 403
+
+        try:
+            vinculo = db.session.get(SupervisorRepresentanteVinculo, vinculo_id)
+            if not vinculo or vinculo.supervisor_id != supervisor_id:
+                return jsonify({"ok": False, "mensagem": "Vínculo não encontrado"}), 404
+
+            vinculo.ativo = False
+            db.session.commit()
+
+            return jsonify({"ok": True, "mensagem": "Vínculo removido com sucesso!"})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
+
+    @app.route("/supervisor/supervisores-representante/<int:supervisor_id>/sincronizar-tg650", methods=["POST"])
+    @login_required
+    def sincronizar_vinculos_tg650(supervisor_id):
+        if current_user.tipo != "supervisor":
+            return jsonify({"ok": False, "mensagem": "Acesso negado"}), 403
+
+        try:
+            supervisor = db.session.get(Usuario, supervisor_id)
+            if not supervisor or supervisor.tipo != "supervisor_repr":
+                return jsonify({"ok": False, "mensagem": "Supervisor de representante não encontrado"}), 404
+
+            if not supervisor.codigo_supervisor_tg650:
+                return jsonify({"ok": False, "mensagem": "Código TG650 não configurado para este supervisor"}), 400
+
+            sync_result = _sincronizar_vinculos_tg650_supervisor_repr(supervisor_id, supervisor.codigo_supervisor_tg650)
+            if not sync_result.get("ok"):
+                return jsonify({"ok": False, "mensagem": sync_result.get("mensagem")}), 404
+
+            return jsonify(sync_result)
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"ok": False, "mensagem": f"Erro ao sincronizar: {str(e)}"}), 500

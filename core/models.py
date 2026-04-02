@@ -11,11 +11,12 @@ class Usuario(UserMixin, db.Model):
     nome = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     senha_hash = db.Column(db.String(512), nullable=False)
-    tipo = db.Column(db.Enum("consultor", "supervisor", "televendas"), default="consultor")
+    tipo = db.Column(db.Enum("consultor", "supervisor", "televendas", "supervisor_repr"), default="consultor")
     ativo = db.Column(db.Boolean, default=True)
     data_cadastro = db.Column(db.DateTime, default=datetime.now)
     meta_diaria = db.Column(db.Integer, default=10)
     viu_novidades = db.Column(db.Boolean, default=False)
+    codigo_supervisor_tg650 = db.Column(db.String(20), nullable=True)
 
 
 class Cliente(db.Model):
@@ -110,3 +111,21 @@ class SyncResumoDiario(db.Model):
     inativos_sairam = db.Column(db.Integer, nullable=False, default=0)
     total_inativos = db.Column(db.Integer, nullable=False, default=0)
     atualizado_em = db.Column(db.DateTime, default=datetime.now, nullable=False)
+
+
+class SupervisorRepresentanteVinculo(db.Model):
+    __tablename__ = "supervisor_representante_vinculos"
+    id = db.Column(db.Integer, primary_key=True)
+    supervisor_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    codigo_representante = db.Column(db.String(50), nullable=False, index=True)
+    nome_representante = db.Column(db.String(200), nullable=True)
+    ativo = db.Column(db.Boolean, default=True)
+    data_cadastro = db.Column(db.DateTime, default=datetime.now)
+    sincronizado_tg650 = db.Column(db.Boolean, default=False)
+    codigo_supervisor_tg650 = db.Column(db.String(20), nullable=True)
+
+    supervisor = db.relationship("Usuario", backref="vinculos_representantes", foreign_keys=[supervisor_id])
+
+    __table_args__ = (
+        db.UniqueConstraint('supervisor_id', 'codigo_representante', name='uq_supervisor_representante'),
+    )

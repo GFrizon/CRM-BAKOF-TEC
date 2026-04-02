@@ -50,15 +50,30 @@ def _resolver_consultor_id(
     texto = str(consultor_oracle or "").strip()
     codigo = ""
     if " - " in texto:
-        codigo = texto.split(" - ", 1)[0].strip()
+        codigo = texto.split(" - ", 1)[0].strip().lstrip("'\"")  # Remove aspas do código
 
     nome_oracle = _extrair_nome_consultor_oracle(texto)
     nome_norm = _normalizar_nome(nome_oracle)
+    
+    # Tentativa 1: match exato por nome
     if nome_norm and nome_norm in mapa_nome_para_id:
         return mapa_nome_para_id[nome_norm]
-
+    
+    # Tentativa 2: match por substring (nome Oracle contido no nome local)
+    if nome_norm:
+        for nome_local, uid in mapa_nome_para_id.items():
+            if nome_norm in nome_local or nome_local in nome_norm:
+                return uid
+    
+    # Tentativa 3: match exato por código
     if codigo and codigo in mapa_codigo_para_id:
         return mapa_codigo_para_id[codigo]
+    
+    # Tentativa 4: buscar por código contido no texto (fallback)
+    if codigo:
+        for codigo_mapa, uid in mapa_codigo_para_id.items():
+            if codigo_mapa in texto or codigo in codigo_mapa:
+                return uid
 
     logger.warning(
         f"Consultor Oracle sem mapeamento seguro ({texto!r}); usando fallback_id={fallback_id}"

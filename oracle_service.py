@@ -611,9 +611,10 @@ class OracleService:
         """
         Busca um cliente Oracle por CNPJ (somente digitos) e retorna dados principais
         para pre-preenchimento de cadastro manual.
+        Se não encontrar pelo CNPJ completo, tenta buscar pelo CNPJ Raiz (8 primeiros dígitos).
         """
         cnpj_digits = "".join(ch for ch in str(cnpj or "") if ch.isdigit())
-        if len(cnpj_digits) < 11:
+        if len(cnpj_digits) < 7:
             return None
 
         query = """
@@ -676,10 +677,193 @@ class OracleService:
         """
 
         try:
-            results = self.execute_query(query, {"cnpj": cnpj_digits})
-            if not results:
+            # Se recebeu 7 ou 8 dígitos, é CNPJ Raiz - pular direto para busca por raiz
+            if len(cnpj_digits) in (7, 8):
+                # Se tiver 7 dígitos, completa com zero à ESQUERDA (não à direita)
+                if len(cnpj_digits) == 7:
+                    cnpj_raiz = '0' + cnpj_digits
+                else:
+                    cnpj_raiz = cnpj_digits
+                logger.info(f"CNPJ Raiz detectado ({cnpj_digits} -> {cnpj_raiz}). Buscando por SUBSTR...")
+                
+                # Query modificada para buscar usando SUBSTR nos primeiros 8 dígitos
+                query_raiz = """
+                with pedidos_validos as (
+                    select
+                      PED.cd_cliente,
+                      PED.dt_pedido,
+                      PED.cd_pedido,
+                      PED.total_pedido,
+                      PED.situacao,
+                      PED.desc_cond_pagto,
+                      row_number() over (
+                        partition by PED.cd_cliente
+                        order by PED.dt_pedido desc, PED.cd_pedido desc nulls last
+                      ) as rn
+                    from fapedido PED
+                    join dexpara DPA on DPA.cd_operacao_resultado_de = PED.cd_tipo_operaca
+                    where DPA.cd_operacao_resultado_para not in ('20','21')
+                      and PED.controle not in ('85','96','99','86')
+                      and upper(trim(nvl(to_char(PED.situacao), ''))) = 'F'
+                      and nvl(PED.gerou_faturamen, 0) = 1
+                      and upper(trim(nvl(to_char(PED.situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')
+                ),
+                ultimo_pedido as (
+                    select *
+                    from pedidos_validos
+                    where rn = 1
+                )
+                select
+                  CLI.cd_empresa as cd_cliente,
+                  CLI.nome_completo as cliente,
+                  CLI.cnpj_cpf as cnpj,
+                  CLI.fone as telefone1,
+                  CLI.fax_fone as telefone2,
+                  CLI.municipio as municipio,
+                  CLI.uf as uf,
+                  CLI.contato as contato,
+                  REP.nome_completo || ' - ' || CLI.cd_representant as representante,
+                  coalesce(TGS.categoria,'999') || ' - ' || TG1.desc_categoria as consultor,
+                  UPE.dt_pedido,
+                  UPE.total_pedido,
+                  UPE.situacao,
+                  UPE.desc_cond_pagto,
+                  case
+                     when CLI.conceito = 'L' then 'LIBERADO'
+                     when CLI.conceito = 'B' then 'INADIMPLENTE'
+                     when trim(CLI.conceito) is null then 'SEM CONCEITO'
+                     else 'SEM CONCEITO'
+                  end as conceito
+                from geempres CLI
+                left join ultimo_pedido UPE on UPE.cd_cliente = CLI.cd_empresa
+                left join Geelemen TGS on TGS.cd_tg = 634 and TGS.elemento = CLI.cd_representant
+                left join Gecatego TG1 on TG1.cd_tg = 634 and TG1.categoria = coalesce(TGS.categoria,'999')
+                left join geempres REP on REP.cd_empresa = CLI.cd_representant
+                where SUBSTR(regexp_replace(nvl(to_char(CLI.cnpj_cpf), ''), '[^0-9]', ''), 1, 8) = :cnpj_raiz
+                  and CLI.pessoa = '0'
+                  and CLI.tipo_de_empresa = 'R'
+                order by UPE.dt_pedido desc nulls last, CLI.cd_empresa
+                fetch first 1 rows only
+                """
+                
+                results_raiz = self.execute_query(query_raiz, {"cnpj_raiz": cnpj_raiz})
+                if results_raiz:
+                    logger.info(f"Cliente encontrado via CNPJ Raiz: {cnpj_raiz}")
+                    return results_raiz[0]
                 return None
-            return results[0]
+            
+            # Se tem mais de 8 dígitos, tentar primeiro pelo CNPJ completo
+            results = self.execute_query(query, {"cnpj": cnpj_digits})
+            if results:
+                logger.info(f"Cliente encontrado via CNPJ completo: {cnpj_digits[:4]}...{cnpj_digits[-4:]}")
+                return results[0]
+            
+            logger.info(f"CNPJ completo {cnpj_digits} não encontrado. Tentando fallback por CNPJ Raiz...")
+            
+            # Se não encontrou pelo CNPJ completo, tentar pelo CNPJ Raiz (fallback)
+            cnpj_raiz = cnpj_digits[:8]
+            logger.info(f"Tentando busca por CNPJ Raiz: {cnpj_raiz}")
+            
+            query_raiz = """
+            with pedidos_validos as (
+                select
+                  PED.cd_cliente,
+                  PED.dt_pedido,
+                  PED.cd_pedido,
+                  PED.total_pedido,
+                  PED.situacao,
+                  PED.desc_cond_pagto,
+                  row_number() over (
+                    partition by PED.cd_cliente
+                    order by PED.dt_pedido desc, PED.cd_pedido desc nulls last
+                  ) as rn
+                from fapedido PED
+                join dexpara DPA on DPA.cd_operacao_resultado_de = PED.cd_tipo_operaca
+                where DPA.cd_operacao_resultado_para not in ('20','21')
+                  and PED.controle not in ('85','96','99','86')
+                  and upper(trim(nvl(to_char(PED.situacao), ''))) = 'F'
+                  and nvl(PED.gerou_faturamen, 0) = 1
+                  and upper(trim(nvl(to_char(PED.situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')
+            ),
+            ultimo_pedido as (
+                select *
+                from pedidos_validos
+                where rn = 1
+            )
+            select
+              CLI.cd_empresa as cd_cliente,
+              CLI.nome_completo as cliente,
+              CLI.cnpj_cpf as cnpj,
+              CLI.fone as telefone1,
+              CLI.fax_fone as telefone2,
+              CLI.municipio as municipio,
+              CLI.uf as uf,
+              CLI.contato as contato,
+              REP.nome_completo || ' - ' || CLI.cd_representant as representante,
+              coalesce(TGS.categoria,'999') || ' - ' || TG1.desc_categoria as consultor,
+              UPE.dt_pedido,
+              UPE.total_pedido,
+              UPE.situacao,
+              UPE.desc_cond_pagto,
+              case
+                 when CLI.conceito = 'L' then 'LIBERADO'
+                 when CLI.conceito = 'B' then 'INADIMPLENTE'
+                 when trim(CLI.conceito) is null then 'SEM CONCEITO'
+                 else 'SEM CONCEITO'
+              end as conceito
+            from geempres CLI
+            left join ultimo_pedido UPE on UPE.cd_cliente = CLI.cd_empresa
+            left join Geelemen TGS on TGS.cd_tg = 634 and TGS.elemento = CLI.cd_representant
+            left join Gecatego TG1 on TG1.cd_tg = 634 and TG1.categoria = coalesce(TGS.categoria,'999')
+            left join geempres REP on REP.cd_empresa = CLI.cd_representant
+            where SUBSTR(regexp_replace(nvl(to_char(CLI.cnpj_cpf), ''), '[^0-9]', ''), 1, 8) = :cnpj_raiz
+              and CLI.pessoa = '0'
+              and CLI.tipo_de_empresa = 'R'
+            order by UPE.dt_pedido desc nulls last, CLI.cd_empresa
+            fetch first 1 rows only
+            """
+            
+            results_raiz = self.execute_query(query_raiz, {"cnpj_raiz": cnpj_raiz})
+            if results_raiz:
+                logger.info(f"Cliente encontrado via CNPJ Raiz: {cnpj_raiz}")
+                return results_raiz[0]
+
+            # Último recurso: busca simples apenas na tabela geempres sem filtros de pedidos
+            logger.info(f"Tentando busca simples na geempres para CNPJ: {cnpj_digits}")
+            query_simples = """
+            select
+              CLI.cd_empresa as cd_cliente,
+              CLI.nome_completo as cliente,
+              CLI.cnpj_cpf as cnpj,
+              CLI.fone as telefone1,
+              CLI.fax_fone as telefone2,
+              CLI.municipio as municipio,
+              CLI.uf as uf,
+              CLI.contato as contato,
+              REP.nome_completo || ' - ' || CLI.cd_representant as representante,
+              coalesce(TGS.categoria,'999') || ' - ' || TG1.desc_categoria as consultor,
+              case
+                 when CLI.conceito = 'L' then 'LIBERADO'
+                 when CLI.conceito = 'B' then 'INADIMPLENTE'
+                 when trim(CLI.conceito) is null then 'SEM CONCEITO'
+                 else 'SEM CONCEITO'
+              end as conceito
+            from geempres CLI
+            left join Geelemen TGS on TGS.cd_tg = 634 and TGS.elemento = CLI.cd_representant
+            left join Gecatego TG1 on TG1.cd_tg = 634 and TG1.categoria = coalesce(TGS.categoria,'999')
+            left join geempres REP on REP.cd_empresa = CLI.cd_representant
+            where regexp_replace(nvl(to_char(CLI.cnpj_cpf), ''), '[^0-9]', '') = :cnpj
+              and CLI.pessoa = '0'
+              and CLI.tipo_de_empresa = 'R'
+            fetch first 1 rows only
+            """
+            results_simples = self.execute_query(query_simples, {"cnpj": cnpj_digits})
+            if results_simples:
+                logger.info(f"Cliente encontrado via busca simples: {cnpj_digits[:4]}...{cnpj_digits[-4:]}")
+                return results_simples[0]
+
+            logger.warning(f"Cliente NÃO ENCONTRADO - CNPJ: {cnpj_digits} (raiz: {cnpj_raiz})")
+            return None
         except Exception as e:
             logger.error(f"Erro ao buscar cliente por CNPJ no Oracle ({cnpj_digits}): {str(e)}")
             return None
@@ -758,6 +942,48 @@ class OracleService:
         except Exception as e:
             logger.error(f"Erro ao buscar cliente por codigo no Oracle ({cd_limpo}): {str(e)}")
             return None
+
+    def get_vinculos_supervisor_representante(self, codigo_supervisor: Optional[str] = None) -> List[Dict]:
+        """
+        Busca vínculos entre supervisores e representantes na TG 650.
+        
+        Args:
+            codigo_supervisor: Código do supervisor para filtrar (opcional)
+            
+        Returns:
+            Lista de vínculos com estrutura: {
+                'categoria': código do supervisor,
+                'elemento': código do representante,
+                'desc_categoria': descrição do supervisor (se disponível),
+                'nome_representante': nome do representante
+            }
+        """
+        query = """
+        SELECT 
+            TG650.categoria,
+            TG650.elemento as cd_representante,
+            CAT.desc_categoria,
+            REP.nome_completo as nome_representante
+        FROM Geelemen TG650
+        LEFT JOIN Gecatego CAT ON CAT.cd_tg = 650 AND CAT.categoria = TG650.categoria
+        LEFT JOIN geempres REP ON REP.cd_empresa = TG650.elemento
+        WHERE TG650.cd_tg = 650
+        """
+        
+        params = {}
+        if codigo_supervisor:
+            query += " AND TG650.categoria = :codigo_supervisor"
+            params['codigo_supervisor'] = str(codigo_supervisor).strip()
+        
+        query += " ORDER BY TG650.categoria, TG650.elemento"
+        
+        try:
+            results = self.execute_query(query, params if params else None)
+            logger.info(f"Buscados {len(results)} vínculos supervisor-representante da TG 650")
+            return results
+        except Exception as e:
+            logger.error(f"Erro ao buscar vínculos TG 650: {str(e)}")
+            raise
 # Instância global do serviço
 oracle_service = OracleService()
 
@@ -809,3 +1035,8 @@ def get_cliente_oracle_por_cnpj(cnpj: str):
 def get_cliente_oracle_por_codigo(cd_cliente: str):
     """Busca cliente Oracle por codigo para detalhes de cliente."""
     return oracle_service.get_cliente_por_codigo(cd_cliente)
+
+
+def get_vinculos_supervisor_representante_oracle(codigo_supervisor: Optional[str] = None):
+    """Busca vínculos supervisor-representante da TG 650 no Oracle"""
+    return oracle_service.get_vinculos_supervisor_representante(codigo_supervisor)

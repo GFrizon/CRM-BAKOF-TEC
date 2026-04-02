@@ -34,6 +34,14 @@
               <span class="badge bg-primary">
                 <i class="bi bi-shield-check"></i> Supervisor
               </span>
+            {% elif current_user.tipo == 'supervisor_repr' %}
+              <span class="badge bg-info">
+                <i class="bi bi-eye"></i> Supervisor de Representante
+              </span>
+            {% elif current_user.tipo == 'televendas' %}
+              <span class="badge bg-warning text-dark">
+                <i class="bi bi-telephone-forward"></i> Televendas
+              </span>
             {% else %}
               <span class="badge bg-secondary">
                 <i class="bi bi-person"></i> Consultor

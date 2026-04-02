@@ -793,6 +793,23 @@ code {
   border-radius: 4px;
   padding: 1px 6px;
 }
+/* ---- Cabeçalhos de coluna ordenáveis ---- */
+.th-sort {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.th-sort:hover { background: var(--brand-50); }
+.th-sort .sort-icon {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: .65rem;
+  opacity: .4;
+  vertical-align: middle;
+}
+.th-sort.asc  .sort-icon::after { content: "▲"; opacity:1; }
+.th-sort.desc .sort-icon::after { content: "▼"; opacity:1; }
+.th-sort:not(.asc):not(.desc) .sort-icon::after { content: "⇅"; }
 </style>
 
 <!-- ============================================================
@@ -874,7 +891,7 @@ code {
     {% endif %}
   </div>
   <div class="d-flex flex-wrap gap-2">
-    {% if aba not in ('oracle', 'inativos') and current_user.tipo != 'televendas' %}
+    {% if aba not in ('oracle', 'inativos') and current_user.tipo in ('consultor', 'supervisor') %}
     <button class="btn btn-primary btn-sm" onclick="abrirModalAdicionar()">
       <i class="bi bi-person-plus me-1"></i> Adicionar Cliente
     </button>
@@ -1416,6 +1433,7 @@ code {
         <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
           <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
         </a>
+        {% if current_user.tipo != 'supervisor_repr' %}
         <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
           <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
         </a>
@@ -1425,6 +1443,7 @@ code {
           <i class="bi bi-dot tab-alert"></i>
           {% endif %}
         </a>
+        {% endif %}
         {% elif current_user.tipo == 'televendas' %}
         <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
           <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
@@ -1439,18 +1458,23 @@ code {
           {% endif %}
         </a>
         {% else %}
+        {% if current_user.tipo != 'supervisor_repr' %}
         <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
           <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
         </a>
+        {% endif %}
         <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
           <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
         </a>
+        {% if current_user.tipo == 'supervisor' %}
         <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
           <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
         </a>
+        {% endif %}
         <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
           <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
         </a>
+        {% if current_user.tipo != 'supervisor_repr' %}
         <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
           <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
         </a>
@@ -1461,20 +1485,28 @@ code {
           {% endif %}
         </a>
         {% endif %}
+        {% endif %}
       </div>
     </div>
   </div>
 
   <div class="quick-action-bar d-flex flex-wrap align-items-center gap-2">
+    {% if current_user.tipo != 'supervisor_repr' %}
     <button class="btn btn-primary btn-sm" onclick="ligarProximoCliente()">
       <i class="bi bi-telephone-outbound me-1"></i>Ligar proximo
     </button>
+    {% endif %}
     <button class="btn btn-outline-danger btn-sm" onclick="filtrarClientesCriticos()">
       <i class="bi bi-exclamation-triangle me-1"></i>Filtrar criticos
     </button>
     <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltroCriticos()">
       <i class="bi bi-funnel me-1"></i>Limpar filtro
     </button>
+    {% if current_user.tipo == 'supervisor' and aba == 'pendentes' %}
+    <button class="btn btn-outline-primary btn-sm" onclick="sincronizarClientesManuais()" id="btnSincManuais">
+      <i class="bi bi-arrow-repeat me-1"></i>Sincronizar com Oracle
+    </button>
+    {% endif %}
     <span class="quick-action-info ms-auto" id="quickActionInfo">Mostrando todos os clientes</span>
   </div>
 
@@ -1555,16 +1587,16 @@ code {
           <table class="table rep-table">
             <thead>
               <tr>
-                <th style="width:24%">Cliente</th>
-                <th style="width:13%">CNPJ</th>
+                <th class="th-sort" style="width:24%" onclick="sortRepTable(this,0)">Cliente<span class="sort-icon"></span></th>
+                <th class="th-sort" style="width:13%" onclick="sortRepTable(this,1)">CNPJ<span class="sort-icon"></span></th>
                 <th style="width:13%">Telefone</th>
-                <th style="width:10%">Status</th>
-                <th style="width:13%">{% if aba == 'inativos' %}Centralizadora{% else %}Consultor Oracle{% endif %}</th>
-                <th style="width:10%">Ultimo Pedido</th>
+                <th class="th-sort" style="width:10%" onclick="sortRepTable(this,3)">Status<span class="sort-icon"></span></th>
+                <th class="th-sort" style="width:13%" onclick="sortRepTable(this,4)">{% if aba == 'inativos' %}Centralizadora{% else %}Consultor Oracle{% endif %}<span class="sort-icon"></span></th>
+                <th class="th-sort" style="width:10%" onclick="sortRepTable(this,5)">Ultimo Pedido<span class="sort-icon"></span></th>
                 {% if aba == 'proximos_inativacao' %}
-                <th style="width:10%">Inativa em</th>
+                <th class="th-sort" style="width:10%" onclick="sortRepTable(this,6)">Inativa em<span class="sort-icon"></span></th>
                 {% endif %}
-                <th style="width:9%">Valor (365d)</th>
+                <th class="th-sort" style="width:9%" onclick="sortRepTable(this,{% if aba == 'proximos_inativacao' %}7{% else %}6{% endif %})">Valor (365d)<span class="sort-icon"></span></th>
                 <th style="width:8%">Ações</th>
               </tr>
             </thead>
@@ -1686,6 +1718,7 @@ code {
                             title="Ver Detalhes Oracle">
                       <i class="bi bi-eye"></i>
                     </button>
+                    {% if current_user.tipo != 'supervisor_repr' %}
                     {% if c.id %}
                     <button class="action-btn btn btn-primary"
                             onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
@@ -1719,13 +1752,23 @@ code {
                       <i class="bi bi-telephone-plus"></i>
                     </button>
                     {% endif %}
+                    {% endif %}
+                    {% if current_user.tipo == 'supervisor_repr' and c.id and (c.total_ligacoes or 0) > 0 %}
+                    <button class="action-btn btn btn-outline-secondary"
+                            onclick="historico({{ c.id }})"
+                            title="Cliente com ligação registrada">
+                      <i class="bi bi-clock-history"></i>
+                    </button>
+                    {% endif %}
                     {% else %}
                     <button class="action-btn btn btn-outline-secondary" disabled title="Cliente sem código Oracle">
                       <i class="bi bi-eye"></i>
                     </button>
+                    {% if current_user.tipo != 'supervisor_repr' %}
                     <button class="action-btn btn btn-primary" disabled title="Cliente sem vinculo local">
                       <i class="bi bi-telephone-plus"></i>
                     </button>
+                    {% endif %}
                     {% endif %}
                   </div>
                 </td>
@@ -1758,7 +1801,7 @@ code {
      ============================================================ -->
      
 <!-- Notificação simples usando total_retornar -->
-{% if total_retornar and total_retornar > 0 %}
+{% if total_retornar and total_retornar > 0 and current_user.tipo != 'supervisor_repr' %}
 <div class="alert alert-warning alert-dismissible fade show mb-2" role="alert" style="background: linear-gradient(135deg, #fff8e1 0%, #fffef0 100%); border: 1px solid #ffc107; border-left: 3px solid #ffc107; border-radius: 6px; padding: 8px 12px; margin-bottom: 8px !important;">
   <div class="d-flex align-items-center">
     <i class="bi bi-bell-fill text-warning me-2" style="font-size: 0.9rem;"></i>
@@ -1783,6 +1826,7 @@ code {
       <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
         <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
+      {% if current_user.tipo != 'supervisor_repr' %}
       <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" href="{{ url_for('meus_clientes', aba='contatados') }}">
         <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
       </a>
@@ -1792,7 +1836,9 @@ code {
         <i class="bi bi-dot tab-alert"></i>
         {% endif %}
       </a>
+      {% endif %}
       {% else %}
+      {% if current_user.tipo != 'supervisor_repr' %}
       <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" href="{{ url_for('meus_clientes', aba='pendentes') }}">
         {% if current_user.tipo in ('consultor', 'supervisor') %}
         <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
@@ -1800,10 +1846,11 @@ code {
         <i class="bi bi-clock"></i><span class="tab-label">Pendentes</span><span class="tab-count">{{ total_pendentes }}</span>
         {% endif %}
       </a>
+      {% endif %}
       <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" href="{{ url_for('meus_clientes', aba='oracle') }}">
         <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
       </a>
-      {% if current_user.tipo != 'consultor' %}
+      {% if current_user.tipo == 'supervisor' %}
       <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" href="{{ url_for('meus_clientes', aba='inativos') }}">
         <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
@@ -1825,9 +1872,11 @@ code {
   </div>
 
   <div class="quick-action-bar d-flex flex-wrap align-items-center gap-2">
+    {% if current_user.tipo != 'supervisor_repr' %}
     <button class="btn btn-primary btn-sm" onclick="ligarProximoCliente()">
       <i class="bi bi-telephone-outbound me-1"></i>Ligar proximo
     </button>
+    {% endif %}
     <button class="btn btn-outline-danger btn-sm" onclick="filtrarClientesCriticos()">
       <i class="bi bi-exclamation-triangle me-1"></i>Filtrar criticos
     </button>
@@ -1842,17 +1891,17 @@ code {
     <table class="table rep-table">
       <thead>
         <tr>
-          <th>Cliente</th>
-          <th>CNPJ</th>
+          <th class="th-sort" onclick="sortFlatTable(this,0)">Cliente<span class="sort-icon"></span></th>
+          <th class="th-sort" onclick="sortFlatTable(this,1)">CNPJ<span class="sort-icon"></span></th>
           <th>Telefone</th>
-          <th>Representante</th>
+          <th class="th-sort" onclick="sortFlatTable(this,3)">Representante<span class="sort-icon"></span></th>
           {% if aba != 'pendentes' %}
-          <th>Ultima Ligacao</th>
+          <th class="th-sort" onclick="sortFlatTable(this,4)">Ultima Ligacao<span class="sort-icon"></span></th>
           {% endif %}
           {% if aba == 'retornar' %}
-          <th>Próximo Contato</th>
+          <th class="th-sort" onclick="sortFlatTable(this,{% if aba != 'pendentes' %}5{% else %}4{% endif %})">Próximo Contato<span class="sort-icon"></span></th>
           {% endif %}
-          <th>Ligações</th>
+          <th class="th-sort" onclick="sortFlatTable(this, this.cellIndex)">Ligações<span class="sort-icon"></span></th>
           <th>Ações</th>
         </tr>
       </thead>
@@ -1935,11 +1984,13 @@ code {
                       title="Ver Detalhes Oracle">
                 <i class="bi bi-eye"></i>
               </button>
+              {% if current_user.tipo != 'supervisor_repr' %}
               <button class="action-btn btn btn-primary"
                       onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
                       title="Registrar Ligação">
                 <i class="bi bi-telephone-plus"></i>
               </button>
+              {% endif %}
               {% if aba != 'pendentes' or (c.total_ligacoes or 0) > 0 %}
               <button class="action-btn btn btn-outline-secondary"
                       onclick="historico({{ c.id }})"
@@ -1947,11 +1998,13 @@ code {
                 <i class="bi bi-clock-history"></i>
               </button>
               {% endif %}
+              {% if current_user.tipo != 'supervisor_repr' %}
               <button class="action-btn btn btn-outline-danger"
                       onclick="removerCliente({{ c.id }}, '{{ c.nome|e }}')"
                       title="Remover">
                 <i class="bi bi-trash"></i>
               </button>
+              {% endif %}
             </div>
           </td>
         </tr>
@@ -2630,8 +2683,8 @@ async function buscarCnpjOracle() {
   const botao = document.getElementById('btn_buscar_oracle_cnpj');
   const cnpj = limpaDigitos(cnpjInput.value);
 
-  if (!cnpj || cnpj.length < 11) {
-    if (statusEl) statusEl.textContent = 'Informe um CNPJ valido para buscar no Oracle.';
+  if (!cnpj || cnpj.length < 7) {
+    if (statusEl) statusEl.textContent = 'Informe um CNPJ valido (minimo 7 digitos) para buscar no Oracle.';
     return;
   }
 
@@ -3825,6 +3878,112 @@ function getCookie(name) {
     }
   }
   return cookieValue;
+}
+
+/* ============================================================
+   ORDENAÇÃO DE COLUNAS NAS TABELAS
+   ============================================================ */
+function _getCellValue(tr, idx) {
+  var cell = tr.cells[idx];
+  if (!cell) return '';
+  return (cell.innerText || cell.textContent || '').trim();
+}
+
+function _comparer(idx, asc) {
+  return function(a, b) {
+    var va = _getCellValue(a, idx);
+    var vb = _getCellValue(b, idx);
+    // tenta comparar como número
+    var na = parseFloat(va.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    var nb = parseFloat(vb.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na;
+    // tenta comparar como data dd/mm/yyyy
+    var da = va.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    var db = vb.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (da && db) {
+      var dta = new Date(da[3], da[2]-1, da[1]);
+      var dtb = new Date(db[3], db[2]-1, db[1]);
+      return asc ? dta - dtb : dtb - dta;
+    }
+    return asc ? va.localeCompare(vb, 'pt-BR') : vb.localeCompare(va, 'pt-BR');
+  };
+}
+
+function _applySortToTbody(tbody, th, colIdx) {
+  var table = th.closest('table');
+  var allThs = table.querySelectorAll('thead th.th-sort');
+  allThs.forEach(function(t) {
+    if (t !== th) { t.classList.remove('asc', 'desc'); }
+  });
+  var asc = !th.classList.contains('asc');
+  th.classList.toggle('asc', asc);
+  th.classList.toggle('desc', !asc);
+  var rows = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort(_comparer(colIdx, asc));
+  rows.forEach(function(r) { tbody.appendChild(r); });
+}
+
+function sortRepTable(th, colIdx) {
+  var tbody = th.closest('table').querySelector('tbody');
+  if (!tbody) return;
+  _applySortToTbody(tbody, th, colIdx);
+}
+
+function sortFlatTable(th, colIdx) {
+  var tbody = document.getElementById('tbodyClientes');
+  if (!tbody) return;
+  _applySortToTbody(tbody, th, colIdx);
+}
+
+/* ============================================================
+   SINCRONIZAÇÃO DE CLIENTES MANUAIS COM ORACLE
+   ============================================================ */
+function sincronizarClientesManuais() {
+  const btn = document.getElementById('btnSincManuais');
+  if (!btn) return;
+  
+  if (!confirm('Sincronizar todos os clientes manuais com o Oracle?\n\nIsso pode demorar alguns minutos.')) {
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Sincronizando...';
+  
+  fetch('/clientes/sincronizar-manuais-oracle', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrf_token')
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.ok) {
+      let msg = `Sincronização concluída!\n\n` +
+            `Total: ${data.total_base || 0}\n` +
+            `Atualizados: ${data.atualizados || 0}\n` +
+            `Não encontrados: ${data.nao_encontrados || 0}\n` +
+            `Sem CNPJ: ${data.sem_cnpj || 0}`;
+      
+      // Mostrar lista de não encontrados para debug
+      if (data.nao_encontrados_lista && data.nao_encontrados_lista.length > 0) {
+        msg += `\n\nNão encontrados (primeiros 10):\n${data.nao_encontrados_lista.join('\n')}`;
+      }
+      
+      alert(msg);
+      location.reload();
+    } else {
+      alert('Erro ao sincronizar: ' + (data.mensagem || 'Erro desconhecido'));
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Sincronizar com Oracle';
+    }
+  })
+  .catch(error => {
+    console.error('Erro:', error);
+    alert('Erro ao sincronizar clientes: ' + error.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Sincronizar com Oracle';
+  });
 }
 
 </script>

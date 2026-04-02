@@ -328,6 +328,10 @@ def register_oracle_routes(app):
 
             if current_user.tipo == 'consultor' and cliente.consultor_id != current_user.id:
                 return jsonify({"success": False, "message": "Sem permissão para este cliente"}), 403
+            
+            # Supervisor_repr pode visualizar detalhes (somente leitura)
+            if current_user.tipo == 'supervisor_repr':
+                pass  # Permitir visualização
 
             if not cliente.cd_cliente_oracle:
                 return jsonify({
@@ -382,6 +386,10 @@ def register_oracle_routes(app):
 
             if not cliente and current_user.tipo == 'consultor':
                 return jsonify({"success": False, "message": "Sem permissão para este cliente"}), 403
+            
+            # Supervisor_repr pode visualizar detalhes (somente leitura)
+            if current_user.tipo == 'supervisor_repr':
+                pass  # Permitir visualização
 
             return _montar_resposta_detalhes_oracle(
                 cliente,

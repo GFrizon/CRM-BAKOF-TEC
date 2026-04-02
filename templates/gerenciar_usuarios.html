@@ -52,6 +52,10 @@
               <span class="badge bg-warning text-dark">
                 <i class="bi bi-telephone-forward"></i> Televendas
               </span>
+            {% elif u.tipo == 'supervisor_repr' %}
+              <span class="badge bg-info">
+                <i class="bi bi-eye"></i> Supervisor Repr.
+              </span>
             {% else %}
               <span class="badge bg-secondary">
                 <i class="bi bi-person"></i> Consultor
@@ -91,7 +95,7 @@
           <td>
             <div class="btn-group btn-group-sm">
               <button class="btn btn-outline-primary" 
-                      onclick="abrirModalEditar({{ u.id }}, '{{ u.nome|e }}', '{{ u.email|e }}', '{{ u.tipo }}', {{ u.meta_diaria }})"
+                      onclick="abrirModalEditar({{ u.id }}, '{{ u.nome|e }}', '{{ u.email|e }}', '{{ u.tipo }}', {{ u.meta_diaria }}, '{{ (u.codigo_supervisor_tg650 or '')|e }}')"
                       title="Editar">
                 <i class="bi bi-pencil"></i>
               </button>
@@ -152,12 +156,19 @@
               <option value="consultor">Consultor</option>
               <option value="supervisor">Supervisor</option>
               <option value="televendas">Televendas</option>
+              <option value="supervisor_repr">Supervisor de Representante</option>
             </select>
           </div>
           
           <div class="mb-3" id="criarMetaContainer">
             <label class="form-label">Meta Diária de Ligações</label>
             <input type="number" class="form-control" id="criarMeta" value="10" min="1">
+          </div>
+
+          <div class="mb-3" id="criarCodigoTg650Container" style="display:none;">
+            <label class="form-label">Código Supervisor TG650</label>
+            <input type="text" class="form-control" id="criarCodigoTg650" maxlength="20">
+            <small class="text-muted">Código do supervisor na TG650 para sincronizar representantes</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -203,12 +214,19 @@
               <option value="consultor">Consultor</option>
               <option value="supervisor">Supervisor</option>
               <option value="televendas">Televendas</option>
+              <option value="supervisor_repr">Supervisor de Representante</option>
             </select>
           </div>
           
           <div class="mb-3" id="editarMetaContainer">
             <label class="form-label">Meta Diária de Ligações</label>
             <input type="number" class="form-control" id="editarMeta" value="10" min="1">
+          </div>
+
+          <div class="mb-3" id="editarCodigoTg650Container" style="display:none;">
+            <label class="form-label">Código Supervisor TG650</label>
+            <input type="text" class="form-control" id="editarCodigoTg650" maxlength="20">
+            <small class="text-muted">Código do supervisor na TG650 para sincronizar representantes</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -281,8 +299,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function toggleMetaDiaria(tipo) {
   const select = document.getElementById(tipo + 'Tipo');
-  const container = document.getElementById(tipo + 'MetaContainer');
-  container.style.display = select.value === 'consultor' ? 'block' : 'none';
+  const metaContainer = document.getElementById(tipo + 'MetaContainer');
+  const codigoContainer = document.getElementById(tipo + 'CodigoTg650Container');
+
+  metaContainer.style.display = select.value === 'consultor' ? 'block' : 'none';
+  if (codigoContainer) {
+    codigoContainer.style.display = select.value === 'supervisor_repr' ? 'block' : 'none';
+  }
 }
 
 function abrirModalCriar() {
@@ -291,6 +314,7 @@ function abrirModalCriar() {
   document.getElementById('criarSenha').value = '';
   document.getElementById('criarTipo').value = 'consultor';
   document.getElementById('criarMeta').value = '10';
+  document.getElementById('criarCodigoTg650').value = '';
   toggleMetaDiaria('criar');
   modalCriar.show();
 }
@@ -303,7 +327,8 @@ async function criarUsuario(e) {
     email: document.getElementById('criarEmail').value,
     senha: document.getElementById('criarSenha').value,
     tipo: document.getElementById('criarTipo').value,
-    meta_diaria: parseInt(document.getElementById('criarMeta').value) || 10
+    meta_diaria: parseInt(document.getElementById('criarMeta').value) || 10,
+    codigo_supervisor_tg650: document.getElementById('criarCodigoTg650').value
   };
   
   try {
@@ -327,12 +352,13 @@ async function criarUsuario(e) {
   }
 }
 
-function abrirModalEditar(id, nome, email, tipo, meta) {
+function abrirModalEditar(id, nome, email, tipo, meta, codigoTg650) {
   document.getElementById('editarId').value = id;
   document.getElementById('editarNome').value = nome;
   document.getElementById('editarEmail').value = email;
   document.getElementById('editarTipo').value = tipo;
   document.getElementById('editarMeta').value = meta || 10;
+  document.getElementById('editarCodigoTg650').value = codigoTg650 || '';
   toggleMetaDiaria('editar');
   modalEditar.show();
 }
@@ -345,7 +371,8 @@ async function editarUsuario(e) {
     nome: document.getElementById('editarNome').value,
     email: document.getElementById('editarEmail').value,
     tipo: document.getElementById('editarTipo').value,
-    meta_diaria: parseInt(document.getElementById('editarMeta').value) || 10
+    meta_diaria: parseInt(document.getElementById('editarMeta').value) || 10,
+    codigo_supervisor_tg650: document.getElementById('editarCodigoTg650').value
   };
   
   try {
