@@ -1,6 +1,6 @@
 ﻿from datetime import datetime, timedelta
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import render_template, request
 from flask_login import current_user
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import joinedload
@@ -11,9 +11,6 @@ from core.models import Cliente, Ligacao, SyncResumoDiario, Usuario
 from routes.clientes_ligacoes.agrupamento_view import montar_representantes_agrupados
 from routes.clientes_ligacoes.badges import (
     calcular_total_inativos_badge_com_cache,
-    _total_oracle_badge,
-    _total_oracle_badge_supervisor_repr,
-    _total_proximos_badge,
 )
 from routes.clientes_ligacoes.client_metrics import carregar_stats_e_locks_por_cliente_id
 from routes.clientes_ligacoes.consultor_mapping import (
@@ -36,15 +33,12 @@ from routes.clientes_ligacoes.grouping_stats import (
     extrair_consultores_dos_grupos,
 )
 from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enriquecidos
+from routes.clientes_ligacoes.listagem_access import preparar_contexto_inicial_listagem
 from routes.clientes_ligacoes.lista_operacional import (
     filtrar_listas_por_termo,
     ordenar_clientes_por_aba,
 )
 from routes.clientes_ligacoes.listagem_proximos import render_aba_proximos_inativacao
-from routes.clientes_ligacoes.supervisor_repr import (
-    contar_proximos_inativacao_supervisor_repr,
-    obter_codigos_representantes_vinculados,
-)
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
 from routes.supervisor_routes import get_banners_ativos
 
@@ -55,50 +49,14 @@ _INATIVOS_COUNT_CACHE_TTL_SECONDS = 600
 def register_clientes_ligacoes_listagem_routes(app):
     @app.route('/meus-clientes')
     def meus_clientes():
-        if not current_user.is_authenticated:
-            return redirect(url_for('login'))
-
-        if current_user.tipo not in ('consultor', 'supervisor', 'televendas', 'supervisor_repr'):
-            flash('Perfil sem acesso.', 'danger')
-            return redirect(url_for('index'))
-
-        if current_user.tipo == 'televendas':
-            aba_padrao = 'inativos'
-        elif current_user.tipo == 'supervisor_repr':
-            aba_padrao = 'oracle'
-        else:
-            aba_padrao = 'pendentes'
-        aba = request.args.get('aba', aba_padrao)
-        total_oracle_badge = _total_oracle_badge() if current_user.tipo != 'televendas' else 0
-        total_proximos_badge = _total_proximos_badge(
-            current_user.id if current_user.tipo in ('consultor', 'televendas') else None
-        )
-        # Inativos e uma aba exclusiva de televendas e supervisor.
-        if current_user.tipo not in ('televendas', 'supervisor') and aba == 'inativos':
-            aba_destino = 'oracle' if current_user.tipo == 'supervisor_repr' else 'pendentes'
-            return redirect(url_for('meus_clientes', aba=aba_destino))
-        # Televendas não pode acessar pendentes/oracle/proximos_inativacao
-        if current_user.tipo == 'televendas' and aba in ('pendentes', 'oracle', 'proximos_inativacao'):
-            return redirect(url_for('meus_clientes', aba='inativos'))
-        # Supervisor de representante não acessa a aba pendentes/clientes especiais
-        if current_user.tipo == 'supervisor_repr' and aba in ('pendentes', 'contatados', 'retornar'):
-            return redirect(url_for('meus_clientes', aba='oracle'))
-        
-        apenas_meus = True if current_user.tipo in ('consultor', 'televendas') else (request.args.get('meus') == '1')
-        
-        # Buscar códigos de representantes vinculados ao supervisor_repr
-        codigos_representantes_vinculados = []
-        if current_user.tipo == 'supervisor_repr':
-            codigos_representantes_vinculados = obter_codigos_representantes_vinculados(current_user.id)
-            if not codigos_representantes_vinculados:
-                flash('Nenhum representante vinculado a este supervisor. Entre em contato com o administrador.', 'warning')
-
-            total_proximos_badge = contar_proximos_inativacao_supervisor_repr(
-                codigos_representantes_vinculados
-            )
-            total_oracle_badge = _total_oracle_badge_supervisor_repr(
-                codigos_representantes_vinculados
-            )
+        contexto_inicial = preparar_contexto_inicial_listagem(request, current_user)
+        if contexto_inicial.get("response") is not None:
+            return contexto_inicial["response"]
+        aba = contexto_inicial["aba"]
+        total_oracle_badge = contexto_inicial["total_oracle_badge"]
+        total_proximos_badge = contexto_inicial["total_proximos_badge"]
+        apenas_meus = contexto_inicial["apenas_meus"]
+        codigos_representantes_vinculados = contexto_inicial["codigos_representantes_vinculados"]
         
         # Tratar aba Oracle
         if aba == 'oracle':
