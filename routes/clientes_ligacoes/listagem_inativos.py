@@ -36,6 +36,7 @@ def render_aba_inativos(
     request,
     current_user,
     codigos_representantes_vinculados,
+    apenas_meus: bool,
     total_oracle_badge: int,
     total_proximos_badge: int,
     cache_store: dict,
@@ -214,8 +215,9 @@ def render_aba_inativos(
         "atualizado_em": (resumo_sync_hoje.atualizado_em if resumo_sync_hoje else None),
     }
 
-    total_contatados_tv = 0
-    total_retornar_tv = 0
+    total_pendentes = 0
+    total_contatados = 0
+    total_retornar = 0
     if current_user.tipo == "televendas":
         clientes_ligados_por_tv = (
             db.session.query(Ligacao.cliente_id)
@@ -230,13 +232,40 @@ def render_aba_inativos(
                 Cliente.id.in_(clientes_ligados_por_tv),
             )
         )
-        total_retornar_tv = base_tv.filter(Cliente.proxima_ligacao.isnot(None)).count()
-        total_contatados_tv = (
+        total_retornar = base_tv.filter(Cliente.proxima_ligacao.isnot(None)).count()
+        total_contatados = (
             base_tv
             .filter(Cliente.proxima_ligacao.is_(None))
             .filter(Cliente.id.in_(clientes_ligados_por_tv))
             .count()
         )
+    else:
+        todos_clientes = Cliente.query.filter_by(ativo=True)
+        if apenas_meus:
+            todos_clientes = todos_clientes.filter(Cliente.consultor_id == current_user.id)
+
+        base_pendentes = todos_clientes.filter(
+            Cliente.id.notin_(
+                db.session.query(Ligacao.cliente_id).filter(
+                    Ligacao.consultor_id == current_user.id if apenas_meus else True
+                )
+            )
+        )
+        total_pendentes = base_pendentes.count()
+
+        total_contatados = (
+            todos_clientes
+            .filter(
+                Cliente.id.in_(
+                    db.session.query(Ligacao.cliente_id).filter(
+                        Ligacao.consultor_id == current_user.id if apenas_meus else True
+                    )
+                )
+            )
+            .filter(Cliente.proxima_ligacao.is_(None))
+            .count()
+        )
+        total_retornar = todos_clientes.filter(Cliente.proxima_ligacao.isnot(None)).count()
 
     stats_televendas = montar_stats_produtividade_televendas()
 
@@ -244,9 +273,9 @@ def render_aba_inativos(
         "meus_clientes.html",
         representantes=representantes_ordenados,
         aba=aba,
-        total_pendentes=0,
-        total_contatados=total_contatados_tv,
-        total_retornar=total_retornar_tv,
+        total_pendentes=total_pendentes,
+        total_contatados=total_contatados,
+        total_retornar=total_retornar,
         total_oracle=total_oracle_badge,
         total_inativos=total_inativos,
         total_proximos=total_proximos_badge,
