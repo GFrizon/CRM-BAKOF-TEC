@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 
 from core.extensions import db
 from core.helpers import _percent, formatar_dinheiro, get_pos, s, so_digits
-from core.models import Cliente, Ligacao, Nota, SyncResumoDiario, Usuario, SupervisorRepresentanteVinculo
+from core.models import Cliente, Ligacao, Nota, SyncResumoDiario, Usuario
 from routes.clientes_ligacoes.access_control import bloquear_escrita_supervisor_repr
 from routes.clientes_ligacoes.badges import (
     _total_inativos_badge,
@@ -23,6 +23,10 @@ from routes.clientes_ligacoes.domain_utils import (
     _normalizar_codigo_representante,
     _normalizar_nome_consultor,
     _resolver_consultor_id_por_categoria,
+)
+from routes.clientes_ligacoes.supervisor_repr import (
+    contar_proximos_inativacao_supervisor_repr,
+    obter_codigos_representantes_vinculados,
 )
 from routes.supervisor_routes import get_banners_ativos
 
@@ -74,35 +78,12 @@ def register_clientes_ligacoes_routes(app):
         # Buscar códigos de representantes vinculados ao supervisor_repr
         codigos_representantes_vinculados = []
         if current_user.tipo == 'supervisor_repr':
-            vinculos = SupervisorRepresentanteVinculo.query.filter_by(
-                supervisor_id=current_user.id,
-                ativo=True
-            ).all()
-            codigos_representantes_vinculados = [
-                _normalizar_codigo_representante(v.codigo_representante)
-                for v in vinculos
-                if _normalizar_codigo_representante(v.codigo_representante)
-            ]
+            codigos_representantes_vinculados = obter_codigos_representantes_vinculados(current_user.id)
             if not codigos_representantes_vinculados:
                 flash('Nenhum representante vinculado a este supervisor. Entre em contato com o administrador.', 'warning')
 
-            agora_pr = datetime.now()
-            limite_max_pr = agora_pr - timedelta(days=151)
-            limite_min_pr = agora_pr - timedelta(days=180)
-            clientes_proximos_sr = (
-                Cliente.query
-                .filter(
-                    Cliente.ativo == True,
-                    Cliente.cd_cliente_oracle.isnot(None),
-                    Cliente.ultimo_pedido_oracle.isnot(None),
-                    Cliente.ultimo_pedido_oracle.between(limite_min_pr, limite_max_pr),
-                )
-                .all()
-            )
-            total_proximos_badge = sum(
-                1
-                for c in clientes_proximos_sr
-                if _cliente_tem_representante_vinculado(c, codigos_representantes_vinculados)
+            total_proximos_badge = contar_proximos_inativacao_supervisor_repr(
+                codigos_representantes_vinculados
             )
             total_oracle_badge = _total_oracle_badge_supervisor_repr(
                 codigos_representantes_vinculados
