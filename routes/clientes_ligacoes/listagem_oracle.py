@@ -6,6 +6,7 @@ from sqlalchemy import and_
 from core.extensions import db
 from core.models import Cliente, Ligacao
 from routes.clientes_ligacoes.client_metrics import carregar_stats_e_locks_por_cliente_id
+from routes.clientes_ligacoes.listagem_client_payload import montar_payload_cliente_oracle
 from routes.clientes_ligacoes.consultor_mapping import (
     carregar_mapa_nome_para_id_usuarios_ativos,
     construir_mapa_codigo_para_id,
@@ -137,8 +138,6 @@ def render_aba_oracle(
             locks_por_cliente_id.get(cliente_local.id, {})
             if cliente_local and cliente_local.id else {}
         )
-        ultima_local = stats_lig.get("ultima_ligacao")
-        total_ligacoes_local = stats_lig.get("total_ligacoes", 0)
 
         representante = str(cliente_oracle.get("representante") or "").strip() or "SEM REPRESENTANTE"
 
@@ -155,43 +154,14 @@ def render_aba_oracle(
                 "consultores_internos": {},
             }
 
-        dados_cliente = {
-            "id": cliente_local.id if cliente_local else None,
-            "nome": cliente_oracle.get("cliente", ""),
-            "cnpj": cliente_oracle.get("cnpj", ""),
-            "telefone": (
-                cliente_local.telefone
-                if cliente_local and cliente_local.telefone
-                else (cliente_oracle.get("telefone1") or cliente_oracle.get("telefone2"))
-            ),
-            "telefone2": (cliente_local.telefone2 if cliente_local else cliente_oracle.get("telefone2")),
-            "representante_nome": cliente_oracle.get("representante", "SEM REPRESENTANTE"),
-            "ultima_ligacao": ultima_local,
-            "ultima_ligacao_por": stats_lig.get("ultima_ligacao_por"),
-            "total_ligacoes": total_ligacoes_local,
-            "proxima_ligacao": (cliente_local.proxima_ligacao if cliente_local else None),
-            "origem": (getattr(cliente_local, "origem", None) if cliente_local else "oracle"),
-            "cd_cliente_oracle": cliente_oracle.get("cd_cliente"),
-            "categoria_consultor": cliente_oracle.get("consultor", ""),
-            "centralizadora": (
-                f"{cliente_oracle.get('cd_centralizado')} - {cliente_oracle.get('nome_centralizadora')}"
-                if cliente_oracle.get("cd_centralizado") and cliente_oracle.get("nome_centralizadora")
-                else (str(cliente_oracle.get("cd_centralizado") or "").strip() or "")
-            ),
-            "consultor_id": (cliente_local.consultor_id if cliente_local else None),
-            "conceito": cliente_oracle.get("conceito", ""),
-            "municipio": cliente_oracle.get("municipio", ""),
-            "uf": cliente_oracle.get("uf", ""),
-            "contato": cliente_oracle.get("contato", ""),
-            "ultimo_pedido_oracle": cliente_oracle.get("dt_pedido"),
-            "valor_ultimo_pedido": cliente_oracle.get("total_pedido"),
-            "valor_total_365dias": (cliente_local.valor_total_365dias if cliente_local else 0),
-            "situacao_ultimo_pedido": cliente_oracle.get("situacao", ""),
-            "representante_oracle": cliente_oracle.get("representante", "SEM REPRESENTANTE"),
-            "em_atendimento_ativo": bool(lock_info.get("ativo")),
-            "em_atendimento_por_nome": lock_info.get("por_nome"),
-            "em_atendimento_ate": lock_info.get("ate"),
-        }
+        dados_cliente = montar_payload_cliente_oracle(
+            cliente_oracle=cliente_oracle,
+            cliente_local=cliente_local,
+            stats_lig=stats_lig,
+            lock_info=lock_info,
+            conceito=cliente_oracle.get("conceito", ""),
+            origem_padrao="oracle",
+        )
 
         representantes_data[representante]["clientes"].append(dados_cliente)
 
