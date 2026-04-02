@@ -3890,6 +3890,8 @@ function toggleRepresentante(index) {
   const icone = document.getElementById(`icone-${index}`);
   if (!div || !icone) return;
   if (div.dataset.animating === '1') return;
+  const OPEN_MS = 430;
+  const CLOSE_MS = 320;
 
   const aberto = window.getComputedStyle(div).display !== 'none';
   if (aberto) {
@@ -3899,7 +3901,7 @@ function toggleRepresentante(index) {
     div.style.maxHeight = `${alturaAtual}px`;
     div.style.opacity = '1';
     div.style.transform = 'translateY(0)';
-    div.style.transition = 'max-height 260ms ease, opacity 180ms ease, transform 180ms ease';
+    div.style.transition = `max-height ${CLOSE_MS}ms ease, opacity ${Math.round(CLOSE_MS * 0.75)}ms ease, transform ${Math.round(CLOSE_MS * 0.75)}ms ease`;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       div.style.maxHeight = '0px';
       div.style.opacity = '0';
@@ -3913,7 +3915,7 @@ function toggleRepresentante(index) {
       div.style.transition = '';
       div.style.overflow = '';
       div.dataset.animating = '0';
-    }, 270);
+    }, CLOSE_MS + 20);
     icone.classList.remove('open');
   } else {
     div.dataset.animating = '1';
@@ -3923,7 +3925,7 @@ function toggleRepresentante(index) {
     div.style.maxHeight = '0px';
     div.style.opacity = '0';
     div.style.transform = 'translateY(-6px)';
-    div.style.transition = 'max-height 340ms ease, opacity 240ms ease, transform 240ms ease';
+    div.style.transition = `max-height ${OPEN_MS}ms ease, opacity ${Math.round(OPEN_MS * 0.75)}ms ease, transform ${Math.round(OPEN_MS * 0.75)}ms ease`;
     div.style.willChange = 'max-height, opacity, transform';
     void div.offsetHeight;
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -3939,7 +3941,7 @@ function toggleRepresentante(index) {
       div.style.overflow = '';
       div.style.willChange = '';
       div.dataset.animating = '0';
-    }, 360);
+    }, OPEN_MS + 30);
     icone.classList.add('open');
   }
   atualizarInfoQuickActions();
