@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from core.models import Cliente
+from core.models import Cliente, SyncResumoDiario
 from routes.clientes_ligacoes.domain_utils import (
     _cliente_tem_representante_vinculado,
     _codigo_representante_de_texto,
@@ -79,6 +79,18 @@ def _total_oracle_badge_supervisor_repr(codigos_representantes_vinculados):
 
 def _total_inativos_badge(consultor_id=None):
     """Conta clientes inativos (181 a 730 dias sem pedido) na base local sincronizada."""
+    if not consultor_id:
+        try:
+            resumo = (
+                SyncResumoDiario.query
+                .order_by(SyncResumoDiario.data_ref.desc())
+                .first()
+            )
+            if resumo and resumo.total_inativos is not None:
+                return int(resumo.total_inativos or 0)
+        except Exception:
+            pass
+
     agora = datetime.now()
     limite_max = agora - timedelta(days=181)
     limite_min = agora - timedelta(days=730)
