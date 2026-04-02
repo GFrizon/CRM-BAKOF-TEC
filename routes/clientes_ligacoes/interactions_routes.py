@@ -1,4 +1,4 @@
-from flask import jsonify, request
+﻿from flask import jsonify, request
 from flask_login import current_user, login_required
 
 from core.extensions import db
@@ -19,7 +19,7 @@ def register_clientes_ligacoes_interactions_routes(app):
         try:
             if current_user.tipo == "supervisor_repr":
                 return resposta_supervisor_repr_somente_leitura(
-                    "Usuários do tipo Supervisor de Representante não podem editar observações (somente visualização)."
+                    "Usuarios do tipo Supervisor de Representante nao podem editar observacoes (somente visualizacao)."
                 )
 
             payload = request.get_json(silent=True) or {}
@@ -40,7 +40,7 @@ def register_clientes_ligacoes_interactions_routes(app):
         try:
             if current_user.tipo == "supervisor_repr":
                 return resposta_supervisor_repr_somente_leitura(
-                    "Usuários do tipo Supervisor de Representante não podem editar ligações (somente visualização)."
+                    "Usuarios do tipo Supervisor de Representante nao podem editar ligacoes (somente visualizacao)."
                 )
 
             payload = request.get_json(silent=True) or {}
