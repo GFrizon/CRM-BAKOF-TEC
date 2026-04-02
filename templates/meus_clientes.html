@@ -553,6 +553,27 @@ body.tab-switching {
 .rep-table tbody tr:hover td { background: var(--brand-50) !important; }
 .rep-table tbody tr:last-child td { border-bottom: none !important; }
 
+.rep-dropdown.is-opening {
+  animation: repDropdownIn .22s ease both;
+}
+.rep-dropdown.is-closing {
+  animation: repDropdownOut .18s ease both;
+}
+@keyframes repDropdownIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes repDropdownOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rep-dropdown.is-opening,
+  .rep-dropdown.is-closing {
+    animation: none !important;
+  }
+}
+
 .rep-table td.col-cliente .oracle-cliente-main {
   font-size: .86rem;
   font-weight: 700;
@@ -1553,7 +1574,7 @@ code {
       </div>
 
       <!-- Conteúdo expandível -->
-      <div id="representante-{{ loop.index0 }}" style="display:none;">
+      <div id="representante-{{ loop.index0 }}" class="rep-dropdown" style="display:none;">
 
         <!-- Métricas rápidas -->
         <div class="rep-metrics">
@@ -3870,8 +3891,25 @@ function toggleRepresentante(index) {
   if (!div || !icone) return;
 
   const aberto = div.style.display !== 'none';
-  div.style.display = aberto ? 'none' : 'block';
-  icone.classList.toggle('open', !aberto);
+  if (aberto) {
+    div.classList.remove('is-opening');
+    div.classList.add('is-closing');
+    setTimeout(() => {
+      if (!div.classList.contains('is-closing')) return;
+      div.style.display = 'none';
+      div.classList.remove('is-closing');
+    }, 180);
+    icone.classList.remove('open');
+  } else {
+    div.classList.remove('is-closing');
+    div.style.display = 'block';
+    void div.offsetWidth;
+    div.classList.add('is-opening');
+    setTimeout(() => {
+      div.classList.remove('is-opening');
+    }, 220);
+    icone.classList.add('open');
+  }
   atualizarInfoQuickActions();
 }
 
