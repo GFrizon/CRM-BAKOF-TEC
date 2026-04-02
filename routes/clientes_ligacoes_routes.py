@@ -47,6 +47,7 @@ from routes.clientes_ligacoes.lista_operacional import (
     ordenar_clientes_por_aba,
 )
 from routes.clientes_ligacoes.ligacao_helpers import (
+    aplicar_payload_edicao_ligacao,
     calcular_proxima_ligacao,
     mensagem_sucesso_ligacao,
     normalizar_resultado_ligacao,
@@ -1441,24 +1442,7 @@ def register_clientes_ligacoes_routes(app):
                 return jsonify({"ok": False, "mensagem": "Sem permissão para editar esta ligação"}), 403
             
             payload = request.get_json(silent=True) or {}
-            
-            # Editar resultado
-            if 'resultado' in payload:
-                novo_resultado = s(payload.get('resultado'))
-                if novo_resultado in ('comprou', 'nao_comprou', 'retornar', 'sem_interesse', 'relacionamento', 'cliente_inativo'):
-                    ligacao.resultado = novo_resultado
-            
-            # Editar valor da venda
-            if 'valor_venda' in payload:
-                try:
-                    novo_valor = float(str(payload.get('valor_venda') or 0).replace(',', '.'))
-                    ligacao.valor_venda = novo_valor
-                except:
-                    ligacao.valor_venda = 0.0
-            
-            # Editar observação
-            if 'observacao' in payload:
-                ligacao.observacao = s(payload.get('observacao')) or None
+            aplicar_payload_edicao_ligacao(ligacao, payload, s)
             
             db.session.commit()
             return jsonify({"ok": True, "mensagem": "Ligação atualizada com sucesso!"})

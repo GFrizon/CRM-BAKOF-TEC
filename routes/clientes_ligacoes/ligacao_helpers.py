@@ -51,3 +51,19 @@ def mensagem_sucesso_ligacao(resultado, proxima_ligacao):
     if resultado == "comprou":
         return "Ligação registrada! Venda marcada como 'comprou'."
     return "Ligação registrada!"
+
+
+def aplicar_payload_edicao_ligacao(ligacao, payload, normalizador_texto):
+    # Editar resultado
+    if "resultado" in payload:
+        novo_resultado = normalizador_texto(payload.get("resultado"))
+        if novo_resultado in RESULTADOS_VALIDOS_LIGACAO:
+            ligacao.resultado = novo_resultado
+
+    # Editar valor da venda
+    if "valor_venda" in payload:
+        ligacao.valor_venda = parse_valor_venda(payload.get("valor_venda"))
+
+    # Editar observação
+    if "observacao" in payload:
+        ligacao.observacao = normalizador_texto(payload.get("observacao")) or None
