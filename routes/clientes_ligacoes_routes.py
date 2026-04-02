@@ -49,10 +49,7 @@ from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enr
 from routes.clientes_ligacoes.import_helpers import (
     carregar_dataframe_importacao,
 )
-from routes.clientes_ligacoes.import_flow import processar_importacao_dataframe
-from routes.clientes_ligacoes.import_persistence import (
-    registrar_importacao,
-)
+from routes.clientes_ligacoes.import_flow import executar_importacao_completa
 from routes.clientes_ligacoes.interaction_serializers import (
     serializar_detalhes_ligacao,
     serializar_historico_ligacoes,
@@ -1592,27 +1589,22 @@ def register_clientes_ligacoes_routes(app):
             ext = (filename.rsplit('.', 1)[-1].lower() if '.' in filename else "")
 
             df = carregar_dataframe_importacao(arquivo, ext)
-            resumo_import = processar_importacao_dataframe(
+            resultado_import = executar_importacao_completa(
                 df=df,
+                filename=filename,
                 consultor_id=consultor_id,
                 logger=app.logger,
                 get_pos_fn=get_pos,
                 normalizar_texto_fn=s,
                 so_digits_fn=so_digits,
             )
-            total_inseridos = int(resumo_import.get("total_inseridos") or 0)
-            pulados = int(resumo_import.get("pulados") or 0)
-            erros = list(resumo_import.get("erros") or [])
-            registrar_importacao(filename, consultor_id, total_inseridos, app.logger)
-
-            try:
-                db.session.commit()
-                app.logger.info(f"Importação concluída: {total_inseridos} inseridos, {pulados} pulados, {len(erros)} erros")
-            except Exception as commit_error:
-                app.logger.error(f"Erro no commit final: {str(commit_error)}")
-                db.session.rollback()
+            if not resultado_import.get("ok"):
                 flash('Erro ao salvar dados no banco. Nenhum dado foi importado.', 'danger')
                 return redirect(url_for('importar_clientes_view'))
+
+            total_inseridos = int(resultado_import.get("total_inseridos") or 0)
+            pulados = int(resultado_import.get("pulados") or 0)
+            erros = list(resultado_import.get("erros") or [])
 
             msg = f'Importacao concluida! Inseridos/Atualizados/Reativados: {total_inseridos} - Pulados: {pulados}'
             if erros:

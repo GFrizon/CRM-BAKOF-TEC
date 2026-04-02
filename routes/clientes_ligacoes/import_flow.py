@@ -4,7 +4,9 @@ from routes.clientes_ligacoes.import_persistence import (
     construir_cliente_importado,
     flush_batch_clientes,
     flush_batch_final_clientes,
+    registrar_importacao,
 )
+from core.extensions import db
 
 
 def processar_importacao_dataframe(df, consultor_id, logger, get_pos_fn, normalizar_texto_fn, so_digits_fn):
@@ -90,3 +92,49 @@ def processar_importacao_dataframe(df, consultor_id, logger, get_pos_fn, normali
         "pulados": pulados,
         "erros": erros,
     }
+
+
+def executar_importacao_completa(
+    df,
+    filename,
+    consultor_id,
+    logger,
+    get_pos_fn,
+    normalizar_texto_fn,
+    so_digits_fn,
+):
+    resumo = processar_importacao_dataframe(
+        df=df,
+        consultor_id=consultor_id,
+        logger=logger,
+        get_pos_fn=get_pos_fn,
+        normalizar_texto_fn=normalizar_texto_fn,
+        so_digits_fn=so_digits_fn,
+    )
+
+    total_inseridos = int(resumo.get("total_inseridos") or 0)
+    pulados = int(resumo.get("pulados") or 0)
+    erros = list(resumo.get("erros") or [])
+    registrar_importacao(filename, consultor_id, total_inseridos, logger)
+
+    try:
+        db.session.commit()
+        logger.info(
+            f"Importação concluída: {total_inseridos} inseridos, {pulados} pulados, {len(erros)} erros"
+        )
+        return {
+            "ok": True,
+            "total_inseridos": total_inseridos,
+            "pulados": pulados,
+            "erros": erros,
+        }
+    except Exception as commit_error:
+        logger.error(f"Erro no commit final: {str(commit_error)}")
+        db.session.rollback()
+        return {
+            "ok": False,
+            "erro_commit": str(commit_error),
+            "total_inseridos": total_inseridos,
+            "pulados": pulados,
+            "erros": erros,
+        }
