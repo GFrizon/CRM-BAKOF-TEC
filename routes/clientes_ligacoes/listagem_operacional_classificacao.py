@@ -5,8 +5,7 @@ from routes.clientes_ligacoes.consultor_mapping import (
     construir_mapa_codigo_para_id,
 )
 from routes.clientes_ligacoes.domain_utils import (
-    _codigo_representante_de_texto,
-    _normalizar_codigo_representante,
+    _cliente_tem_representante_vinculado,
     _resolver_consultor_id_por_categoria,
 )
 
@@ -28,10 +27,7 @@ def classificar_listas_operacionais(*, clientes_todos, current_user, aba: str, c
 
     for c in clientes_todos:
         if current_user.tipo == "supervisor_repr":
-            codigo_rep_cliente = _normalizar_codigo_representante(
-                _codigo_representante_de_texto(c.representante_oracle or c.representante_nome)
-            )
-            if not codigo_rep_cliente or codigo_rep_cliente not in codigos_representantes_vinculados:
+            if not _cliente_tem_representante_vinculado(c, codigos_representantes_vinculados):
                 continue
 
         ligacoes_relevantes = (
