@@ -66,3 +66,7 @@ def _resolver_consultor_id_por_categoria(
     if codigo and codigo in mapa_codigo_para_id:
         return mapa_codigo_para_id[codigo]
     return None
+
+
+def normalizar_conceito(valor) -> str:
+    return str(valor or "").strip().upper()

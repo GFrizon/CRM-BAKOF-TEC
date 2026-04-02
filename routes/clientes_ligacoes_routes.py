@@ -25,6 +25,11 @@ from routes.clientes_ligacoes.domain_utils import (
     _normalizar_codigo_representante,
     _normalizar_nome_consultor,
     _resolver_consultor_id_por_categoria,
+    normalizar_conceito,
+)
+from routes.clientes_ligacoes.grouping_stats import (
+    calcular_stats_gerais_grupos,
+    extrair_consultores_dos_grupos,
 )
 from routes.clientes_ligacoes.supervisor_repr import (
     contar_proximos_inativacao_supervisor_repr,
@@ -301,15 +306,7 @@ def register_clientes_ligacoes_routes(app):
                 key=lambda x: (-x[1]['total_clientes'], x[0] == 'SEM REPRESENTANTE', x[0])
             )
 
-            consultores_oracle = []
-            if representantes_data:
-                consultores_set = set()
-                for _, dados in representantes_data.items():
-                    for c in dados['clientes']:
-                        if c.get('categoria_consultor'):
-                            consultores_set.add(c.get('categoria_consultor'))
-                for nome in sorted(consultores_set):
-                    consultores_oracle.append({'nome': nome})
+            consultores_oracle = extrair_consultores_dos_grupos(representantes_data)
 
             todos_clientes = Cliente.query.filter_by(ativo=True)
             if apenas_meus:
@@ -339,42 +336,7 @@ def register_clientes_ligacoes_routes(app):
             )).filter(Cliente.proxima_ligacao.is_(None)).count()
 
             total_retornar = todos_clientes.filter(Cliente.proxima_ligacao.isnot(None)).count()
-            total_oracle = sum(len(dados['clientes']) for dados in representantes_data.values())
-
-            total_clientes_oracle = 0
-            total_liberados = 0
-            total_inadimplentes = 0
-            total_sem_conceito = 0
-            todos_valores = []
-            todos_dias = []
-
-            for _, dados in representantes_data.items():
-                clientes_rep = dados['clientes']
-                total_clientes_oracle += len(clientes_rep)
-                total_liberados += dados['liberados']
-                total_inadimplentes += dados['inadimplentes']
-                total_sem_conceito += dados['sem_conceito']
-
-                for c in clientes_rep:
-                    if c.get('valor_ultimo_pedido'):
-                        todos_valores.append(c.get('valor_ultimo_pedido'))
-                    if c.get('ultimo_pedido_oracle'):
-                        dias = (datetime.now() - c['ultimo_pedido_oracle']).days
-                        todos_dias.append(dias)
-
-            ticket_medio_geral = sum(todos_valores) / len(todos_valores) if todos_valores else 0
-            dias_medio_geral = sum(todos_dias) / len(todos_dias) if todos_dias else 0
-
-            stats_oracle = {
-                'liberados': total_liberados,
-                'inadimplentes': total_inadimplentes,
-                'sem_conceito': total_sem_conceito,
-                'ticket_medio': ticket_medio_geral,
-                'dias_sem_pedido': int(dias_medio_geral),
-                'perc_liberados': round((total_liberados / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0,
-                'perc_inadimplentes': round((total_inadimplentes / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0,
-                'perc_sem_conceito': round((total_sem_conceito / total_clientes_oracle) * 100, 1) if total_clientes_oracle > 0 else 0
-            }
+            total_oracle, stats_oracle = calcular_stats_gerais_grupos(representantes_data)
 
             return render_template('meus_clientes.html',
                                  representantes=representantes_ordenados,
@@ -529,9 +491,6 @@ def register_clientes_ligacoes_routes(app):
                                 'por_nome': (row.usuario_nome or 'Outro usuario'),
                                 'ate': None,
                             }
-            def normalizar_conceito(valor):
-                return str(valor or '').strip().upper()
-
             # Agrupar por UF (somente inativos)
             representantes_data = {}
             for cliente_oracle in clientes_oracle_inativos:
@@ -692,46 +651,12 @@ def register_clientes_ligacoes_routes(app):
                 key=lambda x: (-x[1]['total_clientes'], x[0] == 'SEM UF', x[0])
             )
             
-            consultores_inativos = []
-            if representantes_data:
-                consultores_set = set()
-                for uf, dados in representantes_data.items():
-                    for c in dados['clientes']:
-                        if c.get('categoria_consultor'):
-                            consultores_set.add(c.get('categoria_consultor'))
-                for nome in sorted(consultores_set):
-                    consultores_inativos.append({'nome': nome})
-            
-            total_inativos = sum(len(dados['clientes']) for dados in representantes_data.values())
+            consultores_inativos = extrair_consultores_dos_grupos(representantes_data)
+
+            total_inativos, stats_inativos = calcular_stats_gerais_grupos(representantes_data)
             _INATIVOS_COUNT_CACHE[current_user.id] = {
                 "count": total_inativos,
                 "ts": datetime.now()
-            }
-            
-            total_liberados = sum(d['liberados'] for d in representantes_data.values())
-            total_inadimplentes = sum(d['inadimplentes'] for d in representantes_data.values())
-            total_sem_conceito = sum(d['sem_conceito'] for d in representantes_data.values())
-            todos_valores = []
-            todos_dias = []
-            for dados in representantes_data.values():
-                for c in dados['clientes']:
-                    if c.get('valor_ultimo_pedido'):
-                        todos_valores.append(c.get('valor_ultimo_pedido'))
-                    if c.get('ultimo_pedido_oracle'):
-                        todos_dias.append((datetime.now() - c['ultimo_pedido_oracle']).days)
-            
-            ticket_medio_geral = sum(todos_valores) / len(todos_valores) if todos_valores else 0
-            dias_medio_geral = sum(todos_dias) / len(todos_dias) if todos_dias else 0
-            
-            stats_inativos = {
-                'liberados': total_liberados,
-                'inadimplentes': total_inadimplentes,
-                'sem_conceito': total_sem_conceito,
-                'ticket_medio': ticket_medio_geral,
-                'dias_sem_pedido': int(dias_medio_geral),
-                'perc_liberados': round((total_liberados / total_inativos) * 100, 1) if total_inativos > 0 else 0,
-                'perc_inadimplentes': round((total_inadimplentes / total_inativos) * 100, 1) if total_inativos > 0 else 0,
-                'perc_sem_conceito': round((total_sem_conceito / total_inativos) * 100, 1) if total_inativos > 0 else 0
             }
 
             resumo_sync_hoje = SyncResumoDiario.query.filter_by(data_ref=datetime.now().date()).first()
