@@ -16,6 +16,7 @@ from routes.clientes_ligacoes.badges import (
     _total_oracle_badge_supervisor_repr,
     _total_proximos_badge,
 )
+from routes.clientes_ligacoes.consultor_mapping import construir_mapa_codigo_para_id
 from routes.clientes_ligacoes.domain_utils import (
     _cliente_tem_representante_vinculado,
     _codigo_representante_de_texto,
@@ -121,23 +122,7 @@ def register_clientes_ligacoes_routes(app):
                     _normalizar_nome_consultor(u.nome): u.id
                     for u in usuarios_ativos if u and u.nome
                 }
-                codigos_referencia = {
-                    "100": "Roseleia Basso",
-                    "002": "Rodrigo Crespan",
-                    "007": "Janine de Mello",
-                    "012": "Sandra Vendruscolo da Silva",
-                    "001": "Elisabete Haus",
-                    "003": "Iara Sponchiado",
-                    "004": "Odete Luza",
-                    "005": "Carla Siduoski",
-                    "006": "Sibele Froner",
-                    "010": "Sibele Froner",
-                    "999": "Daniela Da Rosa",
-                }
-                for codigo, nome_ref in codigos_referencia.items():
-                    uid = mapa_nome_para_id_oracle.get(_normalizar_nome_consultor(nome_ref))
-                    if uid:
-                        mapa_codigo_para_id_oracle[codigo] = uid
+                mapa_codigo_para_id_oracle = construir_mapa_codigo_para_id(mapa_nome_para_id_oracle)
             if codigos_oracle:
                 clientes_locais = (
                     Cliente.query
@@ -542,23 +527,7 @@ def register_clientes_ligacoes_routes(app):
                     _normalizar_nome_consultor(u.nome): u.id
                     for u in usuarios_ativos if u and u.nome
                 }
-                codigos_referencia = {
-                    "100": "Roseleia Basso",
-                    "002": "Rodrigo Crespan",
-                    "007": "Janine de Mello",
-                    "012": "Sandra Vendruscolo da Silva",
-                    "001": "Elisabete Haus",
-                    "003": "Iara Sponchiado",
-                    "004": "Odete Luza",
-                    "005": "Carla Siduoski",
-                    "006": "Sibele Froner",
-                    "010": "Sibele Froner",
-                    "999": "Daniela Da Rosa",
-                }
-                for codigo, nome_ref in codigos_referencia.items():
-                    uid = mapa_nome_para_id_inativos.get(_normalizar_nome_consultor(nome_ref))
-                    if uid:
-                        mapa_codigo_para_id_inativos[codigo] = uid
+                mapa_codigo_para_id_inativos = construir_mapa_codigo_para_id(mapa_nome_para_id_inativos)
 
             conceito_filtro = (request.args.get('conceito_filtro') or '').strip().upper()
             consultor_filtro = (request.args.get('consultor_filtro') or '').strip()
@@ -1228,23 +1197,7 @@ def register_clientes_ligacoes_routes(app):
                 _normalizar_nome_consultor(u.nome): u.id
                 for u in usuarios_ativos if u and u.nome
             }
-            codigos_referencia = {
-                "100": "Roseleia Basso",
-                "002": "Rodrigo Crespan",
-                "007": "Janine de Mello",
-                "012": "Sandra Vendruscolo da Silva",
-                "001": "Elisabete Haus",
-                "003": "Iara Sponchiado",
-                "004": "Odete Luza",
-                "005": "Carla Siduoski",
-                "006": "Sibele Froner",
-                "010": "Sibele Froner",
-                "999": "Daniela Da Rosa",
-            }
-            for codigo, nome_ref in codigos_referencia.items():
-                uid = mapa_nome_para_id.get(_normalizar_nome_consultor(nome_ref))
-                if uid:
-                    mapa_codigo_para_id[codigo] = uid
+            mapa_codigo_para_id = construir_mapa_codigo_para_id(mapa_nome_para_id)
 
         for c in clientes_todos:
             if current_user.tipo == 'supervisor_repr':
