@@ -30,9 +30,7 @@ from routes.clientes_ligacoes.dashboard_operacional import (
 from routes.clientes_ligacoes.domain_utils import (
     _cliente_tem_representante_vinculado,
     _codigo_representante_de_texto,
-    _extrair_nome_oracle_consultor,
     _normalizar_codigo_representante,
-    _normalizar_nome_consultor,
     _resolver_consultor_id_por_categoria,
     normalizar_conceito,
 )
@@ -44,6 +42,11 @@ from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enr
 from routes.clientes_ligacoes.lista_operacional import (
     filtrar_listas_por_termo,
     ordenar_clientes_por_aba,
+)
+from routes.clientes_ligacoes.oracle_sync_helpers import (
+    aplicar_dados_oracle_no_cliente,
+    montar_payload_cliente_oracle,
+    sugerir_consultor_por_categoria_oracle,
 )
 from routes.clientes_ligacoes.proximos_tab import preparar_contexto_proximos_inativacao
 from routes.clientes_ligacoes.proximos_totais import calcular_totais_abas_proximos
@@ -980,47 +983,12 @@ def register_clientes_ligacoes_routes(app):
                     "mensagem": "CNPJ nao encontrado no Oracle"
                 })
 
-            consultor_oracle = s(cliente_oracle.get("consultor"))
-            nome_oracle = _extrair_nome_oracle_consultor(consultor_oracle)
-            nome_oracle_norm = _normalizar_nome_consultor(nome_oracle)
-            consultor_sugerido = None
-            if nome_oracle_norm:
-                candidatos = Usuario.query.filter(
-                    Usuario.tipo.in_(["consultor", "televendas"]),
-                    Usuario.ativo == True
-                ).all()
-                mapa_nome = {
-                    _normalizar_nome_consultor(u.nome): u
-                    for u in candidatos
-                    if u and u.nome
-                }
-                consultor_sugerido = mapa_nome.get(nome_oracle_norm)
-                if not consultor_sugerido:
-                    primeiro_oracle = nome_oracle_norm.split()[0]
-                    for nome_norm, usuario in mapa_nome.items():
-                        if nome_norm and nome_norm.split()[0] == primeiro_oracle:
-                            consultor_sugerido = usuario
-                            break
+            consultor_sugerido = sugerir_consultor_por_categoria_oracle(cliente_oracle.get("consultor"))
 
             return jsonify({
                 "ok": True,
                 "encontrado": True,
-                "dados": {
-                    "cd_cliente_oracle": str(cliente_oracle.get("cd_cliente") or "").strip(),
-                    "nome": s(cliente_oracle.get("cliente")),
-                    "cnpj": so_digits(cliente_oracle.get("cnpj")) or cnpj,
-                    "telefone": so_digits(cliente_oracle.get("telefone1")) or "",
-                    "telefone2": so_digits(cliente_oracle.get("telefone2")) or "",
-                    "representante_nome": s(cliente_oracle.get("representante")),
-                    "representante_oracle": s(cliente_oracle.get("representante")),
-                    "categoria_consultor": s(cliente_oracle.get("consultor")),
-                    "conceito": s(cliente_oracle.get("conceito")),
-                    "municipio": s(cliente_oracle.get("municipio")),
-                    "uf": s(cliente_oracle.get("uf")),
-                    "contato": s(cliente_oracle.get("contato")),
-                    "consultor_id_sugerido": (consultor_sugerido.id if consultor_sugerido else None),
-                    "consultor_nome_sugerido": (consultor_sugerido.nome if consultor_sugerido else None),
-                }
+                "dados": montar_payload_cliente_oracle(cnpj, cliente_oracle, consultor_sugerido),
             })
         except Exception as e:
             return jsonify({"ok": False, "mensagem": f"Erro ao buscar no Oracle: {str(e)}"}), 500
@@ -1049,29 +1017,7 @@ def register_clientes_ligacoes_routes(app):
             if not cliente_oracle:
                 return jsonify({"ok": False, "mensagem": "Cliente nao encontrado no Oracle para este CNPJ"}), 404
 
-            nome_oracle = s(cliente_oracle.get('cliente')) or None
-            telefone1 = so_digits(cliente_oracle.get('telefone1')) or None
-            telefone2 = so_digits(cliente_oracle.get('telefone2')) or None
-            representante = s(cliente_oracle.get('representante')) or None
-
-            cliente.cnpj = so_digits(cliente_oracle.get('cnpj')) or cliente.cnpj
-            if nome_oracle and (not cliente.nome or cliente.nome.strip() == ''):
-                cliente.nome = nome_oracle[:200]
-            if telefone1:
-                cliente.telefone = telefone1
-            if telefone2:
-                cliente.telefone2 = telefone2
-            if representante:
-                cliente.representante_nome = representante
-                cliente.representante_oracle = representante
-
-            cliente.cd_cliente_oracle = str(cliente_oracle.get('cd_cliente') or '').strip() or cliente.cd_cliente_oracle
-            cliente.categoria_consultor = s(cliente_oracle.get('consultor')) or cliente.categoria_consultor
-            cliente.conceito = s(cliente_oracle.get('conceito')) or cliente.conceito
-            cliente.municipio = s(cliente_oracle.get('municipio')) or cliente.municipio
-            cliente.uf = s(cliente_oracle.get('uf')) or cliente.uf
-            cliente.contato = s(cliente_oracle.get('contato')) or cliente.contato
-            cliente.data_ultima_sincronizacao = datetime.now()
+            aplicar_dados_oracle_no_cliente(cliente, cliente_oracle)
 
             db.session.add(cliente)
             db.session.commit()
@@ -1153,29 +1099,7 @@ def register_clientes_ligacoes_routes(app):
 
                 logger.info(f"[Sync Manuais] ENCONTRADO: {cliente.nome} -> cd_cliente: {row.get('cd_cliente')}")
                 
-                nome_oracle = s(row.get('cliente')) or None
-                telefone1 = so_digits(row.get('telefone1')) or None
-                telefone2 = so_digits(row.get('telefone2')) or None
-                representante = s(row.get('representante')) or None
-
-                cliente.cnpj = so_digits(row.get('cnpj')) or cliente.cnpj
-                if nome_oracle and (not cliente.nome or cliente.nome.strip() == ''):
-                    cliente.nome = nome_oracle[:200]
-                if telefone1:
-                    cliente.telefone = telefone1
-                if telefone2:
-                    cliente.telefone2 = telefone2
-                if representante:
-                    cliente.representante_nome = representante
-                    cliente.representante_oracle = representante
-
-                cliente.cd_cliente_oracle = str(row.get('cd_cliente') or '').strip() or cliente.cd_cliente_oracle
-                cliente.categoria_consultor = s(row.get('consultor')) or cliente.categoria_consultor
-                cliente.conceito = s(row.get('conceito')) or cliente.conceito
-                cliente.municipio = s(row.get('municipio')) or cliente.municipio
-                cliente.uf = s(row.get('uf')) or cliente.uf
-                cliente.contato = s(row.get('contato')) or cliente.contato
-                cliente.data_ultima_sincronizacao = datetime.now()
+                aplicar_dados_oracle_no_cliente(cliente, row)
                 db.session.add(cliente)
                 atualizados += 1
 
