@@ -43,6 +43,12 @@ from routes.clientes_ligacoes.lista_operacional import (
     filtrar_listas_por_termo,
     ordenar_clientes_por_aba,
 )
+from routes.clientes_ligacoes.ligacao_helpers import (
+    calcular_proxima_ligacao,
+    mensagem_sucesso_ligacao,
+    normalizar_resultado_ligacao,
+    parse_valor_venda,
+)
 from routes.clientes_ligacoes.lock_helpers import (
     buscar_locks_por_cd_oracle,
     extrair_cds_da_requisicao,
@@ -1319,12 +1325,8 @@ def register_clientes_ligacoes_routes(app):
             payload = request.get_json(silent=True) or {}
             obs = s(payload.get('observacao'))
             contato_nome = s(payload.get('contato_nome'))
-            resultado = s(payload.get('resultado') or 'nao_comprou')
-
-            try:
-                valor_venda = float(str(payload.get('valor_venda') or 0).replace(',', '.'))
-            except:
-                valor_venda = 0.0
+            resultado = normalizar_resultado_ligacao(s(payload.get('resultado') or 'nao_comprou'))
+            valor_venda = parse_valor_venda(payload.get('valor_venda'))
 
             cli = db.session.get(Cliente, cliente_id)
             if not cli:
@@ -1334,9 +1336,6 @@ def register_clientes_ligacoes_routes(app):
                 return jsonify({"ok": False, "mensagem": "Sem permissão para este cliente."}), 403
 
             agora = datetime.now()
-
-            if resultado not in ('comprou', 'nao_comprou', 'retornar', 'sem_interesse', 'relacionamento', 'cliente_inativo'):
-                resultado = 'nao_comprou'
 
             lig = Ligacao(
                 cliente_id=cliente_id,
@@ -1354,29 +1353,13 @@ def register_clientes_ligacoes_routes(app):
             if current_user.tipo == 'televendas' and cli.consultor_id != current_user.id:
                 cli.consultor_id = current_user.id
 
-            # Retorno opcional para QUALQUER resultado
-            dias_retorno = None
             data_retorno = s(payload.get('data_retorno'))
-            try:
-                dias_retorno = int(payload.get('dias_retorno')) if payload.get('dias_retorno') else None
-            except Exception:
-                dias_retorno = None
-
-            # Só agenda retorno se preencher algo
-            if data_retorno:
-                try:
-                    d = datetime.strptime(data_retorno, "%Y-%m-%d").date()
-                    cli.proxima_ligacao = datetime(d.year, d.month, d.day, 9, 0, 0)
-                except Exception:
-                    cli.proxima_ligacao = agora + timedelta(days=30)
-            elif dias_retorno and dias_retorno > 0:
-                cli.proxima_ligacao = agora + timedelta(days=dias_retorno)
-            elif resultado == 'retornar':
-                # Se marcou "retornar" sem preencher data/dias, agenda retorno padrão.
-                cli.proxima_ligacao = agora + timedelta(days=30)
-            else:
-                # Se não preencher nada, não agenda retorno
-                cli.proxima_ligacao = None
+            cli.proxima_ligacao = calcular_proxima_ligacao(
+                agora=agora,
+                resultado=resultado,
+                data_retorno_raw=data_retorno,
+                dias_retorno_raw=payload.get('dias_retorno'),
+            )
 
             # Libera trava de atendimento apos registrar a ligacao.
             cli.em_atendimento_por = None
@@ -1384,11 +1367,7 @@ def register_clientes_ligacoes_routes(app):
 
             db.session.commit()
 
-            msg = "Ligação registrada!"
-            if cli.proxima_ligacao:
-                msg = "Ligação registrada! Cliente marcado para retorno."
-            elif resultado == 'comprou':
-                msg = "Ligação registrada! Venda marcada como 'comprou'."
+            msg = mensagem_sucesso_ligacao(resultado, cli.proxima_ligacao)
 
             return jsonify({
                 "ok": True,
