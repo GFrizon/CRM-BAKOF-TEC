@@ -43,10 +43,6 @@ from routes.clientes_ligacoes.grouping_stats import (
     extrair_consultores_dos_grupos,
 )
 from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enriquecidos
-from routes.clientes_ligacoes.import_helpers import (
-    carregar_dataframe_importacao,
-)
-from routes.clientes_ligacoes.import_flow import executar_importacao_completa
 from routes.clientes_ligacoes.interactions_routes import (
     register_clientes_ligacoes_interactions_routes,
 )
@@ -59,9 +55,6 @@ from routes.clientes_ligacoes.management_routes import (
 )
 from routes.clientes_ligacoes.notes_routes import (
     register_clientes_ligacoes_notes_routes,
-)
-from routes.clientes_ligacoes.permission_helpers import (
-    consultor_sem_permissao_no_cliente,
 )
 from routes.clientes_ligacoes.proximos_tab import preparar_contexto_proximos_inativacao
 from routes.clientes_ligacoes.proximos_totais import calcular_totais_abas_proximos
@@ -982,6 +975,3 @@ def register_clientes_ligacoes_routes(app):
             meses_disponiveis_consultor=meses_disponiveis_consultor
         )
 
-    # =============================================================================
-# RELATORIO POR E-MAIL
-# =============================================================================
