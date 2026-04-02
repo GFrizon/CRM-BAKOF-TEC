@@ -75,6 +75,10 @@ from routes.clientes_ligacoes.ligacao_helpers import (
     parse_valor_venda,
 )
 from routes.clientes_ligacoes.maintenance_helpers import inativar_clientes_do_consultor
+from routes.clientes_ligacoes.nota_helpers import (
+    buscar_notas_cliente,
+    criar_nota_cliente,
+)
 from routes.clientes_ligacoes.lock_helpers import (
     buscar_locks_por_cd_oracle,
     extrair_cds_da_requisicao,
@@ -1535,11 +1539,7 @@ def register_clientes_ligacoes_routes(app):
     def listar_notas(cliente_id: int):
         if not current_user.is_authenticated:
             return jsonify([])
-        notas = (Nota.query
-                 .options(joinedload(Nota.usuario))
-                 .filter(Nota.cliente_id == cliente_id)
-                 .order_by(Nota.data_criacao.desc())
-                 .all())
+        notas = buscar_notas_cliente(cliente_id)
         return jsonify(serializar_notas(notas))
 
 
@@ -1565,9 +1565,7 @@ def register_clientes_ligacoes_routes(app):
         if current_user.tipo == 'consultor' and cli.consultor_id != current_user.id:
             return jsonify({"ok": False, "mensagem": "Sem permissão"}), 403
 
-        n = Nota(cliente_id=cliente_id, usuario_id=current_user.id, texto=texto)
-        db.session.add(n)
-        db.session.commit()
+        criar_nota_cliente(cliente_id=cliente_id, usuario_id=current_user.id, texto=texto)
         return jsonify({"ok": True, "mensagem": "Nota adicionada!"})
 
     # =============================================================================
