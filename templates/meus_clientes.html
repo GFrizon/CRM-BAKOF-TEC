@@ -1740,6 +1740,11 @@ code {
                       <i class="bi bi-telephone-fill" style="font-size:.72rem;color:#dc2626;"></i>
                     </span>
                     {% endif %}
+                    {% if c.proxima_ligacao %}
+                    <span class="js-retorno-indicator" title="Retorno agendado" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:.66rem;font-weight:700;">
+                      <i class="bi bi-clock-history"></i> Ret.
+                    </span>
+                    {% endif %}
                   </div>
                 </td>
                 <td class="col-consultor">
@@ -1790,7 +1795,7 @@ code {
                     {% if current_user.tipo != 'supervisor_repr' %}
                     {% if c.id %}
                     <button class="action-btn btn btn-primary"
-                            onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
+                            onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}', '{{ c.cd_cliente_oracle|e }}')"
                             title="Registrar Ligacao">
                       <i class="bi bi-telephone-plus"></i>
                     </button>
@@ -2055,7 +2060,7 @@ code {
               </button>
               {% if current_user.tipo != 'supervisor_repr' %}
               <button class="action-btn btn btn-primary"
-                      onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}')"
+                      onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}', '{{ (c.cd_cliente_oracle or '')|e }}')"
                       title="Registrar Ligação">
                 <i class="bi bi-telephone-plus"></i>
               </button>
@@ -2395,6 +2400,7 @@ let modalLimpar = null;
 let modalAdicionar = null;
 let modalEditarObs = null;
 let modalEditarLigacao = null;
+let _rowLigacaoAtiva = null;
 const IS_SUPERVISOR = {{ 'true' if is_supervisor else 'false' }};
 
 function _criarModalSeExistir(elementId) {
@@ -2446,7 +2452,11 @@ async function fecharNovidades() {
 
 function abrirForm(id, nome, telefone, cdClienteOracle = '') {
   document.getElementById('cliId').value = id;
-  const row = id ? document.querySelector(`tr[data-cliente-id="${id}"]`) : null;
+  let row = id ? document.querySelector(`tr[data-cliente-id="${id}"]`) : null;
+  if (!row && cdClienteOracle) {
+    row = document.querySelector(`tr[data-cd-cliente-oracle="${cdClienteOracle}"]`);
+  }
+  _rowLigacaoAtiva = row || null;
   const cdNaLinha = row ? (row.getAttribute('data-cd-cliente-oracle') || '').trim() : '';
   document.getElementById('cliCdClienteOracle').value = (cdClienteOracle || cdNaLinha || '').toString().trim();
   document.getElementById('cliNome').value = nome;
@@ -2661,7 +2671,7 @@ async function salvarLigacao(e) {
 
     // Na aba Oracle (90-120d), manter cliente na lista e apenas atualizar status local.
     if (ABA_ATUAL === 'oracle') {
-      _atualizarLinhaEmPlace(id, j.proxima_ligacao);
+      _atualizarLinhaEmPlace(id, j.proxima_ligacao, cdClienteOracle);
       const abaDestino = retornoAgendado ? 'retornar' : 'contatados';
       _ajustarContadorAba(abaDestino, +1);
       _destacarAbaDestino(abaDestino);
@@ -2670,11 +2680,10 @@ async function salvarLigacao(e) {
       return;
     }
 
-    // Abas onde o cliente sempre sai da lista atual apos o contato
+    // Abas de carteira: cliente permanece na lista e atualiza localmente.
     if (ABA_ATUAL === 'inativos' ||
         ABA_ATUAL === 'pendentes' || ABA_ATUAL === 'proximos_inativacao') {
-      _removerClienteDaTela(id, cdClienteOracle);
-      _ajustarContadorAba(ABA_ATUAL, -1);
+      _atualizarLinhaEmPlace(id, retornoAgendado ? j.proxima_ligacao : null, cdClienteOracle);
       const abaDestino = retornoAgendado ? 'retornar' : 'contatados';
       _ajustarContadorAba(abaDestino, +1);
       _destacarAbaDestino(abaDestino);
@@ -2691,7 +2700,7 @@ async function salvarLigacao(e) {
         _ajustarContadorAba('retornar', +1);
         _destacarAbaDestino('retornar');
       } else {
-        _atualizarLinhaEmPlace(id, null);
+        _atualizarLinhaEmPlace(id, null, cdClienteOracle);
       }
       atualizarInfoQuickActions();
       atualizarBadgesAbasAssincrono();
@@ -2701,7 +2710,7 @@ async function salvarLigacao(e) {
     // Aba Retornar: move para Contatados se nao agendou retorno, senao atualiza in-place
     if (ABA_ATUAL === 'retornar') {
       if (retornoAgendado) {
-        _atualizarLinhaEmPlace(id, j.proxima_ligacao);
+        _atualizarLinhaEmPlace(id, j.proxima_ligacao, cdClienteOracle);
       } else {
         _removerClienteDaTela(id);
         _ajustarContadorAba('retornar', -1);
@@ -3111,10 +3120,18 @@ function _habilitarTransicaoAbas() {
   });
 }
 
-function _atualizarLinhaEmPlace(clienteId, novaProximaLigacaoIso) {
+function _atualizarLinhaEmPlace(clienteId, novaProximaLigacaoIso, cdClienteOracle = '') {
   const id = String(clienteId || '').trim();
-  if (!id) return;
-  const row = document.querySelector(`tr[data-cliente-id="${id}"]`);
+  const cd = String(cdClienteOracle || '').trim();
+  if (!id && !cd) return;
+  const rowAtivaValida = _rowLigacaoAtiva && document.body.contains(_rowLigacaoAtiva) ? _rowLigacaoAtiva : null;
+  const rows = [
+    ...(rowAtivaValida ? [rowAtivaValida] : []),
+    ...(id ? Array.from(document.querySelectorAll(`tr[data-cliente-id="${id}"]`)) : []),
+    ...(cd ? Array.from(document.querySelectorAll(`tr[data-cd-cliente-oracle="${cd}"]`)) : []),
+  ];
+  const rowsUnicos = Array.from(new Set(rows));
+  const row = rowsUnicos.length ? rowsUnicos[0] : null;
   if (!row) return;
 
   const totalAtual = parseInt(row.dataset.totalLigacoes || '0', 10);
@@ -3122,6 +3139,7 @@ function _atualizarLinhaEmPlace(clienteId, novaProximaLigacaoIso) {
   row.dataset.totalLigacoes = String(novoTotal);
   const badge = row.querySelector('.badge-count');
   if (badge) badge.textContent = String(novoTotal);
+  _garantirBotaoHistoricoNaLinha(row, id);
 
   const agora = new Date();
   const p2 = n => String(n).padStart(2, '0');
@@ -3132,23 +3150,78 @@ function _atualizarLinhaEmPlace(clienteId, novaProximaLigacaoIso) {
   const tdUltima = row.querySelector('td[data-col="ultima-ligacao"]');
   if (tdUltima) tdUltima.innerHTML = `<span style="font-size:.8rem;">${fmtDt(agora)}</span>`;
 
-  if (novaProximaLigacaoIso) {
+  if (novaProximaLigacaoIso !== undefined) {
     try {
-      const proxData = new Date(novaProximaLigacaoIso);
-      if (!isNaN(proxData.getTime())) {
-        row.dataset.proximaLigacao = novaProximaLigacaoIso.replace('T', ' ').slice(0, 19);
-        const atrasado = agora >= proxData;
-        row.dataset.retornoAtrasado = atrasado ? '1' : '0';
-        const tdProxima = row.querySelector('td[data-col="proxima-ligacao"]');
-        if (tdProxima) {
-          const fmtProx = fmtDt(proxData);
-          tdProxima.innerHTML = atrasado
-            ? `<span class="text-danger fw-bold" style="font-size:.8rem;"><i class="bi bi-exclamation-triangle-fill me-1"></i>${fmtProx}</span>`
-            : `<span style="font-size:.8rem;">${fmtProx}</span>`;
+      if (novaProximaLigacaoIso) {
+        const proxData = new Date(novaProximaLigacaoIso);
+        if (!isNaN(proxData.getTime())) {
+          row.dataset.proximaLigacao = novaProximaLigacaoIso.replace('T', ' ').slice(0, 19);
+          const atrasado = agora >= proxData;
+          row.dataset.retornoAtrasado = atrasado ? '1' : '0';
+          const tdProxima = row.querySelector('td[data-col="proxima-ligacao"]');
+          if (tdProxima) {
+            const fmtProx = fmtDt(proxData);
+            tdProxima.innerHTML = atrasado
+              ? `<span class="text-danger fw-bold" style="font-size:.8rem;"><i class="bi bi-exclamation-triangle-fill me-1"></i>${fmtProx}</span>`
+              : `<span style="font-size:.8rem;">${fmtProx}</span>`;
+          }
         }
+      } else {
+        row.dataset.proximaLigacao = '';
+        row.dataset.retornoAtrasado = '0';
+        const tdProxima = row.querySelector('td[data-col="proxima-ligacao"]');
+        if (tdProxima) tdProxima.innerHTML = '-';
       }
     } catch (_) {}
   }
+
+  atualizarIndicadorRetornoNaLinha(row, row.dataset.proximaLigacao || '');
+}
+
+function _garantirBotaoHistoricoNaLinha(row, clienteId) {
+  if (!row) return;
+  const id = parseInt(String(clienteId || '0'), 10);
+  if (!Number.isFinite(id) || id <= 0) return;
+
+  const acoes = row.querySelector('.col-acoes .d-flex.gap-1, td:last-child .d-flex.gap-1');
+  if (!acoes) return;
+
+  const jaTemHistorico = acoes.querySelector('button[title="Historico"], button[title="Histórico"]');
+  if (jaTemHistorico) return;
+
+  const btn = document.createElement('button');
+  btn.className = 'action-btn btn btn-outline-secondary';
+  btn.setAttribute('title', 'Historico');
+  btn.innerHTML = '<i class="bi bi-clock-history"></i>';
+  btn.addEventListener('click', () => historico(id));
+  acoes.appendChild(btn);
+}
+
+function atualizarIndicadorRetornoNaLinha(row, proximaLigacaoIso) {
+  if (!row) return;
+  const statusCell = row.querySelector('.col-status > div');
+  const countCell = row.querySelector('.badge-count')?.parentElement || null;
+  const host = statusCell || countCell;
+  if (!host) return;
+
+  let indicador = host.querySelector('.js-retorno-indicator');
+  const valor = String(proximaLigacaoIso || '').trim();
+  const totalLigacoes = parseInt(row.dataset.totalLigacoes || '0', 10) || 0;
+  const mostrar = Boolean(valor) || totalLigacoes > 0;
+  if (!mostrar) {
+    if (indicador) indicador.remove();
+    return;
+  }
+
+  if (!indicador) {
+    indicador = document.createElement('span');
+    indicador.className = 'js-retorno-indicator';
+    indicador.style.cssText = 'display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:.66rem;font-weight:700;';
+    indicador.innerHTML = '<i class="bi bi-clock-history"></i> Ret.';
+    host.appendChild(indicador);
+  }
+
+  indicador.title = valor ? 'Retorno agendado' : 'Cliente contatado';
 }
 
 function normalizarNumeroWhatsApp(telefone) {
@@ -3650,7 +3723,7 @@ function atualizarTabelaClientes(clientes) {
       <td>
         <div class="d-flex gap-1">
           <button class="action-btn btn btn-outline-secondary" onclick="abrirDetalhesClienteComSync(${c.id}, '${(c.cd_cliente_oracle || '').replace(/'/g,"\\'")}', '${(c.cnpj || '').replace(/'/g,"\\'")}')" title="Ver Detalhes Oracle"><i class="bi bi-eye"></i></button>
-          <button class="action-btn btn btn-primary" onclick="abrirForm(${c.id}, '${c.nome.replace(/'/g,"\\'")}', '${c.telefone || ''}')" title="Registrar Ligação"><i class="bi bi-telephone-plus"></i></button>
+          <button class="action-btn btn btn-primary" onclick="abrirForm(${c.id}, '${c.nome.replace(/'/g,"\\'")}', '${(c.telefone || '').replace(/'/g,"\\'")}', '${(c.cd_cliente_oracle || '').replace(/'/g,"\\'")}')" title="Registrar Ligação"><i class="bi bi-telephone-plus"></i></button>
           ${(ABA_ATUAL !== 'pendentes' || Number(c.total_ligacoes || 0) > 0)
             ? `<button class="action-btn btn btn-outline-secondary" onclick="historico(${c.id})" title="Histórico"><i class="bi bi-clock-history"></i></button>`
             : ''}
@@ -4162,7 +4235,7 @@ function registrarLigacaoDesdeDetalhes() {
     fetch(`/detalhes-cliente-oracle/${window.clienteDetalhesAtual}`)
       .then(r => r.json())
       .then(data => {
-        if (data.success) abrirForm(data.cliente.id, data.cliente.nome, data.cliente.telefone);
+        if (data.success) abrirForm(data.cliente.id, data.cliente.nome, data.cliente.telefone, data.cliente.cd_cliente_oracle || '');
       });
   }
 }
