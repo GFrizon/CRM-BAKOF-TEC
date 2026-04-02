@@ -51,9 +51,6 @@ from routes.clientes_ligacoes.import_helpers import (
     carregar_dataframe_importacao,
 )
 from routes.clientes_ligacoes.import_flow import executar_importacao_completa
-from routes.clientes_ligacoes.interaction_serializers import (
-    serializar_notas,
-)
 from routes.clientes_ligacoes.interactions_service import (
     detalhes_ligacao_service,
     editar_ligacao_service,
@@ -65,9 +62,8 @@ from routes.clientes_ligacoes.lista_operacional import (
     ordenar_clientes_por_aba,
 )
 from routes.clientes_ligacoes.maintenance_helpers import inativar_clientes_do_consultor
-from routes.clientes_ligacoes.notes_service import (
-    adicionar_nota_service,
-    listar_notas_service,
+from routes.clientes_ligacoes.notes_routes import (
+    register_clientes_ligacoes_notes_routes,
 )
 from routes.clientes_ligacoes.lock_helpers import (
     buscar_locks_por_cd_oracle,
@@ -98,6 +94,7 @@ _INATIVOS_COUNT_CACHE_TTL_SECONDS = 600
 
 def register_clientes_ligacoes_routes(app):
     register_clientes_ligacoes_analytics_routes(app)
+    register_clientes_ligacoes_notes_routes(app)
 
     @app.before_request
     def _bloquear_escrita_supervisor_repr_clientes():
@@ -1198,35 +1195,6 @@ def register_clientes_ligacoes_routes(app):
 
         except Exception:
             return jsonify([])
-
-    # =============================================================================
-    # NOTAS RÁPIDAS
-    # =============================================================================
-    @app.route('/clientes/<int:cliente_id>/notas', methods=['GET'])
-    def listar_notas(cliente_id: int):
-        if not current_user.is_authenticated:
-            return jsonify([])
-        notas = listar_notas_service(cliente_id)
-        return jsonify(serializar_notas(notas))
-
-
-    @app.route('/clientes/<int:cliente_id>/notas', methods=['POST'])
-    def adicionar_nota(cliente_id: int):
-        if not current_user.is_authenticated:
-            return jsonify({"ok": False, "mensagem": "Não autenticado"}), 401
-        
-        # Bloquear supervisor_repr de adicionar notas
-        if current_user.tipo == 'supervisor_repr':
-            return resposta_supervisor_repr_somente_leitura(
-                "Usuários do tipo Supervisor de Representante não podem adicionar notas (somente visualização)."
-            )
-        
-        texto = s((request.get_json(silent=True) or {}).get('texto'))
-        if not texto:
-            return jsonify({"ok": False, "mensagem": "Texto obrigatório"}), 400
-
-        resposta, status = adicionar_nota_service(cliente_id, current_user, texto)
-        return jsonify(resposta), status
 
     # =============================================================================
     # IMPORTACAO DE CLIENTES
