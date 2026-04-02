@@ -1,6 +1,5 @@
 ﻿from datetime import datetime, timedelta
 
-import pandas as pd
 from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import and_, case, desc, extract, func, or_, text
@@ -42,6 +41,11 @@ from routes.clientes_ligacoes.grouping_stats import (
     extrair_consultores_dos_grupos,
 )
 from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enriquecidos
+from routes.clientes_ligacoes.import_helpers import (
+    carregar_dataframe_importacao,
+    extrair_campos_linha,
+    validar_campos_linha,
+)
 from routes.clientes_ligacoes.interaction_serializers import (
     serializar_detalhes_ligacao,
     serializar_historico_ligacoes,
@@ -1577,42 +1581,7 @@ def register_clientes_ligacoes_routes(app):
             filename = getattr(arquivo, "filename", "") or ""
             ext = (filename.rsplit('.', 1)[-1].lower() if '.' in filename else "")
 
-            df = None
-            try:
-                if ext in ("xlsx", "xls") or not ext:
-                    df = pd.read_excel(
-                        arquivo,
-                        dtype=str,
-                        header=0,
-                        keep_default_na=False,
-                        na_filter=False,
-                        engine="openpyxl"
-                    )
-                else:
-                    raise ValueError("not excel")
-            except Exception:
-                try:
-                    arquivo.seek(0)
-                except Exception:
-                    pass
-                try:
-                    df = pd.read_csv(
-                        arquivo, sep=';', dtype=str,
-                        encoding='utf-8', keep_default_na=False, na_filter=False
-                    )
-                except UnicodeDecodeError:
-                    arquivo.seek(0)
-                    df = pd.read_csv(
-                        arquivo, sep=';', dtype=str,
-                        encoding='latin1', keep_default_na=False, na_filter=False
-                    )
-
-            COL_TIPO          = 0
-            COL_EMPRESA_CNPJ  = 1
-            COL_CONSULTOR_TXT = 2
-            COL_REPRESENTANTE = 3
-            COL_NOME_CLIENTE  = 4
-            COL_TELEFONE      = 5
+            df = carregar_dataframe_importacao(arquivo, ext)
 
             total_inseridos, pulados = 0, 0
             erros = []
@@ -1623,48 +1592,22 @@ def register_clientes_ligacoes_routes(app):
 
             for i, row in df.iterrows():
                 try:
-                    tipo          = s(get_pos(row, COL_TIPO))
-                    empresa_cnpj  = so_digits(get_pos(row, COL_EMPRESA_CNPJ))
-                    consultor_txt = s(get_pos(row, COL_CONSULTOR_TXT))
-                    representante = s(get_pos(row, COL_REPRESENTANTE))
-                    nome_cliente  = s(get_pos(row, COL_NOME_CLIENTE))
-
-                    raw_tel = get_pos(row, COL_TELEFONE)
-                    if not s(raw_tel):
-                        try:
-                            for colname, val in row.items():
-                                if colname and 'tel' in str(colname).lower():
-                                    raw_tel = val
-                                    break
-                        except Exception:
-                            pass
-                    telefone = so_digits(raw_tel)
-                    telefone = telefone if telefone else None
-
-                    # Validação de dados
-                    if nome_cliente and len(nome_cliente.strip()) < 2:
-                        app.logger.warning(f"Linha {i+2}: Nome do cliente muito curto: '{nome_cliente}'")
-                        erros.append(f"Linha {i+2}: Nome muito curto (mínimo 2 caracteres)")
-                        pulados += 1
-                        continue
-                    
-                    if empresa_cnpj and len(empresa_cnpj) < 11:
-                        app.logger.warning(f"Linha {i+2}: CNPJ inválido: {empresa_cnpj}")
-                        erros.append(f"Linha {i+2}: CNPJ inválido (mínimo 11 dígitos)")
-                        pulados += 1
-                        continue
-                    
-                    if telefone and (len(telefone) < 10 or len(telefone) > 11):
-                        app.logger.warning(f"Linha {i+2}: Telefone com formato inválido: {telefone}")
-                        erros.append(f"Linha {i+2}: Telefone inválido (10-11 dígitos)")
-                        # Não pular, apenas limpar o telefone
-                        telefone = None
-
-                    if not any([tipo, empresa_cnpj, consultor_txt, representante, nome_cliente, telefone]):
-                        continue
-
-                    if not nome_cliente:
-                        pulados += 1
+                    campos = extrair_campos_linha(row, get_pos, s, so_digits)
+                    tipo = campos.get("tipo")
+                    empresa_cnpj = campos.get("empresa_cnpj")
+                    representante = campos.get("representante")
+                    nome_cliente = campos.get("nome_cliente")
+                    valido, telefone, erro_validacao = validar_campos_linha(campos)
+                    if not valido:
+                        if erro_validacao:
+                            if erro_validacao.startswith("Nome muito curto"):
+                                app.logger.warning(f"Linha {i+2}: Nome do cliente muito curto: '{nome_cliente}'")
+                            elif erro_validacao.startswith("CNPJ inválido"):
+                                app.logger.warning(f"Linha {i+2}: CNPJ inválido: {empresa_cnpj}")
+                            elif erro_validacao.startswith("Nome vazio"):
+                                pass
+                            erros.append(f"Linha {i+2}: {erro_validacao}")
+                            pulados += 1
                         continue
 
                     if empresa_cnpj:
