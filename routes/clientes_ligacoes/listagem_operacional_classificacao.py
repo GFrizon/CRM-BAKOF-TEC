@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Any
 
 from routes.clientes_ligacoes.consultor_mapping import (
     carregar_mapa_nome_para_id_usuarios_ativos,
@@ -10,7 +11,13 @@ from routes.clientes_ligacoes.domain_utils import (
 )
 
 
-def classificar_listas_operacionais(*, clientes_todos, current_user, aba: str, codigos_representantes_vinculados):
+def classificar_listas_operacionais(
+    *,
+    clientes_todos: list[Any],
+    current_user: Any,
+    aba: str,
+    codigos_representantes_vinculados: list[str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     pendentes, contatados, precisa_retornar = [], [], []
     agora = datetime.now()
     limite_min_90_120 = agora - timedelta(days=120)

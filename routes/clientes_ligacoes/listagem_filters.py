@@ -1,4 +1,9 @@
-def extrair_filtros_listagem(request):
+from __future__ import annotations
+
+from typing import Any, Mapping, Sequence
+
+
+def extrair_filtros_listagem(request: Any) -> tuple[str, str, str]:
     conceito_filtro = (request.args.get("conceito_filtro") or "").strip().upper()
     consultor_filtro = (request.args.get("consultor_filtro") or "").strip()
     termo = (request.args.get("q") or "").strip().lower()
@@ -19,7 +24,11 @@ def corresponde_consultor_filtro(consultor_filtro: str, consultor_cliente: str) 
     return consultor_filtro.lower() in consultor_cliente.lower()
 
 
-def corresponde_termo_busca(termo: str, registro: dict, campos_busca) -> bool:
+def corresponde_termo_busca(
+    termo: str,
+    registro: Mapping[str, Any],
+    campos_busca: Sequence[str],
+) -> bool:
     if not termo:
         return True
     base_busca = " ".join(str(registro.get(campo) or "") for campo in campos_busca).lower()

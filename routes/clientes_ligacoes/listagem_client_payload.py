@@ -1,12 +1,17 @@
+from __future__ import annotations
+
+from typing import Any, Mapping
+
+
 def montar_payload_cliente_oracle(
     *,
-    cliente_oracle: dict,
-    cliente_local,
-    stats_lig: dict,
-    lock_info: dict,
+    cliente_oracle: Mapping[str, Any],
+    cliente_local: Any,
+    stats_lig: Mapping[str, Any],
+    lock_info: Mapping[str, Any],
     conceito: str,
     origem_padrao: str,
-):
+) -> dict[str, Any]:
     return {
         "id": cliente_local.id if cliente_local else None,
         "nome": cliente_oracle.get("cliente", ""),

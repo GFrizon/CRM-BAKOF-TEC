@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Mapping, Sequence
+
 from routes.clientes_ligacoes.domain_utils import (
     _codigo_representante_de_texto,
     _normalizar_codigo_representante,
@@ -9,7 +13,7 @@ def representante_oracle_permitido_para_usuario(
     *,
     tipo_usuario: str,
     representante_texto: str,
-    codigos_representantes_vinculados,
+    codigos_representantes_vinculados: Sequence[str],
 ) -> bool:
     if tipo_usuario != "supervisor_repr":
         return True
@@ -24,8 +28,8 @@ def consultor_categoria_permitido_para_usuario(
     tipo_usuario: str,
     consultor_cliente: str,
     current_user_id: int,
-    mapa_codigo_para_id: dict,
-    mapa_nome_para_id: dict,
+    mapa_codigo_para_id: Mapping[str, int],
+    mapa_nome_para_id: Mapping[str, int],
 ) -> bool:
     if tipo_usuario != "consultor":
         return True

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, Iterable
 
 from routes.clientes_ligacoes.grouping_stats import (
     calcular_stats_gerais_grupos,
@@ -8,10 +9,10 @@ from routes.clientes_ligacoes.grouping_stats import (
 
 def consolidar_dados_grupos(
     *,
-    representantes_data: dict,
+    representantes_data: dict[str, dict[str, Any]],
     chave_sem_grupo: str,
-    conceitos_sem_conceito,
-):
+    conceitos_sem_conceito: Iterable[Any],
+) -> tuple[list[tuple[str, dict[str, Any]]], list[str], int, dict[str, Any]]:
     for _, dados in representantes_data.items():
         clientes_rep = dados["clientes"]
         dados["total_clientes"] = len(clientes_rep)
