@@ -46,6 +46,7 @@ from routes.clientes_ligacoes.lista_operacional import (
 from routes.clientes_ligacoes.lock_helpers import (
     buscar_locks_por_cd_oracle,
     extrair_cds_da_requisicao,
+    tentar_assumir_lock_cliente,
 )
 from routes.clientes_ligacoes.oracle_sync_helpers import (
     aplicar_dados_oracle_no_cliente,
@@ -1265,67 +1266,15 @@ def register_clientes_ligacoes_routes(app):
             if current_user.tipo == 'consultor' and cli.consultor_id != current_user.id:
                 return jsonify({"ok": False, "mensagem": "Sem permisso para este cliente."}), 403
 
-            usa_lock_compartilhado_inativos = (aba_contexto == 'inativos')
-
-            if usa_lock_compartilhado_inativos:
-                cd_oracle_lock = str(cli.cd_cliente_oracle or cd_oracle_payload or '').strip()
-                clientes_relacionados = []
-                if cd_oracle_lock:
-                    clientes_relacionados = (
-                        Cliente.query
-                        .filter(
-                            Cliente.ativo == True,
-                            Cliente.cd_cliente_oracle == cd_oracle_lock
-                        )
-                        .all()
-                    )
-                if not clientes_relacionados:
-                    clientes_relacionados = [cli]
-
-                bloqueado_por = None
-                for cli_rel in clientes_relacionados:
-                    if (
-                        cli_rel.em_atendimento_por
-                        and cli_rel.em_atendimento_por != current_user.id
-                    ):
-                        bloqueado_por = cli_rel
-                        break
-
-                if bloqueado_por and not forcar:
-                    usuario_lock = db.session.get(Usuario, bloqueado_por.em_atendimento_por)
-                    return jsonify({
-                        "ok": False,
-                        "bloqueado": True,
-                        "em_atendimento_por_id": bloqueado_por.em_atendimento_por,
-                        "em_atendimento_por_nome": (usuario_lock.nome if usuario_lock else "Outro usurio"),
-                        "em_atendimento_ate": None,
-                        "mensagem": "Cliente em atendimento por outro usurio."
-                    }), 409
-
-                for cli_rel in clientes_relacionados:
-                    cli_rel.em_atendimento_por = current_user.id
-                    cli_rel.em_atendimento_ate = None
-                cli.em_atendimento_por = current_user.id
-                cli.em_atendimento_ate = None
-            else:
-                bloqueio_ativo = (
-                    cli.em_atendimento_por
-                    and cli.em_atendimento_por != current_user.id
-                )
-
-                if bloqueio_ativo and not forcar:
-                    usuario_lock = db.session.get(Usuario, cli.em_atendimento_por)
-                    return jsonify({
-                        "ok": False,
-                        "bloqueado": True,
-                        "em_atendimento_por_id": cli.em_atendimento_por,
-                        "em_atendimento_por_nome": (usuario_lock.nome if usuario_lock else "Outro usurio"),
-                        "em_atendimento_ate": None,
-                        "mensagem": "Cliente em atendimento por outro usurio."
-                    }), 409
-
-                cli.em_atendimento_por = current_user.id
-                cli.em_atendimento_ate = None
+            ok_lock, conflito = tentar_assumir_lock_cliente(
+                cli=cli,
+                current_user_id=current_user.id,
+                aba_contexto=aba_contexto,
+                cd_oracle_payload=cd_oracle_payload,
+                forcar=forcar,
+            )
+            if not ok_lock and conflito:
+                return jsonify(conflito), 409
             db.session.commit()
 
             return jsonify({

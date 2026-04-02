@@ -51,3 +51,65 @@ def buscar_locks_por_cd_oracle(cds):
                 "ate": None,
             }
     return locks
+
+
+def tentar_assumir_lock_cliente(cli, current_user_id, aba_contexto, cd_oracle_payload, forcar=False):
+    usa_lock_compartilhado_inativos = (aba_contexto == "inativos")
+
+    if usa_lock_compartilhado_inativos:
+        cd_oracle_lock = str(cli.cd_cliente_oracle or cd_oracle_payload or "").strip()
+        clientes_relacionados = []
+        if cd_oracle_lock:
+            clientes_relacionados = (
+                Cliente.query
+                .filter(
+                    Cliente.ativo == True,
+                    Cliente.cd_cliente_oracle == cd_oracle_lock,
+                )
+                .all()
+            )
+        if not clientes_relacionados:
+            clientes_relacionados = [cli]
+
+        bloqueado_por = None
+        for cli_rel in clientes_relacionados:
+            if cli_rel.em_atendimento_por and cli_rel.em_atendimento_por != current_user_id:
+                bloqueado_por = cli_rel
+                break
+
+        if bloqueado_por and not forcar:
+            usuario_lock = db.session.get(Usuario, bloqueado_por.em_atendimento_por)
+            return False, {
+                "ok": False,
+                "bloqueado": True,
+                "em_atendimento_por_id": bloqueado_por.em_atendimento_por,
+                "em_atendimento_por_nome": (usuario_lock.nome if usuario_lock else "Outro usurio"),
+                "em_atendimento_ate": None,
+                "mensagem": "Cliente em atendimento por outro usurio.",
+            }
+
+        for cli_rel in clientes_relacionados:
+            cli_rel.em_atendimento_por = current_user_id
+            cli_rel.em_atendimento_ate = None
+        cli.em_atendimento_por = current_user_id
+        cli.em_atendimento_ate = None
+        return True, None
+
+    bloqueio_ativo = (
+        cli.em_atendimento_por
+        and cli.em_atendimento_por != current_user_id
+    )
+    if bloqueio_ativo and not forcar:
+        usuario_lock = db.session.get(Usuario, cli.em_atendimento_por)
+        return False, {
+            "ok": False,
+            "bloqueado": True,
+            "em_atendimento_por_id": cli.em_atendimento_por,
+            "em_atendimento_por_nome": (usuario_lock.nome if usuario_lock else "Outro usurio"),
+            "em_atendimento_ate": None,
+            "mensagem": "Cliente em atendimento por outro usurio.",
+        }
+
+    cli.em_atendimento_por = current_user_id
+    cli.em_atendimento_ate = None
+    return True, None
