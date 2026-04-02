@@ -12,10 +12,8 @@ from routes.clientes_ligacoes.access_control import (
     bloquear_escrita_supervisor_repr,
     resposta_supervisor_repr_somente_leitura,
 )
-from routes.clientes_ligacoes.analytics_api import (
-    consultar_ligacoes_consultor_mes,
-    consultar_resultados_consultores_mes,
-    parse_mes_ano,
+from routes.clientes_ligacoes.analytics_routes import (
+    register_clientes_ligacoes_analytics_routes,
 )
 from routes.clientes_ligacoes.agrupamento_view import montar_representantes_agrupados
 from routes.clientes_ligacoes.badges import (
@@ -99,6 +97,8 @@ _INATIVOS_COUNT_CACHE_TTL_SECONDS = 600
 
 
 def register_clientes_ligacoes_routes(app):
+    register_clientes_ligacoes_analytics_routes(app)
+
     @app.before_request
     def _bloquear_escrita_supervisor_repr_clientes():
         return bloquear_escrita_supervisor_repr()
@@ -1308,39 +1308,6 @@ def register_clientes_ligacoes_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
-
-    # =============================================================================
-    # FILTRAR RESULTADOS POR MES/ANO (SUPERVISOR)
-    # =============================================================================
-    @app.route('/api/resultados-por-mes')
-    @login_required
-    def api_resultados_por_mes():
-        if current_user.tipo != 'supervisor':
-            return jsonify({"erro": "Acesso negado"}), 403
-
-        try:
-            mes, ano = parse_mes_ano(request.args)
-            payload, status = consultar_resultados_consultores_mes(mes, ano)
-            return jsonify(payload), status
-
-        except Exception as e:
-            return jsonify({"ok": False, "erro": str(e)}), 500
-
-    
-    # FILTRAR MINHAS LIGACOES POR MES/ANO (CONSULTOR)
-
-    @app.route('/api/minhas-ligacoes-por-mes')
-    @login_required
-    def api_minhas_ligacoes_por_mes():
-        if current_user.tipo not in ('consultor', 'televendas'):
-            return jsonify({"erro": "Acesso negado"}), 403
-        
-        try:
-            mes, ano = parse_mes_ano(request.args)
-            return jsonify(consultar_ligacoes_consultor_mes(current_user.id, mes, ano))
-            
-        except Exception as e:
-            return jsonify({"ok": False, "erro": str(e)}), 500
 
     # =============================================================================
 # RELATORIO POR E-MAIL
