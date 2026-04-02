@@ -1,3 +1,4 @@
+from core.models import Usuario
 from routes.clientes_ligacoes.domain_utils import _normalizar_nome_consultor
 
 CODIGOS_REFERENCIA_CONSULTOR = {
@@ -22,3 +23,15 @@ def construir_mapa_codigo_para_id(mapa_nome_para_id: dict) -> dict:
         if uid:
             mapa_codigo_para_id[codigo] = uid
     return mapa_codigo_para_id
+
+
+def carregar_mapa_nome_para_id_usuarios_ativos():
+    usuarios_ativos = Usuario.query.filter(
+        Usuario.ativo == True,
+        Usuario.tipo.in_(["consultor", "televendas", "supervisor"]),
+    ).all()
+    mapa_nome_para_id = {
+        _normalizar_nome_consultor(u.nome): u.id
+        for u in usuarios_ativos if u and u.nome
+    }
+    return usuarios_ativos, mapa_nome_para_id

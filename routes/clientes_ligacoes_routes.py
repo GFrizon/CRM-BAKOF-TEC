@@ -17,7 +17,10 @@ from routes.clientes_ligacoes.badges import (
     _total_proximos_badge,
 )
 from routes.clientes_ligacoes.client_metrics import carregar_stats_e_locks_por_cliente_id
-from routes.clientes_ligacoes.consultor_mapping import construir_mapa_codigo_para_id
+from routes.clientes_ligacoes.consultor_mapping import (
+    carregar_mapa_nome_para_id_usuarios_ativos,
+    construir_mapa_codigo_para_id,
+)
 from routes.clientes_ligacoes.domain_utils import (
     _cliente_tem_representante_vinculado,
     _codigo_representante_de_texto,
@@ -120,14 +123,7 @@ def register_clientes_ligacoes_routes(app):
             mapa_nome_para_id_oracle = {}
             mapa_codigo_para_id_oracle = {}
             if filtrar_oracle_por_categoria:
-                usuarios_ativos = Usuario.query.filter(
-                    Usuario.ativo == True,
-                    Usuario.tipo.in_(["consultor", "televendas", "supervisor"])
-                ).all()
-                mapa_nome_para_id_oracle = {
-                    _normalizar_nome_consultor(u.nome): u.id
-                    for u in usuarios_ativos if u and u.nome
-                }
+                _, mapa_nome_para_id_oracle = carregar_mapa_nome_para_id_usuarios_ativos()
                 mapa_codigo_para_id_oracle = construir_mapa_codigo_para_id(mapa_nome_para_id_oracle)
             if codigos_oracle:
                 clientes_locais = (
@@ -425,14 +421,7 @@ def register_clientes_ligacoes_routes(app):
             mapa_nome_para_id_inativos = {}
             mapa_codigo_para_id_inativos = {}
             if filtrar_inativos_por_categoria:
-                usuarios_ativos = Usuario.query.filter(
-                    Usuario.ativo == True,
-                    Usuario.tipo.in_(["consultor", "televendas", "supervisor"])
-                ).all()
-                mapa_nome_para_id_inativos = {
-                    _normalizar_nome_consultor(u.nome): u.id
-                    for u in usuarios_ativos if u and u.nome
-                }
+                _, mapa_nome_para_id_inativos = carregar_mapa_nome_para_id_usuarios_ativos()
                 mapa_codigo_para_id_inativos = construir_mapa_codigo_para_id(mapa_nome_para_id_inativos)
 
             conceito_filtro = (request.args.get('conceito_filtro') or '').strip().upper()
@@ -1011,15 +1000,8 @@ def register_clientes_ligacoes_routes(app):
         mapa_codigo_para_id = {}
         ids_usuarios_ativos = set()
         if filtrar_por_categoria_consultor or ajustar_consultor_supervisor_pendentes:
-            usuarios_ativos = Usuario.query.filter(
-                Usuario.ativo == True,
-                Usuario.tipo.in_(["consultor", "televendas", "supervisor"])
-            ).all()
+            usuarios_ativos, mapa_nome_para_id = carregar_mapa_nome_para_id_usuarios_ativos()
             ids_usuarios_ativos = {u.id for u in usuarios_ativos if u and u.id}
-            mapa_nome_para_id = {
-                _normalizar_nome_consultor(u.nome): u.id
-                for u in usuarios_ativos if u and u.nome
-            }
             mapa_codigo_para_id = construir_mapa_codigo_para_id(mapa_nome_para_id)
 
         for c in clientes_todos:
