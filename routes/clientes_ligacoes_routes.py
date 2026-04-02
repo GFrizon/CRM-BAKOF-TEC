@@ -89,6 +89,10 @@ from routes.clientes_ligacoes.oracle_sync_helpers import (
     montar_payload_cliente_oracle,
     sugerir_consultor_por_categoria_oracle,
 )
+from routes.clientes_ligacoes.permission_helpers import (
+    consultor_sem_permissao_na_ligacao,
+    consultor_sem_permissao_no_cliente,
+)
 from routes.clientes_ligacoes.proximos_tab import preparar_contexto_proximos_inativacao
 from routes.clientes_ligacoes.proximos_totais import calcular_totais_abas_proximos
 from routes.clientes_ligacoes.supervisor_repr import (
@@ -1303,7 +1307,7 @@ def register_clientes_ligacoes_routes(app):
             if not cli:
                 return jsonify({"ok": False, "mensagem": "Cliente no encontrado."}), 404
 
-            if current_user.tipo == 'consultor' and cli.consultor_id != current_user.id:
+            if consultor_sem_permissao_no_cliente(current_user, cli):
                 return jsonify({"ok": False, "mensagem": "Sem permisso para este cliente."}), 403
 
             ok_lock, conflito = tentar_assumir_lock_cliente(
@@ -1368,7 +1372,7 @@ def register_clientes_ligacoes_routes(app):
             if not cli:
                 return jsonify({"ok": False, "mensagem": "Cliente não encontrado."}), 404
 
-            if current_user.tipo == 'consultor' and cli.consultor_id != current_user.id:
+            if consultor_sem_permissao_no_cliente(current_user, cli):
                 return jsonify({"ok": False, "mensagem": "Sem permissão para este cliente."}), 403
 
             agora = datetime.now()
@@ -1432,7 +1436,7 @@ def register_clientes_ligacoes_routes(app):
                 return jsonify({"ok": False, "mensagem": "Ligação não encontrada"}), 404
             
             # Verificar permissão
-            if current_user.tipo == 'consultor' and ligacao.consultor_id != current_user.id:
+            if consultor_sem_permissao_na_ligacao(current_user, ligacao):
                 return jsonify({"ok": False, "mensagem": "Sem permissão"}), 403
             
             payload = request.get_json(silent=True) or {}
@@ -1464,7 +1468,7 @@ def register_clientes_ligacoes_routes(app):
                 return jsonify({"ok": False, "mensagem": "Ligação não encontrada"}), 404
             
             # Verificar permissão: consultor e televendas só podem editar suas próprias ligações
-            if current_user.tipo == 'consultor' and ligacao.consultor_id != current_user.id:
+            if consultor_sem_permissao_na_ligacao(current_user, ligacao):
                 return jsonify({"ok": False, "mensagem": "Sem permissão para editar esta ligação"}), 403
             
             payload = request.get_json(silent=True) or {}
@@ -1489,7 +1493,7 @@ def register_clientes_ligacoes_routes(app):
                 return jsonify({"erro": "Ligação não encontrada"}), 404
             
             # Verificar permissão
-            if current_user.tipo == 'consultor' and ligacao.consultor_id != current_user.id:
+            if consultor_sem_permissao_na_ligacao(current_user, ligacao):
                 return jsonify({"erro": "Sem permissão"}), 403
             
             return jsonify(serializar_detalhes_ligacao(ligacao, formatar_dinheiro))
@@ -1510,7 +1514,7 @@ def register_clientes_ligacoes_routes(app):
             if not cli:
                 return jsonify([])
 
-            if current_user.tipo == 'consultor' and cli.consultor_id != current_user.id:
+            if consultor_sem_permissao_no_cliente(current_user, cli):
                 return jsonify([])
 
             regs = (Ligacao.query
@@ -1562,7 +1566,7 @@ def register_clientes_ligacoes_routes(app):
         if not cli:
             return jsonify({"ok": False, "mensagem": "Cliente não encontrado"}), 404
 
-        if current_user.tipo == 'consultor' and cli.consultor_id != current_user.id:
+        if consultor_sem_permissao_no_cliente(current_user, cli):
             return jsonify({"ok": False, "mensagem": "Sem permissão"}), 403
 
         criar_nota_cliente(cliente_id=cliente_id, usuario_id=current_user.id, texto=texto)
