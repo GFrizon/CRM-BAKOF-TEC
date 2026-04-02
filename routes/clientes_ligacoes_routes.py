@@ -42,6 +42,11 @@ from routes.clientes_ligacoes.grouping_stats import (
     extrair_consultores_dos_grupos,
 )
 from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enriquecidos
+from routes.clientes_ligacoes.interaction_serializers import (
+    serializar_detalhes_ligacao,
+    serializar_historico_ligacoes,
+    serializar_notas,
+)
 from routes.clientes_ligacoes.lista_operacional import (
     filtrar_listas_por_termo,
     ordenar_clientes_por_aba,
@@ -1466,15 +1471,7 @@ def register_clientes_ligacoes_routes(app):
             if current_user.tipo == 'consultor' and ligacao.consultor_id != current_user.id:
                 return jsonify({"erro": "Sem permissão"}), 403
             
-            return jsonify({
-                "id": ligacao.id,
-                "resultado": ligacao.resultado,
-                "valor_venda": float(ligacao.valor_venda or 0),
-                "valor_venda_fmt": formatar_dinheiro(ligacao.valor_venda),
-                "observacao": ligacao.observacao,
-                "contato_nome": ligacao.contato_nome,
-                "data_hora": ligacao.data_hora.strftime("%d/%m/%Y %H:%M") if ligacao.data_hora else ""
-            })
+            return jsonify(serializar_detalhes_ligacao(ligacao, formatar_dinheiro))
             
         except Exception as e:
             return jsonify({"erro": f"Erro: {str(e)}"}), 500
@@ -1501,32 +1498,15 @@ def register_clientes_ligacoes_routes(app):
                     .order_by(Ligacao.data_hora.desc())
                     .all())
 
-            out = []
-            for r in regs:
-                try:
-                    dt = r.data_hora.strftime("%d/%m/%Y %H:%M") if r.data_hora else ""
-                    consultor_nome = r.consultor.nome if getattr(r, "consultor", None) else ""
-                    contato = s(r.contato_nome)
-                    resultado = s(r.resultado)
-                    try:
-                        valor_num = float(r.valor_venda or 0)
-                    except Exception:
-                        valor_num = 0.0
-
-                    out.append({
-                        "id": r.id,  # NOVO: incluir ID da ligacao
-                        "data_hora": dt,
-                        "consultor": consultor_nome,
-                        "contato_nome": contato,
-                        "resultado": resultado,
-                        "valor_venda": formatar_dinheiro(valor_num),
-                        "observacao": s(r.observacao),
-                        "pode_editar": (current_user.tipo == 'supervisor' or r.consultor_id == current_user.id)  # NOVO
-                    })
-                except Exception:
-                    continue
-
-            return jsonify(out)
+            return jsonify(
+                serializar_historico_ligacoes(
+                    registros=regs,
+                    current_user_tipo=current_user.tipo,
+                    current_user_id=current_user.id,
+                    normalizador_texto=s,
+                    formatar_dinheiro_fn=formatar_dinheiro,
+                )
+            )
 
         except Exception:
             return jsonify([])
@@ -1543,13 +1523,7 @@ def register_clientes_ligacoes_routes(app):
                  .filter(Nota.cliente_id == cliente_id)
                  .order_by(Nota.data_criacao.desc())
                  .all())
-        out = [{
-            "id": n.id,
-            "autor": n.usuario.nome if n.usuario else "",
-            "texto": n.texto,
-            "quando": n.data_criacao.strftime("%d/%m/%Y %H:%M")
-        } for n in notas]
-        return jsonify(out)
+        return jsonify(serializar_notas(notas))
 
 
     @app.route('/clientes/<int:cliente_id>/notas', methods=['POST'])
