@@ -25,11 +25,13 @@ from routes.clientes_ligacoes.badges import (
     _total_proximos_badge,
 )
 from routes.clientes_ligacoes.client_metrics import carregar_stats_e_locks_por_cliente_id
+from routes.clientes_ligacoes.call_record_service import registrar_ligacao_service
 from routes.clientes_ligacoes.client_manual_service import criar_ou_atualizar_cliente_manual
 from routes.clientes_ligacoes.consultor_mapping import (
     carregar_mapa_nome_para_id_usuarios_ativos,
     construir_mapa_codigo_para_id,
 )
+from routes.clientes_ligacoes.contact_service import iniciar_contato_service
 from routes.clientes_ligacoes.dashboard_operacional import (
     montar_meses_disponiveis,
     montar_stats_consultor_televendas,
@@ -64,12 +66,6 @@ from routes.clientes_ligacoes.lista_operacional import (
     filtrar_listas_por_termo,
     ordenar_clientes_por_aba,
 )
-from routes.clientes_ligacoes.ligacao_helpers import (
-    calcular_proxima_ligacao,
-    mensagem_sucesso_ligacao,
-    normalizar_resultado_ligacao,
-    parse_valor_venda,
-)
 from routes.clientes_ligacoes.maintenance_helpers import inativar_clientes_do_consultor
 from routes.clientes_ligacoes.nota_helpers import (
     buscar_notas_cliente,
@@ -78,7 +74,6 @@ from routes.clientes_ligacoes.nota_helpers import (
 from routes.clientes_ligacoes.lock_helpers import (
     buscar_locks_por_cd_oracle,
     extrair_cds_da_requisicao,
-    tentar_assumir_lock_cliente,
 )
 from routes.clientes_ligacoes.oracle_prefill_service import (
     buscar_dados_oracle_para_preenchimento,
@@ -1076,35 +1071,8 @@ def register_clientes_ligacoes_routes(app):
                 )
 
             payload = request.get_json(silent=True) or {}
-            forcar = bool(payload.get('forcar'))
-            aba_contexto = str(payload.get('aba') or '').strip().lower()
-            cd_oracle_payload = str(payload.get('cd_cliente_oracle') or '').strip()
-
-            cli = db.session.get(Cliente, cliente_id)
-            if not cli:
-                return jsonify({"ok": False, "mensagem": "Cliente no encontrado."}), 404
-
-            if consultor_sem_permissao_no_cliente(current_user, cli):
-                return jsonify({"ok": False, "mensagem": "Sem permisso para este cliente."}), 403
-
-            ok_lock, conflito = tentar_assumir_lock_cliente(
-                cli=cli,
-                current_user_id=current_user.id,
-                aba_contexto=aba_contexto,
-                cd_oracle_payload=cd_oracle_payload,
-                forcar=forcar,
-            )
-            if not ok_lock and conflito:
-                return jsonify(conflito), 409
-            db.session.commit()
-
-            return jsonify({
-                "ok": True,
-                "em_atendimento_por_id": cli.em_atendimento_por,
-                "em_atendimento_por_nome": current_user.nome,
-                "em_atendimento_ate": None,
-                "forcado": bool(forcar),
-            })
+            resposta, status = iniciar_contato_service(current_user, cliente_id, payload)
+            return jsonify(resposta), status
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
@@ -1140,57 +1108,8 @@ def register_clientes_ligacoes_routes(app):
 
         try:
             payload = request.get_json(silent=True) or {}
-            obs = s(payload.get('observacao'))
-            contato_nome = s(payload.get('contato_nome'))
-            resultado = normalizar_resultado_ligacao(s(payload.get('resultado') or 'nao_comprou'))
-            valor_venda = parse_valor_venda(payload.get('valor_venda'))
-
-            cli = db.session.get(Cliente, cliente_id)
-            if not cli:
-                return jsonify({"ok": False, "mensagem": "Cliente não encontrado."}), 404
-
-            if consultor_sem_permissao_no_cliente(current_user, cli):
-                return jsonify({"ok": False, "mensagem": "Sem permissão para este cliente."}), 403
-
-            agora = datetime.now()
-
-            lig = Ligacao(
-                cliente_id=cliente_id,
-                consultor_id=current_user.id,
-                data_hora=agora,
-                observacao=obs or None,
-                contato_nome=contato_nome or None,
-                resultado=resultado,
-                valor_venda=valor_venda
-            )
-            db.session.add(lig)
-
-            # Em televendas, ao registrar contato o cliente passa para a carteira do usuario,
-            # permitindo o fluxo entre Inativos -> Contatados/Retornar.
-            if current_user.tipo == 'televendas' and cli.consultor_id != current_user.id:
-                cli.consultor_id = current_user.id
-
-            data_retorno = s(payload.get('data_retorno'))
-            cli.proxima_ligacao = calcular_proxima_ligacao(
-                agora=agora,
-                resultado=resultado,
-                data_retorno_raw=data_retorno,
-                dias_retorno_raw=payload.get('dias_retorno'),
-            )
-
-            # Libera trava de atendimento apos registrar a ligacao.
-            cli.em_atendimento_por = None
-            cli.em_atendimento_ate = None
-
-            db.session.commit()
-
-            msg = mensagem_sucesso_ligacao(resultado, cli.proxima_ligacao)
-
-            return jsonify({
-                "ok": True,
-                "mensagem": msg,
-                "proxima_ligacao": cli.proxima_ligacao.isoformat() if cli.proxima_ligacao else None,
-            })
+            resposta, status = registrar_ligacao_service(current_user, cliente_id, payload)
+            return jsonify(resposta), status
 
         except Exception as e:
             db.session.rollback()
