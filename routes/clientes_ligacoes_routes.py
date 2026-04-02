@@ -2,15 +2,20 @@
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import and_, case, desc, extract, func, or_, text
+from sqlalchemy import and_, func, or_, text
 from sqlalchemy.orm import joinedload
 
 from core.extensions import db
-from core.helpers import _percent, formatar_dinheiro, get_pos, s, so_digits
+from core.helpers import formatar_dinheiro, get_pos, s, so_digits
 from core.models import Cliente, Ligacao, Nota, SyncResumoDiario, Usuario
 from routes.clientes_ligacoes.access_control import (
     bloquear_escrita_supervisor_repr,
     resposta_supervisor_repr_somente_leitura,
+)
+from routes.clientes_ligacoes.analytics_api import (
+    consultar_ligacoes_consultor_mes,
+    consultar_resultados_consultores_mes,
+    parse_mes_ano,
 )
 from routes.clientes_ligacoes.agrupamento_view import montar_representantes_agrupados
 from routes.clientes_ligacoes.badges import (
@@ -1791,61 +1796,9 @@ def register_clientes_ligacoes_routes(app):
             return jsonify({"erro": "Acesso negado"}), 403
 
         try:
-            mes = int(request.args.get('mes', datetime.now().month))
-            ano = int(request.args.get('ano', datetime.now().year))
-
-            if mes < 1 or mes > 12:
-                return jsonify({"ok": False, "erro": "Mês inválido"}), 400
-
-            inicio = datetime(ano, mes, 1)
-            fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
-
-            # Subquery: agrega ligações do período por consultor.
-            # Feito como subquery para que consultores com 0 ligações no mês
-            # (mas com histórico em outros meses) apareçam com total=0.
-            subq = (
-                db.session.query(
-                    Ligacao.consultor_id.label('cid'),
-                    func.count(Ligacao.id).label('total'),
-                    func.sum(case((Ligacao.resultado == 'comprou', 1), else_=0)).label('vendas'),
-                    func.sum(case((Ligacao.resultado == 'comprou', Ligacao.valor_venda), else_=0)).label('receita'),
-                )
-                .filter(Ligacao.data_hora >= inicio, Ligacao.data_hora < fim)
-                .group_by(Ligacao.consultor_id)
-                .subquery()
-            )
-
-            rows = (
-                db.session.query(
-                    Usuario.id,
-                    Usuario.nome,
-                    func.coalesce(subq.c.total, 0).label('total'),
-                    func.coalesce(subq.c.vendas, 0).label('vendas'),
-                    func.coalesce(subq.c.receita, 0.0).label('receita'),
-                )
-                .outerjoin(subq, subq.c.cid == Usuario.id)
-                .filter(Usuario.tipo == 'consultor', Usuario.ativo == True)
-                .order_by(desc('receita'))
-                .all()
-            )
-
-            resultado = []
-            for uid, nome, total, vendas, receita in rows:
-                total = int(total or 0)
-                vendas = int(vendas or 0)
-                receita = float(receita or 0)
-                conv = _percent(vendas, total) if total else 0.0
-                resultado.append({
-                    "id": uid,
-                    "nome": nome,
-                    "total_ligacoes": total,
-                    "vendas": vendas,
-                    "conversao": round(conv, 1),
-                    "receita": receita,
-                    "receita_fmt": formatar_dinheiro(receita),
-                })
-
-            return jsonify({"ok": True, "mes": mes, "ano": ano, "consultores": resultado})
+            mes, ano = parse_mes_ano(request.args)
+            payload, status = consultar_resultados_consultores_mes(mes, ano)
+            return jsonify(payload), status
 
         except Exception as e:
             return jsonify({"ok": False, "erro": str(e)}), 500
@@ -1860,55 +1813,8 @@ def register_clientes_ligacoes_routes(app):
             return jsonify({"erro": "Acesso negado"}), 403
         
         try:
-            mes = int(request.args.get('mes', datetime.now().month))
-            ano = int(request.args.get('ano', datetime.now().year))
-            
-            # Buscar ligações do consultor no mês/ano específico
-            ligacoes = (
-                db.session.query(Ligacao)
-                .filter(Ligacao.consultor_id == current_user.id)
-                .filter(extract('month', Ligacao.data_hora) == mes)
-                .filter(extract('year', Ligacao.data_hora) == ano)
-                .order_by(Ligacao.data_hora.desc())
-                .all()
-            )
-            
-            resultado = []
-            for lig in ligacoes:
-                resultado.append({
-                    "id": lig.id,
-                    "cliente_id": lig.cliente_id,
-                    "cliente_nome": lig.cliente.nome if lig.cliente else "N/A",
-                    "data_hora": lig.data_hora.strftime("%d/%m/%Y %H:%M"),
-                    "resultado": lig.resultado,
-                    "valor_venda": float(lig.valor_venda or 0),
-                    "valor_venda_fmt": formatar_dinheiro(lig.valor_venda),
-                    "observacao": lig.observacao
-                })
-            
-            # Estatísticas do mês
-            total_ligacoes = len(resultado)
-            vendas = len([l for l in resultado if l["resultado"] == "comprou"])
-            positivos = len([l for l in resultado if l["resultado"] in ("comprou", "relacionamento", "retornar")])
-            receita_total = sum([l["valor_venda"] for l in resultado if l["resultado"] == "comprou"])
-            taxa_conversao = _percent(vendas, total_ligacoes) if total_ligacoes else 0
-            taxa_positiva = _percent(positivos, total_ligacoes) if total_ligacoes else 0
-            
-            return jsonify({
-                "ok": True,
-                "mes": mes,
-                "ano": ano,
-                "ligacoes": resultado,
-                "estatisticas": {
-                    "total_ligacoes": total_ligacoes,
-                    "positivos": positivos,
-                    "vendas": vendas,
-                    "receita_total": receita_total,
-                    "receita_fmt": formatar_dinheiro(receita_total),
-                    "taxa_conversao": round(taxa_conversao, 1),
-                    "taxa_positiva": round(taxa_positiva, 1)
-                }
-            })
+            mes, ano = parse_mes_ano(request.args)
+            return jsonify(consultar_ligacoes_consultor_mes(current_user.id, mes, ano))
             
         except Exception as e:
             return jsonify({"ok": False, "erro": str(e)}), 500
