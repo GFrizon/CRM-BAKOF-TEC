@@ -3891,7 +3891,7 @@ function toggleRepresentante(index) {
   if (!div || !icone) return;
   if (div.dataset.animating === '1') return;
 
-  const aberto = div.style.display !== 'none';
+  const aberto = window.getComputedStyle(div).display !== 'none';
   if (aberto) {
     div.dataset.animating = '1';
     const alturaAtual = div.scrollHeight;
@@ -3900,11 +3900,11 @@ function toggleRepresentante(index) {
     div.style.opacity = '1';
     div.style.transform = 'translateY(0)';
     div.style.transition = 'max-height 260ms ease, opacity 180ms ease, transform 180ms ease';
-    requestAnimationFrame(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
       div.style.maxHeight = '0px';
       div.style.opacity = '0';
       div.style.transform = 'translateY(-4px)';
-    });
+    }));
     setTimeout(() => {
       div.style.display = 'none';
       div.style.maxHeight = '';
@@ -3924,18 +3924,20 @@ function toggleRepresentante(index) {
     div.style.opacity = '0';
     div.style.transform = 'translateY(-6px)';
     div.style.transition = 'max-height 340ms ease, opacity 240ms ease, transform 240ms ease';
+    div.style.willChange = 'max-height, opacity, transform';
     void div.offsetHeight;
-    requestAnimationFrame(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
       div.style.maxHeight = `${alturaFinal}px`;
       div.style.opacity = '1';
       div.style.transform = 'translateY(0)';
-    });
+    }));
     setTimeout(() => {
       div.style.maxHeight = '';
       div.style.opacity = '';
       div.style.transform = '';
       div.style.transition = '';
       div.style.overflow = '';
+      div.style.willChange = '';
       div.dataset.animating = '0';
     }, 360);
     icone.classList.add('open');
