@@ -9,7 +9,10 @@ from sqlalchemy.orm import joinedload
 from core.extensions import db
 from core.helpers import _percent, formatar_dinheiro, get_pos, s, so_digits
 from core.models import Cliente, Ligacao, Nota, SyncResumoDiario, Usuario
-from routes.clientes_ligacoes.access_control import bloquear_escrita_supervisor_repr
+from routes.clientes_ligacoes.access_control import (
+    bloquear_escrita_supervisor_repr,
+    resposta_supervisor_repr_somente_leitura,
+)
 from routes.clientes_ligacoes.agrupamento_view import montar_representantes_agrupados
 from routes.clientes_ligacoes.badges import (
     calcular_total_inativos_badge_com_cache,
@@ -1147,7 +1150,9 @@ def register_clientes_ligacoes_routes(app):
     def criar_cliente_manual():
         try:
             if current_user.tipo == 'supervisor_repr':
-                return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem criar clientes (somente visualização)."}), 403
+                return resposta_supervisor_repr_somente_leitura(
+                    "Usuários do tipo Supervisor de Representante não podem criar clientes (somente visualização)."
+                )
 
             payload = request.get_json(silent=True) or {}
             nome = s(payload.get('nome'))
@@ -1258,7 +1263,9 @@ def register_clientes_ligacoes_routes(app):
     def iniciar_contato_cliente(cliente_id: int):
         try:
             if current_user.tipo == 'supervisor_repr':
-                return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem iniciar contato (somente visualização)."}), 403
+                return resposta_supervisor_repr_somente_leitura(
+                    "Usuários do tipo Supervisor de Representante não podem iniciar contato (somente visualização)."
+                )
 
             payload = request.get_json(silent=True) or {}
             forcar = bool(payload.get('forcar'))
@@ -1319,7 +1326,9 @@ def register_clientes_ligacoes_routes(app):
 
         # Bloquear supervisor_repr de registrar ligações
         if current_user.tipo == 'supervisor_repr':
-            return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem registrar ligações (somente visualização)."}), 403
+            return resposta_supervisor_repr_somente_leitura(
+                "Usuários do tipo Supervisor de Representante não podem registrar ligações (somente visualização)."
+            )
 
         try:
             payload = request.get_json(silent=True) or {}
@@ -1387,7 +1396,9 @@ def register_clientes_ligacoes_routes(app):
     def editar_observacao(ligacao_id: int):
         try:
             if current_user.tipo == 'supervisor_repr':
-                return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem editar observações (somente visualização)."}), 403
+                return resposta_supervisor_repr_somente_leitura(
+                    "Usuários do tipo Supervisor de Representante não podem editar observações (somente visualização)."
+                )
 
             ligacao = db.session.get(Ligacao, ligacao_id)
             if not ligacao:
@@ -1417,7 +1428,9 @@ def register_clientes_ligacoes_routes(app):
     def editar_ligacao(ligacao_id: int):
         try:
             if current_user.tipo == 'supervisor_repr':
-                return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem editar ligações (somente visualização)."}), 403
+                return resposta_supervisor_repr_somente_leitura(
+                    "Usuários do tipo Supervisor de Representante não podem editar ligações (somente visualização)."
+                )
 
             ligacao = db.session.get(Ligacao, ligacao_id)
             if not ligacao:
@@ -1562,7 +1575,9 @@ def register_clientes_ligacoes_routes(app):
         
         # Bloquear supervisor_repr de adicionar notas
         if current_user.tipo == 'supervisor_repr':
-            return jsonify({"ok": False, "mensagem": "Usuários do tipo Supervisor de Representante não podem adicionar notas (somente visualização)."}), 403
+            return resposta_supervisor_repr_somente_leitura(
+                "Usuários do tipo Supervisor de Representante não podem adicionar notas (somente visualização)."
+            )
         
         texto = s((request.get_json(silent=True) or {}).get('texto'))
         if not texto:

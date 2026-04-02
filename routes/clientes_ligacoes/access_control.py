@@ -31,3 +31,7 @@ def bloquear_escrita_supervisor_repr():
             }
         ), 403
     return None
+
+
+def resposta_supervisor_repr_somente_leitura(mensagem):
+    return jsonify({"ok": False, "mensagem": mensagem}), 403
