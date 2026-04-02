@@ -34,6 +34,7 @@ from routes.clientes_ligacoes.grouping_stats import (
     calcular_stats_gerais_grupos,
     extrair_consultores_dos_grupos,
 )
+from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enriquecidos
 from routes.clientes_ligacoes.supervisor_repr import (
     contar_proximos_inativacao_supervisor_repr,
     obter_codigos_representantes_vinculados,
@@ -359,64 +360,7 @@ def register_clientes_ligacoes_routes(app):
             app.logger.info("=== INICIANDO TRATAMENTO ABA INATIVOS ===")
             app.logger.info(f"Usuário: {current_user.nome} ({current_user.tipo})")
 
-            limite_max = datetime.now() - timedelta(days=181)
-            limite_min = datetime.now() - timedelta(days=730)
-
-            clientes_inativos_local = (
-                Cliente.query
-                .filter(
-                    Cliente.ativo == True,
-                    Cliente.cd_cliente_oracle.isnot(None),
-                    Cliente.ultimo_pedido_oracle.isnot(None),
-                    Cliente.ultimo_pedido_oracle.between(limite_min, limite_max),
-                )
-                .all()
-            )
-
-            # Enriquecer centralizadora via Oracle para exibir na listagem de inativos.
-            centralizadora_por_cd = {}
-            try:
-                from oracle_service import get_clientes_inativos_oracle as _get_clientes_inativos_oracle
-                inativos_oracle_raw = _get_clientes_inativos_oracle() or []
-                for row in inativos_oracle_raw:
-                    cd = str(row.get('cd_cliente') or '').strip()
-                    if not cd or cd in centralizadora_por_cd:
-                        continue
-                    centralizadora_por_cd[cd] = {
-                        "cd_centralizado": row.get('cd_centralizado'),
-                        "nome_centralizadora": row.get('nome_centralizadora'),
-                    }
-            except Exception as e:
-                app.logger.warning(f"Falha ao enriquecer centralizadoras dos inativos via Oracle: {e}")
-
-            clientes_oracle_inativos = [
-                {
-                    "cd_cliente": c.cd_cliente_oracle,
-                    "cliente": c.nome,
-                    "cnpj": c.cnpj,
-                    "telefone1": c.telefone,
-                    "telefone2": c.telefone2,
-                    "representante": c.representante_oracle,
-                    "consultor": c.categoria_consultor,
-                    "conceito": c.conceito,
-                    "municipio": c.municipio,
-                    "uf": c.uf,
-                    "contato": c.contato,
-                    "dt_pedido": c.ultimo_pedido_oracle,
-                    "total_pedido": c.valor_ultimo_pedido,
-                    "situacao": c.situacao_ultimo_pedido,
-                    "cd_centralizado": (
-                        centralizadora_por_cd.get(str(c.cd_cliente_oracle).strip(), {}).get("cd_centralizado")
-                        if c.cd_cliente_oracle else None
-                    ),
-                    "nome_centralizadora": (
-                        centralizadora_por_cd.get(str(c.cd_cliente_oracle).strip(), {}).get("nome_centralizadora")
-                        if c.cd_cliente_oracle else None
-                    ),
-                }
-                for c in clientes_inativos_local
-            ]
-            app.logger.info(f"Buscados {len(clientes_oracle_inativos)} clientes inativos da base local sincronizada")
+            clientes_oracle_inativos = carregar_clientes_inativos_enriquecidos(app.logger)
             filtrar_inativos_por_categoria = (current_user.tipo == 'consultor')
             mapa_nome_para_id_inativos = {}
             mapa_codigo_para_id_inativos = {}
