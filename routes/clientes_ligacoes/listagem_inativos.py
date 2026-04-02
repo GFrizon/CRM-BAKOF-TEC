@@ -7,6 +7,12 @@ from core.extensions import db
 from core.models import Cliente, Ligacao, SyncResumoDiario, Usuario
 from routes.clientes_ligacoes.client_metrics import carregar_stats_e_locks_por_cliente_id
 from routes.clientes_ligacoes.listagem_client_payload import montar_payload_cliente_oracle
+from routes.clientes_ligacoes.listagem_filters import (
+    corresponde_conceito_filtro,
+    corresponde_consultor_filtro,
+    corresponde_termo_busca,
+    extrair_filtros_listagem,
+)
 from routes.clientes_ligacoes.consultor_mapping import (
     carregar_mapa_nome_para_id_usuarios_ativos,
     construir_mapa_codigo_para_id,
@@ -45,9 +51,7 @@ def render_aba_inativos(
         _, mapa_nome_para_id_inativos = carregar_mapa_nome_para_id_usuarios_ativos()
         mapa_codigo_para_id_inativos = construir_mapa_codigo_para_id(mapa_nome_para_id_inativos)
 
-    conceito_filtro = (request.args.get("conceito_filtro") or "").strip().upper()
-    consultor_filtro = (request.args.get("consultor_filtro") or "").strip()
-    termo = (request.args.get("q") or "").strip().lower()
+    conceito_filtro, consultor_filtro, termo = extrair_filtros_listagem(request)
 
     codigos_inativos = [
         str(c.get("cd_cliente")).strip()
@@ -105,14 +109,10 @@ def render_aba_inativos(
         conceito_cliente = normalizar_conceito(cliente_oracle.get("conceito"))
         consultor_cliente = str(cliente_oracle.get("consultor") or "").strip()
 
-        if conceito_filtro:
-            if conceito_filtro in ("SEM_CONCEITO", "SEM CONCEITO"):
-                if conceito_cliente not in ("", "SEM CONCEITO"):
-                    continue
-            elif conceito_cliente != conceito_filtro:
-                continue
+        if not corresponde_conceito_filtro(conceito_filtro, conceito_cliente):
+            continue
 
-        if consultor_filtro and consultor_filtro.lower() not in consultor_cliente.lower():
+        if not corresponde_consultor_filtro(consultor_filtro, consultor_cliente):
             continue
         if filtrar_inativos_por_categoria and consultor_cliente:
             consultor_esperado = _resolver_consultor_id_por_categoria(
@@ -123,22 +123,22 @@ def render_aba_inativos(
             if consultor_esperado and consultor_esperado != current_user.id:
                 continue
 
-        if termo:
-            base_busca = " ".join(
-                [
-                    str(cliente_oracle.get("cliente") or ""),
-                    str(cliente_oracle.get("cnpj") or ""),
-                    str(cliente_oracle.get("telefone1") or ""),
-                    str(cliente_oracle.get("telefone2") or ""),
-                    str(cliente_oracle.get("representante") or ""),
-                    str(cliente_oracle.get("consultor") or ""),
-                    str(cliente_oracle.get("conceito") or ""),
-                    str(cliente_oracle.get("municipio") or ""),
-                    str(cliente_oracle.get("uf") or ""),
-                ]
-            ).lower()
-            if termo not in base_busca:
-                continue
+        if not corresponde_termo_busca(
+            termo,
+            cliente_oracle,
+            (
+                "cliente",
+                "cnpj",
+                "telefone1",
+                "telefone2",
+                "representante",
+                "consultor",
+                "conceito",
+                "municipio",
+                "uf",
+            ),
+        ):
+            continue
 
         cd_cliente = str(cliente_oracle.get("cd_cliente") or "").strip()
         cliente_local = clientes_locais_por_cd.get(cd_cliente) if cd_cliente else None
