@@ -84,7 +84,7 @@ def montar_stats_consultor_televendas(current_user, total_oracle_badge):
     ).scalar() or 0
 
     stats["receita_mes"] = formatar_dinheiro(receita_total)
-    stats["clientes_90_120"] = int(total_oracle_badge or 0)
+    stats["clientes_90_150"] = int(total_oracle_badge or 0)
     return stats
 
 

@@ -20,12 +20,12 @@ logger = logging.getLogger(__name__)
 
 
 def _total_oracle_badge(consultor_id=None):
-    """Conta clientes 90-120d na base local sincronizada.
+    """Conta clientes 90-150d na base local sincronizada.
 
     Quando ``consultor_id`` for informado, restringe a contagem ao consultor.
     """
     agora = datetime.now()
-    limite_min = agora - timedelta(days=120)
+    limite_min = agora - timedelta(days=150)
     limite_max = agora - timedelta(days=90)
     q = (
         Cliente.query
@@ -42,7 +42,7 @@ def _total_oracle_badge(consultor_id=None):
 
 
 def _total_oracle_badge_supervisor_repr(codigos_representantes_vinculados):
-    """Conta clientes 90-120d de supervisor_repr com a mesma fonte da aba Oracle."""
+    """Conta clientes 90-150d de supervisor_repr com a mesma fonte da aba Oracle."""
     if not codigos_representantes_vinculados:
         return 0
 
@@ -74,7 +74,7 @@ def _total_oracle_badge_supervisor_repr(codigos_representantes_vinculados):
         )
     except Exception:
         agora = datetime.now()
-        limite_min = agora - timedelta(days=120)
+        limite_min = agora - timedelta(days=150)
         limite_max = agora - timedelta(days=90)
         clientes_oracle = (
             Cliente.query
@@ -94,7 +94,7 @@ def _total_oracle_badge_supervisor_repr(codigos_representantes_vinculados):
 
 
 def _total_oracle_badge_consultor_lista_oracle(consultor_id: int) -> int:
-    """Conta 90-120d com a mesma regra da aba Oracle para consultor."""
+    """Conta 90-150d com a mesma regra da aba Oracle para consultor."""
     if not consultor_id:
         return 0
 
@@ -146,6 +146,12 @@ def _total_oracle_badge_consultor_lista_oracle(consultor_id: int) -> int:
             continue
         total += 1
     return total
+
+
+def _total_oracle_badge_supervisor_lista_oracle() -> int:
+    """Conta 90-150d com a mesma fonte da aba Oracle para supervisor."""
+    clientes_oracle = carregar_clientes_oracle_deduplicados(logger, periodo_oracle=None)
+    return len(clientes_oracle or [])
 
 
 def _total_inativos_badge(consultor_id=None):
@@ -217,3 +223,4 @@ def calcular_total_inativos_badge_com_cache(current_user, apenas_meus, cache_sto
                 "ts": datetime.now(),
             }
     return total_inativos_badge
+

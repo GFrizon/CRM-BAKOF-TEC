@@ -290,12 +290,12 @@ def register_account_client_routes(app):
             if apenas_meus:
                 q = q.filter(Cliente.consultor_id == current_user.id)
             if current_user.tipo == 'consultor' and aba == 'pendentes':
-                limite_min_90_120 = datetime.now() - timedelta(days=120)
-                limite_max_90_120 = datetime.now() - timedelta(days=90)
+                limite_min_90_150 = datetime.now() - timedelta(days=150)
+                limite_max_90_150 = datetime.now() - timedelta(days=90)
                 q = q.filter(~and_(
                     Cliente.cd_cliente_oracle.isnot(None),
                     Cliente.ultimo_pedido_oracle.isnot(None),
-                    Cliente.ultimo_pedido_oracle.between(limite_min_90_120, limite_max_90_120),
+                    Cliente.ultimo_pedido_oracle.between(limite_min_90_150, limite_max_90_150),
                 ))
 
             if termo:
@@ -444,3 +444,4 @@ def register_account_client_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
+

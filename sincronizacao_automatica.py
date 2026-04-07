@@ -116,13 +116,13 @@ def sincronizacao_automatica_diaria():
                 if c.cd_cliente_oracle
             }
 
-            logger.info("\n🔍 1. Buscando clientes Oracle (90-120d, proximos 151-180d e inativos 181-730d)...")
-            clientes_oracle_90_120 = get_clientes_oracle()
+            logger.info("\n🔍 1. Buscando clientes Oracle (90-150d, proximos 151-180d e inativos 181-730d)...")
+            clientes_oracle_90_150 = get_clientes_oracle()
             clientes_oracle_proximos = get_clientes_proximos_inativacao_oracle()
             clientes_oracle_inativos = get_clientes_inativos_oracle()
 
             clientes_oracle_por_cd = {}
-            for row in (clientes_oracle_90_120 + clientes_oracle_proximos + clientes_oracle_inativos):
+            for row in (clientes_oracle_90_150 + clientes_oracle_proximos + clientes_oracle_inativos):
                 cd_cliente = str(row.get('cd_cliente', '')).strip()
                 if not cd_cliente:
                     continue
@@ -136,12 +136,12 @@ def sincronizacao_automatica_diaria():
                     clientes_oracle_por_cd[cd_cliente] = row
 
             clientes_oracle = list(clientes_oracle_por_cd.values())
-            codigos_alvo_90_120 = {
+            codigos_alvo_90_150 = {
                 str(c.get('cd_cliente', '')).strip()
-                for c in clientes_oracle_90_120
+                for c in clientes_oracle_90_150
                 if c.get('cd_cliente')
             }
-            logger.info(f"✅ {len(clientes_oracle_90_120)} clientes 90-120d encontrados no Oracle")
+            logger.info(f"✅ {len(clientes_oracle_90_150)} clientes 90-150d encontrados no Oracle")
             logger.info(f"✅ {len(clientes_oracle_proximos)} clientes proximos de inativacao (151-180d) encontrados no Oracle")
             logger.info(f"✅ {len(clientes_oracle_inativos)} clientes inativos (181-730d) encontrados no Oracle")
             logger.info(f"✅ {len(clientes_oracle)} clientes únicos para sincronizar")
@@ -288,8 +288,8 @@ def sincronizacao_automatica_diaria():
                                 if dt_pedido:
                                     novo_cliente.ultimo_pedido_oracle = dt_pedido
 
-                                # Evita custo alto em massa para inativos; mantém cálculo completo para 90-120d.
-                                if cd_cliente in codigos_alvo_90_120:
+                                # Evita custo alto em massa para inativos; mantém cálculo completo para 90-150d.
+                                if cd_cliente in codigos_alvo_90_150:
                                     try:
                                         valor_total_365 = get_valor_total_365dias(cd_cliente)
                                         novo_cliente.valor_total_365dias = valor_total_365
@@ -409,8 +409,8 @@ def sincronizacao_automatica_diaria():
                                     if dt_pedido:
                                         cliente_mysql.ultimo_pedido_oracle = dt_pedido
 
-                                    # Evita custo alto em massa para inativos; mantém cálculo completo para 90-120d.
-                                    if cd_cliente in codigos_alvo_90_120:
+                                    # Evita custo alto em massa para inativos; mantém cálculo completo para 90-150d.
+                                    if cd_cliente in codigos_alvo_90_150:
                                         try:
                                             valor_total_365 = get_valor_total_365dias(cd_cliente)
                                             cliente_mysql.valor_total_365dias = valor_total_365
@@ -518,3 +518,4 @@ if __name__ == "__main__":
     finally:
         logger.info("\n🏁 Fim da sincronização automática")
         input("Pressione Enter para sair...")
+

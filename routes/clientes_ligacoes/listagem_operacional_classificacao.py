@@ -20,8 +20,8 @@ def classificar_listas_operacionais(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     pendentes, contatados, precisa_retornar = [], [], []
     agora = datetime.now()
-    limite_min_90_120 = agora - timedelta(days=120)
-    limite_max_90_120 = agora - timedelta(days=90)
+    limite_min_90_150 = agora - timedelta(days=150)
+    limite_max_90_150 = agora - timedelta(days=90)
     filtrar_por_categoria_consultor = current_user.tipo == "consultor"
     ajustar_consultor_supervisor_pendentes = (current_user.tipo == "supervisor" and aba == "pendentes")
     mapa_nome_para_id = {}
@@ -109,13 +109,13 @@ def classificar_listas_operacionais(
             continue
 
         if total == 0:
-            # Evita misturar campanha 90-120d na aba operacional de pendentes
+            # Evita misturar campanha 90-150d na aba operacional de pendentes
             # e no badge "Clientes Especiais" do consultor.
             if (
                 current_user.tipo in ("consultor", "supervisor_repr")
                 and c.cd_cliente_oracle
                 and c.ultimo_pedido_oracle
-                and limite_min_90_120 <= c.ultimo_pedido_oracle <= limite_max_90_120
+                and limite_min_90_150 <= c.ultimo_pedido_oracle <= limite_max_90_150
             ):
                 continue
             pendentes.append(dados)
@@ -127,3 +127,4 @@ def classificar_listas_operacionais(
                 contatados.append(dados)
 
     return pendentes, contatados, precisa_retornar
+

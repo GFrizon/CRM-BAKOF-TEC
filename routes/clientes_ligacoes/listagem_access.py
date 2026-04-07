@@ -2,6 +2,7 @@ from flask import flash, redirect, url_for
 
 from routes.clientes_ligacoes.badges import (
     _total_oracle_badge_consultor_lista_oracle,
+    _total_oracle_badge_supervisor_lista_oracle,
     _total_oracle_badge,
     _total_oracle_badge_supervisor_repr,
     _total_proximos_badge,
@@ -33,6 +34,9 @@ def preparar_contexto_inicial_listagem(request, current_user):
     elif current_user.tipo == "consultor":
         # Mantem badge alinhado com a mesma base/regra da aba Oracle.
         total_oracle_badge = _total_oracle_badge_consultor_lista_oracle(current_user.id)
+    elif current_user.tipo == "supervisor":
+        # Mantem badge alinhado com a mesma base/regra da aba Oracle.
+        total_oracle_badge = _total_oracle_badge_supervisor_lista_oracle()
     else:
         total_oracle_badge = _total_oracle_badge()
     total_proximos_badge = _total_proximos_badge(

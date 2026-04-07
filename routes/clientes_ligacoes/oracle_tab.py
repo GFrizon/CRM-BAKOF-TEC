@@ -1,12 +1,12 @@
 def carregar_clientes_oracle_deduplicados(logger, periodo_oracle):
-    if periodo_oracle and periodo_oracle not in ("90", "120"):
+    if periodo_oracle and periodo_oracle not in ("90", "150", "180"):
         logger.warning(f"Valor invalido para periodo_oracle: {periodo_oracle}")
 
     try:
         from oracle_service import get_clientes_oracle
 
         clientes_oracle_raw = get_clientes_oracle()
-        logger.info(f"Buscados {len(clientes_oracle_raw)} clientes Oracle (90-120d)")
+        logger.info(f"Buscados {len(clientes_oracle_raw)} clientes Oracle (90-150d)")
     except Exception as e:
         logger.error(f"Erro ao buscar clientes Oracle: {e}")
         clientes_oracle_raw = []
@@ -27,3 +27,4 @@ def carregar_clientes_oracle_deduplicados(logger, periodo_oracle):
             clientes_oracle_por_cd[cd] = row
 
     return list(clientes_oracle_por_cd.values())
+

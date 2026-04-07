@@ -935,7 +935,7 @@ code {
       <i class="bi bi-people-fill me-2" style="color:var(--brand-600);"></i>Meus Clientes
     </h2>
     {% if aba == 'oracle' %}
-    <p class="mb-0 mt-1">Clientes sem pedidos há 90-120 dias (Oracle)</p>
+    <p class="mb-0 mt-1">Clientes sem pedidos há 90-150 dias (Oracle)</p>
     {% elif aba == 'inativos' %}
     <p class="mb-0 mt-1">Clientes inativos – sem pedidos entre 181 dias e 2 anos</p>
     {% elif aba == 'proximos_inativacao' %}
@@ -997,10 +997,10 @@ code {
     <div class="card stat-card h-100">
       <div class="card-body">
         <div class="d-flex align-items-center justify-content-between">
-          <span class="text-muted">90-120 dias</span>
+          <span class="text-muted">90-150 dias</span>
           <i class="bi bi-arrow-repeat"></i>
         </div>
-        <div class="stat-value">{{ stats.clientes_90_120 or total_oracle }}</div>
+        <div class="stat-value">{{ stats.clientes_90_150 or total_oracle }}</div>
       </div>
     </div>
   </div>
@@ -1125,7 +1125,7 @@ code {
         <select class="form-select" name="periodo_oracle" onchange="this.form.submit()">
           <option value="">Todos os períodos</option>
           <option value="90"  {% if request.args.get('periodo_oracle') == '90'  %}selected{% endif %}>90 dias</option>
-          <option value="120" {% if request.args.get('periodo_oracle') == '120' %}selected{% endif %}>120 dias</option>
+          <option value="150" {% if request.args.get('periodo_oracle') == '150' %}selected{% endif %}>150 dias</option>
           <option value="180" {% if request.args.get('periodo_oracle') == '180' %}selected{% endif %}>180 dias</option>
         </select>
       </div>
@@ -1202,7 +1202,7 @@ code {
 <div class="panel-card">
   <div class="panel-header">
     <i class="bi bi-database"></i>
-    <span>Estatísticas - Clientes sem pedidos 90-120 dias</span>
+    <span>Estatísticas - Clientes sem pedidos 90-150 dias</span>
     <small><i class="bi bi-arrow-clockwise"></i> Atualizado diariamente do banco Oracle</small>
   </div>
   <div class="panel-body">
@@ -1486,7 +1486,7 @@ code {
           <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
         </a>
         <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle') }}">
-          <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
+          <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-150d</span><span class="tab-count">{{ total_oracle }}</span>
         </a>
         <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
           <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
@@ -1522,7 +1522,7 @@ code {
         </a>
         {% endif %}
         <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle') }}">
-          <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
+          <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-150d</span><span class="tab-count">{{ total_oracle }}</span>
         </a>
         {% if current_user.tipo == 'supervisor' %}
         <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos') }}">
@@ -1922,7 +1922,7 @@ code {
       </a>
       {% endif %}
       <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle') }}">
-        <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-120d</span><span class="tab-count">{{ total_oracle }}</span>
+        <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-150d</span><span class="tab-count">{{ total_oracle }}</span>
       </a>
       {% if current_user.tipo == 'supervisor' %}
       <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos') }}">
@@ -2669,7 +2669,7 @@ async function salvarLigacao(e) {
 
     const retornoAgendado = Boolean(j.proxima_ligacao || payload.data_retorno || payload.dias_retorno);
 
-    // Na aba Oracle (90-120d), manter cliente na lista e apenas atualizar status local.
+    // Na aba Oracle (90-150d), manter cliente na lista e apenas atualizar status local.
     if (ABA_ATUAL === 'oracle') {
       _atualizarLinhaEmPlace(id, j.proxima_ligacao, cdClienteOracle);
       const abaDestino = retornoAgendado ? 'retornar' : 'contatados';
@@ -4544,3 +4544,4 @@ function sincronizarClientesManuais() {
 
 </script>
 {% endblock %}
+

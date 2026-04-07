@@ -9,6 +9,7 @@ from werkzeug.security import generate_password_hash
 from core.extensions import db
 from core.helpers import _percent, formatar_dinheiro, s
 from core.models import Banner, Cliente, Ligacao, Usuario, SupervisorRepresentanteVinculo
+from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
 
 
 def _ultimos_meses(qtd=12):
@@ -147,22 +148,29 @@ def register_supervisor_routes(app):
 
         agora = datetime.now()
         limite_90 = agora - timedelta(days=90)
-        limite_120 = agora - timedelta(days=120)
+        limite_150 = agora - timedelta(days=150)
         limite_151 = agora - timedelta(days=151)
         limite_180 = agora - timedelta(days=180)
         limite_181 = agora - timedelta(days=181)
         limite_730 = agora - timedelta(days=730)
 
-        total_sem_pedido_90_120 = (
-            Cliente.query
-            .filter(
-                Cliente.ativo == True,
-                Cliente.cd_cliente_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.between(limite_120, limite_90),
+        try:
+            # Mesma fonte da aba Oracle para manter o número idêntico ao da lista.
+            total_sem_pedido_90_150 = len(
+                carregar_clientes_oracle_deduplicados(app.logger, periodo_oracle=None)
             )
-            .count()
-        )
+        except Exception:
+            # Fallback local caso Oracle indisponível.
+            total_sem_pedido_90_150 = (
+                Cliente.query
+                .filter(
+                    Cliente.ativo == True,
+                    Cliente.cd_cliente_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.between(limite_150, limite_90),
+                )
+                .count()
+            )
         total_proximos_inativacao = (
             Cliente.query
             .filter(
@@ -300,7 +308,7 @@ def register_supervisor_routes(app):
             total_clientes=total_clientes,
             total_ligacoes=total_ligacoes,
             ligacoes_hoje=ligacoes_hoje,
-            total_sem_pedido_90_120=total_sem_pedido_90_120,
+            total_sem_pedido_90_150=total_sem_pedido_90_150,
             total_proximos_inativacao=total_proximos_inativacao,
             total_inativos=total_inativos,
             total_retorno_atrasado=total_retorno_atrasado,
@@ -829,3 +837,4 @@ def register_supervisor_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro ao sincronizar: {str(e)}"}), 500
+

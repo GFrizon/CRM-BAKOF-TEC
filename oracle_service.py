@@ -208,7 +208,7 @@ class OracleService:
         Returns:
             Lista de clientes com dados estratégicos
         """
-        # REGRA VALIDADA (2026-03): 90-120 dias, 1 linha por cliente (ultimo pedido valido).
+        # REGRA VALIDADA (2026-03): 90-150 dias, 1 linha por cliente (ultimo pedido valido).
         # Qualquer alteracao aqui impacta diretamente os totais do app e do Oracle.
         query = """
         with pedidos_validos as (
@@ -234,7 +234,7 @@ class OracleService:
             select *
             from pedidos_validos
             where rn = 1
-              and dt_pedido between (sysdate - 120) and (sysdate - 90)
+              and dt_pedido between (sysdate - 150) and (sysdate - 90)
         )
         select
           CA.dt_pedido,
@@ -1040,3 +1040,4 @@ def get_cliente_oracle_por_codigo(cd_cliente: str):
 def get_vinculos_supervisor_representante_oracle(codigo_supervisor: Optional[str] = None):
     """Busca vínculos supervisor-representante da TG 650 no Oracle"""
     return oracle_service.get_vinculos_supervisor_representante(codigo_supervisor)
+

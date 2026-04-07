@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta
+from datetime import datetime, timedelta
 
 from flask_mail import Message
 from sqlalchemy import and_, case, func
@@ -14,7 +14,7 @@ def _build_assunto_relatorio():
     hoje_txt = agora.strftime("%d/%m/%Y")
     inicio_mes = datetime(agora.year, agora.month, 1)
     limite_90 = agora - timedelta(days=90)
-    limite_120 = agora - timedelta(days=120)
+    limite_150 = agora - timedelta(days=150)
     limite_181 = agora - timedelta(days=181)
     limite_151 = agora - timedelta(days=151)
     limite_180 = agora - timedelta(days=180)
@@ -33,9 +33,9 @@ def _build_assunto_relatorio():
         Cliente.cd_cliente_oracle.isnot(None),
         Cliente.ultimo_pedido_oracle.isnot(None),
     ]
-    sem_pedidos_90_120 = (
+    sem_pedidos_90_150 = (
         db.session.query(func.count(Cliente.id))
-        .filter(*filtro_oracle_base, Cliente.ultimo_pedido_oracle.between(limite_120, limite_90))
+        .filter(*filtro_oracle_base, Cliente.ultimo_pedido_oracle.between(limite_150, limite_90))
         .scalar()
     ) or 0
     inativos_181_730 = (
@@ -51,7 +51,7 @@ def _build_assunto_relatorio():
 
     return (
         f"Relatório Diário CRM {hoje_txt} | "
-        f"SP90-120: {int(sem_pedidos_90_120)} | "
+        f"SP90-150: {int(sem_pedidos_90_150)} | "
         f"Risco151-180: {int(proximos_inativacao_151_180)} | "
         f"Inativos: {int(inativos_181_730)} | "
         f"ConvMês: {conv_mes:.1f}%"
@@ -126,7 +126,7 @@ def _montar_insights_basicos(
     total_ontem,
     media_mesmo_dia_semana,
     conv_mes,
-    total_sem_pedidos_90_120,
+    total_sem_pedidos_90_150,
     total_inativos_181_730,
     inativos_entraram_hoje,
     inativos_sairam_hoje,
@@ -208,7 +208,7 @@ def _montar_insights_basicos(
     if top_t:
         _add("OK", "&#127942;", f"Destaque televendas no mês: {top_t[0]} com {top_t[1]} vendas.")
 
-    if total_inativos_181_730 > total_sem_pedidos_90_120 * 3:
+    if total_inativos_181_730 > total_sem_pedidos_90_150 * 3:
         _add("ATENCAO", "&#127919;", "Ação do dia: priorizar televendas na carteira de inativos (base alta).")
     elif conv_mes < 20:
         _add("ATENCAO", "&#129517;", "Ação do dia: reforçar follow-up de retornos e clientes sem interesse recente.")
@@ -225,7 +225,7 @@ def build_relatorio_html():
     desde7 = agora - timedelta(days=7)
     inicio_mes = datetime(agora.year, agora.month, 1)
     limite_90 = agora - timedelta(days=90)
-    limite_120 = agora - timedelta(days=120)
+    limite_150 = agora - timedelta(days=150)
     limite_181 = agora - timedelta(days=181)
     limite_151 = agora - timedelta(days=151)
     limite_180 = agora - timedelta(days=180)
@@ -270,9 +270,9 @@ def build_relatorio_html():
         .filter(Cliente.ativo == True, Cliente.cd_cliente_oracle.is_(None))
         .scalar()
     ) or 0
-    total_sem_pedidos_90_120 = (
+    total_sem_pedidos_90_150 = (
         db.session.query(func.count(Cliente.id))
-        .filter(*filtro_oracle_base, Cliente.ultimo_pedido_oracle.between(limite_120, limite_90))
+        .filter(*filtro_oracle_base, Cliente.ultimo_pedido_oracle.between(limite_150, limite_90))
         .scalar()
     ) or 0
     total_inativos_181_730 = (
@@ -304,7 +304,7 @@ def build_relatorio_html():
         total_ontem=total_ontem,
         media_mesmo_dia_semana=media_mesmo_dia_semana,
         conv_mes=conv_mes,
-        total_sem_pedidos_90_120=total_sem_pedidos_90_120,
+        total_sem_pedidos_90_150=total_sem_pedidos_90_150,
         total_inativos_181_730=total_inativos_181_730,
         inativos_entraram_hoje=inativos_entraram_hoje,
         inativos_sairam_hoje=inativos_sairam_hoje,
@@ -372,7 +372,7 @@ def build_relatorio_html():
       <table cellpadding="10" cellspacing="0" border="0" style="width:100%; border:1px solid #dbe3ee; margin-bottom:18px; font-size:16px; background:#ffffff; border-radius:8px;">
         <tr style="background:#f8fafc;"><th align="left">Indicador</th><th align="right">Valor</th></tr>
         <tr><td style='padding:10px; border-top:1px solid #edf2f7;'>Clientes normais ativos (fora Oracle)</td><td style='padding:10px; border-top:1px solid #edf2f7;' align="right"><b>{_kfmt(total_clientes_normais)}</b></td></tr>
-        <tr style='background:#fcfdff;'><td style='padding:10px; border-top:1px solid #edf2f7;'>Clientes sem pedidos (90-120 dias)</td><td style='padding:10px; border-top:1px solid #edf2f7;' align="right"><b>{_kfmt(total_sem_pedidos_90_120)}</b></td></tr>
+        <tr style='background:#fcfdff;'><td style='padding:10px; border-top:1px solid #edf2f7;'>Clientes sem pedidos (90-150 dias)</td><td style='padding:10px; border-top:1px solid #edf2f7;' align="right"><b>{_kfmt(total_sem_pedidos_90_150)}</b></td></tr>
         <tr><td style='padding:10px; border-top:1px solid #edf2f7;'>Clientes que irao cair fora no mes (151-180 dias)</td><td style='padding:10px; border-top:1px solid #edf2f7;' align="right"><b>{_kfmt(total_proximos_inativacao_151_180)}</b></td></tr>
         <tr><td style='padding:10px; border-top:1px solid #edf2f7;'>Clientes inativos (181-730 dias)</td><td style='padding:10px; border-top:1px solid #edf2f7;' align="right"><b>{_kfmt(total_inativos_181_730)}</b></td></tr>
         <tr style='background:#fcfdff;'><td style='padding:10px; border-top:1px solid #edf2f7;'>Movimento inativos hoje</td><td style='padding:10px; border-top:1px solid #edf2f7;' align="right">+{inativos_entraram_hoje} / -{inativos_sairam_hoje}</td></tr>
@@ -412,3 +412,4 @@ def enviar_relatorio_email(recipients=None):
     except Exception as e:
         print(f"Erro ao enviar email: {e}")
         return False, f"Falha ao enviar e-mail: {e}"
+

@@ -36,7 +36,7 @@ def render_aba_oracle(
     total_inativos_badge: int,
     total_proximos_badge: int,
 ):
-    # REGRA VALIDADA (2026-03): usar Oracle como fonte de verdade da lista 90-120d.
+    # REGRA VALIDADA (2026-03): usar Oracle como fonte de verdade da lista 90-150d.
     # Nao voltar para filtro principal via MySQL local.
     periodo_oracle = request.args.get("periodo_oracle")
     conceito_filtro, consultor_filtro, termo = extrair_filtros_listagem(request)
@@ -190,14 +190,14 @@ def render_aba_oracle(
     )
     if current_user.tipo == "consultor":
         # Mantem "Clientes Especiais" consistente em todas as abas:
-        # para consultor, remove da contagem operacional a campanha 90-120d.
-        limite_min_90_120 = datetime.now() - timedelta(days=120)
-        limite_max_90_120 = datetime.now() - timedelta(days=90)
+        # para consultor, remove da contagem operacional a campanha 90-150d.
+        limite_min_90_150 = datetime.now() - timedelta(days=150)
+        limite_max_90_150 = datetime.now() - timedelta(days=90)
         base_pendentes = base_pendentes.filter(
             ~and_(
                 Cliente.cd_cliente_oracle.isnot(None),
                 Cliente.ultimo_pedido_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.between(limite_min_90_120, limite_max_90_120),
+                Cliente.ultimo_pedido_oracle.between(limite_min_90_150, limite_max_90_150),
             )
         )
     total_pendentes = base_pendentes.count()
@@ -236,3 +236,4 @@ def render_aba_oracle(
         mes_filtro=None,
         ano_filtro=None,
     )
+
