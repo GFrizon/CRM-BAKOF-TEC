@@ -317,6 +317,7 @@ def register_oracle_routes(app):
         """Busca detalhes completos do cliente Oracle"""
         try:
             janela_dias = request.args.get('janela_dias', type=int) or 365
+            cd_cliente_override = str(request.args.get('cd_cliente_oracle') or '').strip()
             if janela_dias < 30:
                 janela_dias = 30
             if janela_dias > 730:
@@ -352,9 +353,15 @@ def register_oracle_routes(app):
                     "mensagem": "Cliente não possui dados Oracle"
                 })
 
+            cd_cliente_resolvido = (
+                cd_cliente_override
+                if cd_cliente_override
+                else str(cliente.cd_cliente_oracle).strip()
+            )
+
             return _montar_resposta_detalhes_oracle(
                 cliente,
-                str(cliente.cd_cliente_oracle).strip(),
+                cd_cliente_resolvido,
                 janela_dias=janela_dias
             )
 

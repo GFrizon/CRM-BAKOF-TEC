@@ -162,13 +162,6 @@ def render_aba_inativos(
             lock_info = locks_por_cd_oracle.get(cd_cliente, {})
         if (not lock_info) and cliente_local and cliente_local.id:
             lock_info = locks_por_cliente_id.get(cliente_local.id, {})
-        total_ligacoes_local = stats_lig.get("total_ligacoes", 0)
-
-        # Fluxo operacional: apos primeiro contato, o cliente sai de "Inativos"
-        # e passa a ser tratado nas abas "Contatados" ou "Retornar".
-        if cliente_local and (total_ligacoes_local > 0 or cliente_local.proxima_ligacao is not None):
-            continue
-
         uf_grupo = str(cliente_oracle.get("uf") or "").strip().upper() or "SEM UF"
 
         if uf_grupo not in representantes_data:

@@ -4058,7 +4058,12 @@ function detalhesClienteOracle(clienteId, cdClienteOracle) {
     : `/detalhes-cliente-oracle-cd/${encodeURIComponent(cdClienteOracle || '')}`;
   const janelaDiasDetalhes = ABA_ATUAL === 'inativos' ? 730 : 365;
 
-  fetch(`${urlDetalhes}?janela_dias=${janelaDiasDetalhes}`)
+  const paramsDetalhes = new URLSearchParams({ janela_dias: String(janelaDiasDetalhes) });
+  if (clienteId && cdClienteOracle) {
+    paramsDetalhes.set('cd_cliente_oracle', String(cdClienteOracle).trim());
+  }
+
+  fetch(`${urlDetalhes}?${paramsDetalhes.toString()}`)
     .then(r => r.json())
     .then(data => {
       if (data.success) renderizarDetalhesOracle(data);
@@ -4212,6 +4217,31 @@ function renderizarDetalhesOracle(data) {
       });
 
       html += `</div></div>`;
+    });
+
+    html += `</div></div>`;
+  } else if (pedidos.length > 0) {
+    html += `<div class="panel-card mt-3" style="margin-bottom:0;">
+      <div class="panel-header" style="font-size:.82rem;padding:10px 16px;">
+        <i class="bi bi-receipt"></i> Pedidos (${labelJanela})
+        <span style="margin-left:auto;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 10px;font-size:.7rem;">${pedidos.length} pedido(s)</span>
+      </div>
+      <div class="panel-body">`;
+
+    pedidos.forEach(pedido => {
+      const dataPedido = pedido.dt_pedido ? new Date(pedido.dt_pedido).toLocaleDateString('pt-BR') : '-';
+      const valorPedido = (pedido.total_pedido !== null && pedido.total_pedido !== undefined)
+        ? Number(pedido.total_pedido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        : '-';
+      const situacaoPedido = formatarSituacaoPedido(pedido.situacao);
+      html += `
+        <div style="margin-bottom:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);display:flex;gap:10px;justify-content:space-between;align-items:center;">
+          <div style="font-size:.82rem;">
+            <div style="font-weight:700;color:var(--brand-700);">Pedido em ${dataPedido}</div>
+            <div style="color:var(--text-2);">Situacao: ${situacaoPedido}</div>
+          </div>
+          <div style="font-size:.82rem;font-weight:700;color:#16a34a;">${valorPedido}</div>
+        </div>`;
     });
 
     html += `</div></div>`;

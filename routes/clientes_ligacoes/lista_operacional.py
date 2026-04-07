@@ -21,8 +21,17 @@ def filtrar_listas_por_termo(termo, pendentes, contatados, precisa_retornar):
 
 def ordenar_clientes_por_aba(aba, pendentes_view, contatados_view, precisa_retornar_view, filtro):
     if aba == "pendentes":
+        # A aba "pendentes" funciona como carteira operacional.
+        # Mantemos o cliente visivel mesmo apos contato/retorno agendado,
+        # enquanto as abas "contatados" e "retornar" continuam refletindo o status.
+        carteira_por_id = {}
+        for item in pendentes_view + contatados_view + precisa_retornar_view:
+            cid = item.get("id")
+            if cid and cid not in carteira_por_id:
+                carteira_por_id[cid] = item
+        carteira = list(carteira_por_id.values())
         return sorted(
-            pendentes_view,
+            carteira,
             key=lambda x: (
                 float(x.get("valor_total_365dias") or 0),
                 float(x.get("valor_ultimo_pedido") or 0),
