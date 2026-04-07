@@ -2917,7 +2917,11 @@ async function atualizarBadgesAbasAssincrono() {
     _definirContadorAba('pendentes', b.pendentes);
     _definirContadorAba('contatados', b.contatados);
     _definirContadorAba('retornar', b.retornar);
-    _definirContadorAba('oracle', b.oracle);
+    // Na aba Oracle, preserva o contador renderizado no servidor
+    // para manter consistência com o painel de estatísticas exibido.
+    if (ABA_ATUAL !== 'oracle') {
+      _definirContadorAba('oracle', b.oracle);
+    }
     _definirContadorAba('inativos', b.inativos);
     _definirContadorAba('proximos_inativacao', b.proximos_inativacao);
   } catch (erro) {

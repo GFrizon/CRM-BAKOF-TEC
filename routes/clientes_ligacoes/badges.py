@@ -1,19 +1,33 @@
+import logging
 from datetime import datetime, timedelta
 
 from core.models import Cliente, SyncResumoDiario
+from routes.clientes_ligacoes.consultor_mapping import (
+    carregar_mapa_nome_para_id_usuarios_ativos,
+    construir_mapa_codigo_para_id,
+)
 from routes.clientes_ligacoes.domain_utils import (
     _cliente_tem_representante_vinculado,
     _codigo_representante_de_texto,
     _normalizar_codigo_representante,
 )
+from routes.clientes_ligacoes.listagem_permissions import (
+    consultor_categoria_permitido_para_usuario,
+)
+from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
+
+logger = logging.getLogger(__name__)
 
 
-def _total_oracle_badge():
-    """Conta clientes da janela 90-120 dias sem pedido na base local sincronizada."""
+def _total_oracle_badge(consultor_id=None):
+    """Conta clientes 90-120d na base local sincronizada.
+
+    Quando ``consultor_id`` for informado, restringe a contagem ao consultor.
+    """
     agora = datetime.now()
     limite_min = agora - timedelta(days=120)
     limite_max = agora - timedelta(days=90)
-    return (
+    q = (
         Cliente.query
         .filter(
             Cliente.ativo == True,
@@ -21,8 +35,10 @@ def _total_oracle_badge():
             Cliente.ultimo_pedido_oracle.isnot(None),
             Cliente.ultimo_pedido_oracle.between(limite_min, limite_max),
         )
-        .count()
     )
+    if consultor_id:
+        q = q.filter(Cliente.consultor_id == consultor_id)
+    return q.count()
 
 
 def _total_oracle_badge_supervisor_repr(codigos_representantes_vinculados):
@@ -75,6 +91,61 @@ def _total_oracle_badge_supervisor_repr(codigos_representantes_vinculados):
             for c in clientes_oracle
             if _cliente_tem_representante_vinculado(c, codigos_representantes_vinculados)
         )
+
+
+def _total_oracle_badge_consultor_lista_oracle(consultor_id: int) -> int:
+    """Conta 90-120d com a mesma regra da aba Oracle para consultor."""
+    if not consultor_id:
+        return 0
+
+    clientes_oracle = carregar_clientes_oracle_deduplicados(logger, periodo_oracle=None)
+    if not clientes_oracle:
+        return 0
+
+    codigos_oracle = {
+        str(c.get("cd_cliente") or "").strip()
+        for c in clientes_oracle
+        if c.get("cd_cliente")
+    }
+    if not codigos_oracle:
+        return 0
+
+    clientes_consultor = (
+        Cliente.query
+        .filter(
+            Cliente.ativo == True,
+            Cliente.consultor_id == consultor_id,
+            Cliente.cd_cliente_oracle.in_(list(codigos_oracle)),
+        )
+        .all()
+    )
+    codigos_consultor = {
+        str(c.cd_cliente_oracle).strip()
+        for c in clientes_consultor
+        if c.cd_cliente_oracle
+    }
+    if not codigos_consultor:
+        return 0
+
+    _, mapa_nome_para_id_oracle = carregar_mapa_nome_para_id_usuarios_ativos()
+    mapa_codigo_para_id_oracle = construir_mapa_codigo_para_id(mapa_nome_para_id_oracle)
+
+    total = 0
+    for row in clientes_oracle:
+        cd_cliente = str(row.get("cd_cliente") or "").strip()
+        if not cd_cliente or cd_cliente not in codigos_consultor:
+            continue
+        consultor_cliente = str(row.get("consultor") or "").strip()
+        if not consultor_categoria_permitido_para_usuario(
+            tipo_usuario="consultor",
+            consultor_cliente=consultor_cliente,
+            current_user_id=consultor_id,
+            mapa_codigo_para_id=mapa_codigo_para_id_oracle,
+            mapa_nome_para_id=mapa_nome_para_id_oracle,
+        ):
+            continue
+        total += 1
+    return total
 
 
 def _total_inativos_badge(consultor_id=None):
