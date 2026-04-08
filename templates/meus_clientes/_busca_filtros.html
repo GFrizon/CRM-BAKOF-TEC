@@ -1,0 +1,45 @@
+<!-- ============================================================
+     BUSCA + FILTROS
+     ============================================================ -->
+<form method="get" action="{{ url_for('meus_clientes') }}" class="search-bar">
+  <div class="row g-3 align-items-center">
+    <input type="hidden" name="aba" value="{{ aba }}">
+    <div class="col-md-6">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" name="q"
+               placeholder="Buscar por nome, CNPJ, telefone ou representante..."
+               value="{{ request.args.get('q','') }}"
+               id="buscaRapida"
+               autocomplete="off">
+      </div>
+    </div>
+
+    {% if aba == 'contatados' %}
+    <div class="col-md-3">
+      <select class="form-select js-debounce-submit-control" name="filtro" data-debounce-ms="240">
+        <option value="">Todos</option>
+        <option value="antigos"  {% if request.args.get('filtro') == 'antigos'  %}selected{% endif %}>+30 dias sem contato</option>
+        <option value="recentes" {% if request.args.get('filtro') == 'recentes' %}selected{% endif %}>Recentes (≤7 dias)</option>
+      </select>
+    </div>
+    {% endif %}
+
+    {% if aba not in ('oracle', 'inativos', 'proximos_inativacao') and not usar_vista_agrupada|default(false) %}
+    <div class="col-md-3">
+      <select id="filtroOrigem" class="form-select" onchange="filtrarPorOrigem()">
+        <option value="">Origem: todas</option>
+        <option value="manual">Origem: manual</option>
+        <option value="importado_csv">Origem: importado</option>
+      </select>
+    </div>
+    {% endif %}
+
+    <div class="col-12 text-end">
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="bi bi-funnel me-1"></i> Aplicar filtros
+      </button>
+    </div>
+  </div>
+</form>
+
