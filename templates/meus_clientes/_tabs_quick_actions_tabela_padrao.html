@@ -1,0 +1,68 @@
+<div class="panel-card" style="overflow:visible;">
+  <div class="panel-body" style="padding-bottom:0;">
+    <!-- Tabs modernas -->
+    <div class="modern-tabs nav">
+      {% if current_user.tipo == 'televendas' %}
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos') }}">
+        <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
+      </a>
+      {% if current_user.tipo != 'supervisor_repr' %}
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados') }}">
+        <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
+      </a>
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar') }}">
+        <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
+        {% if total_retornar and total_retornar > 0 %}
+        <i class="bi bi-dot tab-alert"></i>
+        {% endif %}
+      </a>
+      {% endif %}
+      {% else %}
+      {% if current_user.tipo != 'supervisor_repr' %}
+      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes') }}">
+        {% if current_user.tipo in ('consultor', 'supervisor') %}
+        <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
+        {% else %}
+        <i class="bi bi-clock"></i><span class="tab-label">Pendentes</span><span class="tab-count">{{ total_pendentes }}</span>
+        {% endif %}
+      </a>
+      {% endif %}
+      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle') }}">
+        <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-150d</span><span class="tab-count">{{ total_oracle }}</span>
+      </a>
+      {% if current_user.tipo == 'supervisor' %}
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos') }}">
+        <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
+      </a>
+      {% endif %}
+      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
+        <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
+      </a>
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados') }}">
+        <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
+      </a>
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar') }}">
+        <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
+        {% if total_retornar and total_retornar > 0 %}
+        <i class="bi bi-dot tab-alert"></i>
+        {% endif %}
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="quick-action-bar d-flex flex-wrap align-items-center gap-2">
+    {% if current_user.tipo != 'supervisor_repr' %}
+    <button class="btn btn-primary btn-sm" onclick="ligarProximoCliente()">
+      <i class="bi bi-telephone-outbound me-1"></i>Ligar proximo
+    </button>
+    {% endif %}
+    <button class="btn btn-outline-danger btn-sm" onclick="filtrarClientesCriticos()">
+      <i class="bi bi-exclamation-triangle me-1"></i>Filtrar criticos
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltroCriticos()">
+      <i class="bi bi-funnel me-1"></i>Limpar filtro
+    </button>
+    <span class="quick-action-info ms-auto" id="quickActionInfo">Mostrando todos os clientes</span>
+  </div>
+
