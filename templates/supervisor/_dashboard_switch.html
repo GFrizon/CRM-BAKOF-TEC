@@ -1,0 +1,8 @@
+﻿<div class="d-flex justify-content-end gap-2 mb-3">
+  <a class="btn btn-sm {{ 'btn-primary' if dashboard_tipo == 'consultor' else 'btn-outline-primary' }}" href="{{ url_for('dashboard_supervisor') }}">
+    <i class="bi bi-people-fill"></i> Consultores
+  </a>
+  <a class="btn btn-sm {{ 'btn-primary' if dashboard_tipo == 'televendas' else 'btn-outline-primary' }}" href="{{ url_for('dashboard_supervisor_televendas') }}">
+    <i class="bi bi-headset"></i> Televendas
+  </a>
+</div>

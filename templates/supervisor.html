@@ -2,14 +2,7 @@
 {% block title %}Dashboard Supervisor{% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-end gap-2 mb-3">
-  <a class="btn btn-sm {{ 'btn-primary' if dashboard_tipo == 'consultor' else 'btn-outline-primary' }}" href="{{ url_for('dashboard_supervisor') }}">
-    <i class="bi bi-people-fill"></i> Consultores
-  </a>
-  <a class="btn btn-sm {{ 'btn-primary' if dashboard_tipo == 'televendas' else 'btn-outline-primary' }}" href="{{ url_for('dashboard_supervisor_televendas') }}">
-    <i class="bi bi-headset"></i> Televendas
-  </a>
-</div>
+{% include "supervisor/_dashboard_switch.html" %}
 
 <!-- 🆕 POP-UP DE NOVIDADES -->
 {% if mostrar_novidades %}
@@ -67,114 +60,9 @@
   </a>
 </div>
 
-<!-- Cards de Estatísticas -->
-<div class="row g-4 mb-4">
-  <div class="col-md-3">
-    <div class="stat-card">
-      <div class="stat-icon">
-        <i class="bi bi-people-fill"></i>
-      </div>
-      <div class="stat-value">{{ total_consultores }}</div>
-      <div class="stat-label">{{ dashboard_titulo }} Ativos</div>
-    </div>
-  </div>
-  
-  <div class="col-md-3">
-    <div class="stat-card">
-      <div class="stat-icon">
-        <i class="bi bi-building"></i>
-      </div>
-      <div class="stat-value">{{ total_clientes }}</div>
-      <div class="stat-label">Total de Clientes</div>
-    </div>
-  </div>
-  
-  <div class="col-md-3">
-    <div class="stat-card">
-      <div class="stat-icon">
-        <i class="bi bi-telephone-fill"></i>
-      </div>
-      <div class="stat-value">{{ total_ligacoes }}</div>
-      <div class="stat-label">Total de Ligações</div>
-    </div>
-  </div>
-  
-  <div class="col-md-3">
-    <div class="stat-card">
-      <div class="stat-icon">
-        <i class="bi bi-calendar-check"></i>
-      </div>
-      <div class="stat-value">{{ ligacoes_hoje }}</div>
-      <div class="stat-label">Ligações Hoje</div>
-      {% if ligacoes_hoje > 0 %}
-        <div class="stat-change positive">
-          <i class="bi bi-graph-up-arrow"></i> Ativo hoje
-        </div>
-      {% endif %}
-    </div>
-  </div>
-</div>
+{% include "supervisor/_cards_topo.html" %}
 
-<!-- KPI Operacionais -->
-<div class="row g-4 mb-4">
-  {% if dashboard_tipo == 'consultor' %}
-  <div class="col-md-4">
-    <a href="{{ url_for('meus_clientes', aba='oracle', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="bi bi-database"></i>
-        </div>
-        <div class="stat-value">{{ total_sem_pedido_90_150 }}</div>
-        <div class="stat-label">Sem Pedido 90-150d</div>
-        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
-      </div>
-    </a>
-  </div>
-  <div class="col-md-4">
-    <a href="{{ url_for('meus_clientes', aba='proximos_inativacao', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="bi bi-exclamation-triangle"></i>
-        </div>
-        <div class="stat-value">{{ total_proximos_inativacao }}</div>
-        <div class="stat-label">Proximos Inativacao</div>
-        {% if total_carteira_risco > 0 %}
-        <small class="text-danger fw-semibold"><i class="bi bi-shield-exclamation"></i> {{ total_carteira_risco }} sem contato 30d</small>
-        {% else %}
-        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
-        {% endif %}
-      </div>
-    </a>
-  </div>
-  <div class="col-md-4">
-  {% else %}
-  <div class="col-md-6">
-    <a href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="bi bi-person-slash"></i>
-        </div>
-        <div class="stat-value">{{ total_inativos }}</div>
-        <div class="stat-label">Clientes Inativos</div>
-        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
-      </div>
-    </a>
-  </div>
-  <div class="col-md-6">
-  {% endif %}
-    <div class="stat-card {% if total_retorno_atrasado > 0 %}border-danger{% endif %}" style="{% if total_retorno_atrasado > 0 %}border-left: 4px solid #dc2626;{% endif %}">
-      <a href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
-        <div class="stat-icon" style="{% if total_retorno_atrasado > 0 %}color:#dc2626;{% endif %}">
-          <i class="bi bi-alarm"></i>
-        </div>
-        <div class="stat-value" style="{% if total_retorno_atrasado > 0 %}color:#dc2626;{% endif %}">{{ total_retorno_atrasado }}</div>
-        <div class="stat-label">Retornos Atrasados</div>
-        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver retornos</small>
-      </a>
-    </div>
-  </div>
-</div>
-
+{% include "supervisor/_kpis_operacionais.html" %}
 
 <!-- Meta Diária dos Consultores -->
 {% if progresso %}

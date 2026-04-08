@@ -1,0 +1,47 @@
+﻿<!-- Cards de Estatísticas -->
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="bi bi-people-fill"></i>
+      </div>
+      <div class="stat-value">{{ total_consultores }}</div>
+      <div class="stat-label">{{ dashboard_titulo }} Ativos</div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="bi bi-building"></i>
+      </div>
+      <div class="stat-value">{{ total_clientes }}</div>
+      <div class="stat-label">Total de Clientes</div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="bi bi-telephone-fill"></i>
+      </div>
+      <div class="stat-value">{{ total_ligacoes }}</div>
+      <div class="stat-label">Total de Ligações</div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="bi bi-calendar-check"></i>
+      </div>
+      <div class="stat-value">{{ ligacoes_hoje }}</div>
+      <div class="stat-label">Ligações Hoje</div>
+      {% if ligacoes_hoje > 0 %}
+      <div class="stat-change positive">
+        <i class="bi bi-graph-up-arrow"></i> Ativo hoje
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
