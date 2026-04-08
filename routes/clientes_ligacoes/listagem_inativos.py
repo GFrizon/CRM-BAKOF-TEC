@@ -41,6 +41,7 @@ def render_aba_inativos(
     total_inativos_badge: int,
     total_proximos_badge: int,
     cache_store: dict,
+    dashboard_tipo=None,
 ):
     # REGRA VALIDADA (2026-03): lista de inativos vem da base local sincronizada diariamente.
     app.logger.info("=== INICIANDO TRATAMENTO ABA INATIVOS ===")
@@ -61,6 +62,19 @@ def render_aba_inativos(
         for c in clientes_oracle_inativos
         if c.get("cd_cliente")
     ]
+    filtrar_por_vinculo_dashboard = (dashboard_tipo == "consultor")
+    operadores_ids_tipo = set()
+    if filtrar_por_vinculo_dashboard:
+        operadores_ids_tipo = {
+            int(uid)
+            for (uid,) in (
+                db.session.query(Usuario.id)
+                .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+                .all()
+            )
+            if uid
+        }
+
     clientes_locais_por_cd = {}
     stats_ligacoes_por_cliente_id = {}
     locks_por_cliente_id = {}
@@ -72,6 +86,7 @@ def render_aba_inativos(
                 Cliente.cd_cliente_oracle.in_(codigos_inativos),
                 Cliente.ativo == True,
             )
+            .filter(Cliente.consultor_id.in_(operadores_ids_tipo) if filtrar_por_vinculo_dashboard else True)
             .all()
         )
         clientes_locais_por_cd = {
@@ -145,6 +160,8 @@ def render_aba_inativos(
 
         cd_cliente = str(cliente_oracle.get("cd_cliente") or "").strip()
         cliente_local = clientes_locais_por_cd.get(cd_cliente) if cd_cliente else None
+        if filtrar_por_vinculo_dashboard and not cliente_local:
+            continue
 
         if not representante_oracle_permitido_para_usuario(
             tipo_usuario=current_user.tipo,
@@ -196,10 +213,11 @@ def render_aba_inativos(
         chave_sem_grupo="SEM UF",
         conceitos_sem_conceito=("", "SEM CONCEITO", None),
     )
-    cache_store[current_user.id] = {
-        "count": total_inativos,
-        "ts": datetime.now(),
-    }
+    if not filtrar_por_vinculo_dashboard:
+        cache_store[current_user.id] = {
+            "count": total_inativos,
+            "ts": datetime.now(),
+        }
 
     resumo_sync_hoje = SyncResumoDiario.query.filter_by(data_ref=datetime.now().date()).first()
     movimento_inativos_hoje = {
@@ -235,6 +253,8 @@ def render_aba_inativos(
         )
     else:
         todos_clientes = Cliente.query.filter_by(ativo=True)
+        if filtrar_por_vinculo_dashboard:
+            todos_clientes = todos_clientes.filter(Cliente.consultor_id.in_(operadores_ids_tipo))
         if apenas_meus:
             todos_clientes = todos_clientes.filter(Cliente.consultor_id == current_user.id)
 
@@ -262,6 +282,7 @@ def render_aba_inativos(
         total_retornar = todos_clientes.filter(Cliente.proxima_ligacao.isnot(None)).count()
 
     stats_televendas = montar_stats_produtividade_televendas()
+    total_inativos_exibido = total_inativos if filtrar_por_vinculo_dashboard else total_inativos_badge
 
     return render_template(
         "meus_clientes.html",
@@ -271,7 +292,7 @@ def render_aba_inativos(
         total_contatados=total_contatados,
         total_retornar=total_retornar,
         total_oracle=total_oracle_badge,
-        total_inativos=total_inativos_badge,
+        total_inativos=total_inativos_exibido,
         total_proximos=total_proximos_badge,
         usar_vista_agrupada=True,
         is_supervisor=current_user.tipo == "supervisor",
@@ -284,4 +305,5 @@ def render_aba_inativos(
         meses_disponiveis_consultor=[],
         mes_filtro=None,
         ano_filtro=None,
+        dashboard_tipo=dashboard_tipo,
     )

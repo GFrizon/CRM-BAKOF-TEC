@@ -50,6 +50,7 @@ def register_clientes_ligacoes_listagem_routes(app):
         if contexto_inicial.get("response") is not None:
             return contexto_inicial["response"]
         aba = contexto_inicial["aba"]
+        dashboard_tipo = contexto_inicial["dashboard_tipo"]
         total_oracle_badge = contexto_inicial["total_oracle_badge"]
         total_proximos_badge = contexto_inicial["total_proximos_badge"]
         apenas_meus = contexto_inicial["apenas_meus"]
@@ -85,6 +86,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                 total_inativos_badge=total_inativos_badge,
                 total_proximos_badge=total_proximos_badge,
                 cache_store=_INATIVOS_COUNT_CACHE,
+                dashboard_tipo=dashboard_tipo,
             )
 
         if aba == 'proximos_inativacao':

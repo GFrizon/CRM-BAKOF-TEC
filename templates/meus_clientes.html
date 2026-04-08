@@ -2903,6 +2903,7 @@ function _definirContadorAba(abaKey, valor) {
 }
 
 async function atualizarBadgesAbasAssincrono() {
+  if (DASHBOARD_TIPO) return;
   try {
     const params = new URLSearchParams({
       aba: ABA_ATUAL || '',
@@ -3258,6 +3259,7 @@ function abrirWhatsApp(telefone, nomeCliente = '') {
 
 let ABA_ATUAL = '{{ aba|e }}';
 const APENAS_MEUS = {{ 'true' if current_user.tipo in ('consultor', 'televendas') else 'false' }};
+const DASHBOARD_TIPO = '{{ request.args.get("dashboard_tipo", "")|e }}';
 const STORAGE_OPEN_GROUPS_KEY = 'meus_clientes_open_groups_v1';
 let _tabFetchEmAndamento = false;
 const TAB_HTML_CACHE_TTL_DEFAULT_MS = 12000;

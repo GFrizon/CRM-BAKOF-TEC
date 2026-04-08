@@ -144,10 +144,32 @@ def register_supervisor_routes(app):
         hoje = datetime.now().date()
         desde = datetime.now() - timedelta(days=30)
 
+        operadores_ids_query = (
+            db.session.query(Usuario.id)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+        )
+        filtrar_carteira_por_vinculo = (dashboard_tipo == "consultor")
         total_consultores = Usuario.query.filter_by(tipo=dashboard_tipo, ativo=True).count()
-        total_clientes = Cliente.query.filter_by(ativo=True).count()
-        total_ligacoes = Ligacao.query.count()
-        ligacoes_hoje = Ligacao.query.filter(func.date(Ligacao.data_hora) == hoje).count()
+        total_clientes_query = Cliente.query.filter(Cliente.ativo == True)
+        if filtrar_carteira_por_vinculo:
+            total_clientes_query = total_clientes_query.filter(Cliente.consultor_id.in_(operadores_ids_query))
+        total_clientes = total_clientes_query.count()
+        total_ligacoes = (
+            db.session.query(func.count(Ligacao.id))
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+            .scalar()
+        ) or 0
+        ligacoes_hoje = (
+            db.session.query(func.count(Ligacao.id))
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
+            .filter(
+                Usuario.tipo == dashboard_tipo,
+                Usuario.ativo == True,
+                func.date(Ligacao.data_hora) == hoje,
+            )
+            .scalar()
+        ) or 0
 
         agora = datetime.now()
         limite_90 = agora - timedelta(days=90)
@@ -159,12 +181,27 @@ def register_supervisor_routes(app):
 
         try:
             # Mesma fonte da aba Oracle para manter o número idêntico ao da lista.
-            total_sem_pedido_90_150 = len(
-                carregar_clientes_oracle_deduplicados(app.logger, periodo_oracle=None)
+            clientes_oracle = carregar_clientes_oracle_deduplicados(app.logger, periodo_oracle=None)
+            codigos_oracle = {
+                str(c.get("cd_cliente") or "").strip()
+                for c in (clientes_oracle or [])
+                if c.get("cd_cliente")
+            }
+            total_sem_pedido_90_150_query = (
+                Cliente.query
+                .filter(
+                    Cliente.ativo == True,
+                    Cliente.cd_cliente_oracle.in_(codigos_oracle),
+                )
             )
+            if filtrar_carteira_por_vinculo:
+                total_sem_pedido_90_150_query = total_sem_pedido_90_150_query.filter(
+                    Cliente.consultor_id.in_(operadores_ids_query)
+                )
+            total_sem_pedido_90_150 = total_sem_pedido_90_150_query.count() if codigos_oracle else 0
         except Exception:
             # Fallback local caso Oracle indisponível.
-            total_sem_pedido_90_150 = (
+            total_sem_pedido_90_150_query = (
                 Cliente.query
                 .filter(
                     Cliente.ativo == True,
@@ -172,9 +209,13 @@ def register_supervisor_routes(app):
                     Cliente.ultimo_pedido_oracle.isnot(None),
                     Cliente.ultimo_pedido_oracle.between(limite_150, limite_90),
                 )
-                .count()
             )
-        total_proximos_inativacao = (
+            if filtrar_carteira_por_vinculo:
+                total_sem_pedido_90_150_query = total_sem_pedido_90_150_query.filter(
+                    Cliente.consultor_id.in_(operadores_ids_query)
+                )
+            total_sem_pedido_90_150 = total_sem_pedido_90_150_query.count()
+        total_proximos_inativacao_query = (
             Cliente.query
             .filter(
                 Cliente.ativo == True,
@@ -182,9 +223,13 @@ def register_supervisor_routes(app):
                 Cliente.ultimo_pedido_oracle.isnot(None),
                 Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
             )
-            .count()
         )
-        total_inativos = (
+        if filtrar_carteira_por_vinculo:
+            total_proximos_inativacao_query = total_proximos_inativacao_query.filter(
+                Cliente.consultor_id.in_(operadores_ids_query)
+            )
+        total_proximos_inativacao = total_proximos_inativacao_query.count()
+        total_inativos_query = (
             Cliente.query
             .filter(
                 Cliente.ativo == True,
@@ -192,29 +237,39 @@ def register_supervisor_routes(app):
                 Cliente.ultimo_pedido_oracle.isnot(None),
                 Cliente.ultimo_pedido_oracle.between(limite_730, limite_181),
             )
-            .count()
         )
+        if filtrar_carteira_por_vinculo:
+            total_inativos_query = total_inativos_query.filter(
+                Cliente.consultor_id.in_(operadores_ids_query)
+            )
+        total_inativos = total_inativos_query.count()
 
         # Retornos vencidos: clientes com proxima_ligacao no passado (equipe não ligou).
-        total_retorno_atrasado = (
+        total_retorno_atrasado_query = (
             Cliente.query
             .filter(
                 Cliente.ativo == True,
                 Cliente.proxima_ligacao.isnot(None),
                 Cliente.proxima_ligacao < agora,
             )
-            .count()
         )
+        if filtrar_carteira_por_vinculo:
+            total_retorno_atrasado_query = total_retorno_atrasado_query.filter(
+                Cliente.consultor_id.in_(operadores_ids_query)
+            )
+        total_retorno_atrasado = total_retorno_atrasado_query.count()
 
         # Carteira em risco: proximos inativação (151-180d) sem qualquer ligação nos últimos 30d.
         limite_30d = agora - timedelta(days=30)
         ids_com_contato_recente = (
             db.session.query(Ligacao.cliente_id)
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
             .filter(Ligacao.data_hora >= limite_30d)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
             .distinct()
             .subquery()
         )
-        total_carteira_risco = (
+        total_carteira_risco_query = (
             Cliente.query
             .filter(
                 Cliente.ativo == True,
@@ -223,8 +278,12 @@ def register_supervisor_routes(app):
                 Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
                 Cliente.id.notin_(ids_com_contato_recente),
             )
-            .count()
         )
+        if filtrar_carteira_por_vinculo:
+            total_carteira_risco_query = total_carteira_risco_query.filter(
+                Cliente.consultor_id.in_(operadores_ids_query)
+            )
+        total_carteira_risco = total_carteira_risco_query.count()
 
         rows = (
             db.session.query(Usuario.nome, func.count(Ligacao.id))
@@ -239,7 +298,9 @@ def register_supervisor_routes(app):
 
         ult7 = (
             db.session.query(func.date(Ligacao.data_hora), func.count(Ligacao.id))
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
             .filter(Ligacao.data_hora >= datetime.now() - timedelta(days=7))
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
             .group_by(func.date(Ligacao.data_hora))
             .order_by(func.date(Ligacao.data_hora))
             .all()
@@ -248,7 +309,9 @@ def register_supervisor_routes(app):
 
         res = (
             db.session.query(Ligacao.resultado, func.count(Ligacao.id))
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
             .filter(Ligacao.data_hora >= desde)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
             .group_by(Ligacao.resultado)
             .all()
         )

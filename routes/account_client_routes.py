@@ -126,6 +126,21 @@ def register_account_client_routes(app):
             termo = s(request.args.get('q'))
             aba = request.args.get('aba', 'pendentes')
             apenas_meus = True if current_user.tipo in ('consultor', 'televendas') else (request.args.get('meus') == '1')
+            dashboard_tipo = (request.args.get('dashboard_tipo') or '').strip().lower()
+            if current_user.tipo != 'supervisor' or dashboard_tipo not in ('consultor', 'televendas'):
+                dashboard_tipo = None
+            filtrar_por_vinculo_dashboard = (dashboard_tipo == 'consultor')
+            operadores_ids_dashboard = set()
+            if filtrar_por_vinculo_dashboard:
+                operadores_ids_dashboard = {
+                    int(uid)
+                    for (uid,) in (
+                        db.session.query(Usuario.id)
+                        .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+                        .all()
+                    )
+                    if uid
+                }
 
 
             # Oracle/Inativos: fonte de verdade no Oracle; MySQL local apenas para
@@ -194,6 +209,8 @@ def register_account_client_routes(app):
                         Cliente.cd_cliente_oracle.in_(codigos_oracle),
                         Cliente.ativo == True
                     )
+                    if filtrar_por_vinculo_dashboard:
+                        q_locais = q_locais.filter(Cliente.consultor_id.in_(operadores_ids_dashboard))
                     if apenas_meus:
                         q_locais = q_locais.filter(Cliente.consultor_id == current_user.id)
                     clientes_locais = q_locais.all()
@@ -231,6 +248,8 @@ def register_account_client_routes(app):
                     consultor_oracle = str(row.get('consultor') or '').strip()
 
                     cli_local = clientes_locais_por_cd.get(cd)
+                    if filtrar_por_vinculo_dashboard and not cli_local:
+                        continue
                     if apenas_meus and not cli_local:
                         continue
                     if filtrar_oracle_por_categoria and consultor_oracle:

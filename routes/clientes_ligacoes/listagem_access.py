@@ -29,6 +29,11 @@ def preparar_contexto_inicial_listagem(request, current_user):
         aba_padrao = "pendentes"
 
     aba = request.args.get("aba", aba_padrao)
+    dashboard_tipo = (request.args.get("dashboard_tipo") or "").strip().lower()
+    if dashboard_tipo not in ("consultor", "televendas"):
+        dashboard_tipo = None
+    if current_user.tipo != "supervisor":
+        dashboard_tipo = None
     if current_user.tipo == "televendas":
         total_oracle_badge = 0
     elif current_user.tipo == "consultor":
@@ -74,6 +79,7 @@ def preparar_contexto_inicial_listagem(request, current_user):
     return {
         "response": None,
         "aba": aba,
+        "dashboard_tipo": dashboard_tipo,
         "total_oracle_badge": total_oracle_badge,
         "total_proximos_badge": total_proximos_badge,
         "apenas_meus": apenas_meus,
