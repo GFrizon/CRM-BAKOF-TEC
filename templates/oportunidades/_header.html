@@ -11,9 +11,9 @@
                 <div class="d-flex gap-2">
                     {% if current_user.tipo == 'supervisor' %}
                     <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="minhasOportunidades" 
-                               {% if apenas_minhas %}checked{% endif %} 
-                               onchange="window.location.href='minhas=' + (this.checked '1' : '0')">
+                        <input class="form-check-input" type="checkbox" id="minhasOportunidades"
+                               {% if apenas_minhas %}checked{% endif %}
+                               onchange="toggleMinhasOportunidades(this.checked)">
                         <label class="form-check-label" for="minhasOportunidades">
                             Minhas oportunidades
                         </label>

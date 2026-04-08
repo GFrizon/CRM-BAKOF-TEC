@@ -1,62 +1,69 @@
-<script>
+ï»¿<script>
 function excluirOportunidade(id) {
     document.getElementById('formExcluir').action = '/oportunidade/' + id + '/excluir';
     new bootstrap.Modal(document.getElementById('excluirModal')).show();
 }
 
-// Drag and Drop para mover oportunidades entre estágios
+function aplicarFiltroEstagio(estagio) {
+    const url = new URL(window.location.href);
+    if (estagio) {
+        url.searchParams.set('estagio', estagio);
+    } else {
+        url.searchParams.delete('estagio');
+    }
+    window.location.href = url.toString();
+}
+
+function toggleMinhasOportunidades(ativo) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('minhas', ativo ? '1' : '0');
+    window.location.href = url.toString();
+}
+
+// Drag and Drop para mover oportunidades entre estÃ¡gios
 document.addEventListener('DOMContentLoaded', function() {
     const cards = document.querySelectorAll('.opportunity-card');
-    const columns = document.querySelectorAll('[style*="overflow-y: auto"]');
-    
+    const columns = document.querySelectorAll('.kanban-column-body');
+
     cards.forEach(card => {
         card.draggable = true;
-        
+
         card.addEventListener('dragstart', function(e) {
             e.dataTransfer.setData('text/plain', this.dataset.id);
             this.style.opacity = '0.5';
         });
-        
-        card.addEventListener('dragend', function(e) {
+
+        card.addEventListener('dragend', function() {
             this.style.opacity = '';
         });
     });
-    
+
     columns.forEach(column => {
         column.addEventListener('dragover', function(e) {
             e.preventDefault();
             this.style.backgroundColor = 'var(--brand-50)';
         });
-        
-        column.addEventListener('dragleave', function(e) {
+
+        column.addEventListener('dragleave', function() {
             this.style.backgroundColor = '';
         });
-        
+
         column.addEventListener('drop', function(e) {
             e.preventDefault();
             this.style.backgroundColor = '';
-            
+
             const opportunityId = e.dataTransfer.getData('text/plain');
-            const estagio = this.closest('.col-md-2').querySelector('h6').textContent.trim().split(' ')[0];
-            
-            // Mapear nome do estágio para o valor do enum
-            const estagioMap = {
-                'Prospecção': 'prospeccao',
-                'Qualificação': 'qualificacao',
-                'Proposta': 'proposta',
-                'Negociação': 'negociacao',
-                'Ganho': 'fechamento_ganho',
-                'Perda': 'fechamento_perda'
-            };
-            
-            // Fazer requisição AJAX para atualizar estágio
+            const estagio = this.dataset.estagio;
+            if (!opportunityId || !estagio) return;
+
+            // Fazer requisiÃ§Ã£o AJAX para atualizar estÃ¡gio
             fetch('/oportunidade/' + opportunityId + '/mover', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    estagio: estagioMap[estagio]
+                    estagio: estagio
                 })
             })
             .then(response => response.json())

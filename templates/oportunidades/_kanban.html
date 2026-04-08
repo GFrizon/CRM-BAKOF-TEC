@@ -1,263 +1,34 @@
-    <!-- Pipeline Kanban -->
+ï»¿    <!-- Pipeline Kanban -->
     <div class="row">
         <div class="col-12">
             <div class="card">
                 <div class="card-body p-0">
                     <div class="row g-0">
-                        <!-- Prospecção -->
-                        <div class="col-md-2 border-end">
-                            <div class="p-3 bg-light border-bottom">
-                                <h6 class="mb-0">
-                                    <i class="bi bi-search text-primary"></i> Prospecção
-                                    <span class="badge bg-primary float-end">{{ stats.por_estagio.prospeccao }}</span>
-                                </h6>
-                            </div>
-                            <div class="p-2" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
-                                {% for opp in pipeline.prospeccao %}
-                                <div class="card mb-2 opportunity-card" data-id="{{ opp.id }}">
-                                    <div class="card-body p-3">
-                                        <h6 class="card-title mb-2">{{ opp.titulo }}</h6>
-                                        <p class="card-text small text-muted mb-2">{{ opp.cliente }}</p>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">{{ opp.data_criacao }}</small>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-three-dots"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{{ url_for('editar_oportunidade', id=opp.id) }}">
-                                                        <i class="bi bi-pencil"></i> Editar
-                                                    </a></li>
-                                                    <li><a class="dropdown-item text-danger" href="#" onclick="excluirOportunidade({{ opp.id }})">
-                                                        <i class="bi bi-trash"></i> Excluir
-                                                    </a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        {% if opp.valor_estimado > 0 %}
-                                        <div class="mt-2">
-                                            <span class="badge bg-success">{{ opp.valor_estimado | formatar_dinheiro }}</span>
-                                            <span class="badge bg-info">{{ opp.probabilidade }}%</span>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
+                        {% with titulo='ProspecÃ§Ã£o', icon='bi-search', icon_class='text-primary', badge_class='bg-primary', quantidade=stats.por_estagio.prospeccao, estagio='prospeccao', oportunidades=pipeline.prospeccao, border_end=true, card_border_class='', valor_badge_class='bg-success', prob_badge_class='bg-info', prob_display=none %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
 
-                        <!-- Qualificação -->
-                        <div class="col-md-2 border-end">
-                            <div class="p-3 bg-light border-bottom">
-                                <h6 class="mb-0">
-                                    <i class="bi bi-person-check text-info"></i> Qualificação
-                                    <span class="badge bg-info float-end">{{ stats.por_estagio.qualificacao }}</span>
-                                </h6>
-                            </div>
-                            <div class="p-2" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
-                                {% for opp in pipeline.qualificacao %}
-                                <div class="card mb-2 opportunity-card" data-id="{{ opp.id }}">
-                                    <div class="card-body p-3">
-                                        <h6 class="card-title mb-2">{{ opp.titulo }}</h6>
-                                        <p class="card-text small text-muted mb-2">{{ opp.cliente }}</p>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">{{ opp.data_criacao }}</small>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-three-dots"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{{ url_for('editar_oportunidade', id=opp.id) }}">
-                                                        <i class="bi bi-pencil"></i> Editar
-                                                    </a></li>
-                                                    <li><a class="dropdown-item text-danger" href="#" onclick="excluirOportunidade({{ opp.id }})">
-                                                        <i class="bi bi-trash"></i> Excluir
-                                                    </a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        {% if opp.valor_estimado > 0 %}
-                                        <div class="mt-2">
-                                            <span class="badge bg-success">{{ opp.valor_estimado | formatar_dinheiro }}</span>
-                                            <span class="badge bg-info">{{ opp.probabilidade }}%</span>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
+                        {% with titulo='QualificaÃ§Ã£o', icon='bi-person-check', icon_class='text-info', badge_class='bg-info', quantidade=stats.por_estagio.qualificacao, estagio='qualificacao', oportunidades=pipeline.qualificacao, border_end=true, card_border_class='', valor_badge_class='bg-success', prob_badge_class='bg-info', prob_display=none %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
 
-                        <!-- Proposta -->
-                        <div class="col-md-2 border-end">
-                            <div class="p-3 bg-light border-bottom">
-                                <h6 class="mb-0">
-                                    <i class="bi bi-file-text text-warning"></i> Proposta
-                                    <span class="badge bg-warning float-end">{{ stats.por_estagio.proposta }}</span>
-                                </h6>
-                            </div>
-                            <div class="p-2" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
-                                {% for opp in pipeline.proposta %}
-                                <div class="card mb-2 opportunity-card" data-id="{{ opp.id }}">
-                                    <div class="card-body p-3">
-                                        <h6 class="card-title mb-2">{{ opp.titulo }}</h6>
-                                        <p class="card-text small text-muted mb-2">{{ opp.cliente }}</p>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">{{ opp.data_criacao }}</small>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-three-dots"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{{ url_for('editar_oportunidade', id=opp.id) }}">
-                                                        <i class="bi bi-pencil"></i> Editar
-                                                    </a></li>
-                                                    <li><a class="dropdown-item text-danger" href="#" onclick="excluirOportunidade({{ opp.id }})">
-                                                        <i class="bi bi-trash"></i> Excluir
-                                                    </a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        {% if opp.valor_estimado > 0 %}
-                                        <div class="mt-2">
-                                            <span class="badge bg-success">{{ opp.valor_estimado | formatar_dinheiro }}</span>
-                                            <span class="badge bg-info">{{ opp.probabilidade }}%</span>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
+                        {% with titulo='Proposta', icon='bi-file-text', icon_class='text-warning', badge_class='bg-warning', quantidade=stats.por_estagio.proposta, estagio='proposta', oportunidades=pipeline.proposta, border_end=true, card_border_class='', valor_badge_class='bg-success', prob_badge_class='bg-info', prob_display=none %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
 
-                        <!-- Negociação -->
-                        <div class="col-md-2 border-end">
-                            <div class="p-3 bg-light border-bottom">
-                                <h6 class="mb-0">
-                                    <i class="bi bi-handshake text-warning"></i> Negociação
-                                    <span class="badge bg-warning float-end">{{ stats.por_estagio.negociacao }}</span>
-                                </h6>
-                            </div>
-                            <div class="p-2" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
-                                {% for opp in pipeline.negociacao %}
-                                <div class="card mb-2 opportunity-card" data-id="{{ opp.id }}">
-                                    <div class="card-body p-3">
-                                        <h6 class="card-title mb-2">{{ opp.titulo }}</h6>
-                                        <p class="card-text small text-muted mb-2">{{ opp.cliente }}</p>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">{{ opp.data_criacao }}</small>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-three-dots"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{{ url_for('editar_oportunidade', id=opp.id) }}">
-                                                        <i class="bi bi-pencil"></i> Editar
-                                                    </a></li>
-                                                    <li><a class="dropdown-item text-danger" href="#" onclick="excluirOportunidade({{ opp.id }})">
-                                                        <i class="bi bi-trash"></i> Excluir
-                                                    </a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        {% if opp.valor_estimado > 0 %}
-                                        <div class="mt-2">
-                                            <span class="badge bg-success">{{ opp.valor_estimado | formatar_dinheiro }}</span>
-                                            <span class="badge bg-info">{{ opp.probabilidade }}%</span>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
+                        {% with titulo='NegociaÃ§Ã£o', icon='bi-handshake', icon_class='text-warning', badge_class='bg-warning', quantidade=stats.por_estagio.negociacao, estagio='negociacao', oportunidades=pipeline.negociacao, border_end=true, card_border_class='', valor_badge_class='bg-success', prob_badge_class='bg-info', prob_display=none %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
 
-                        <!-- Fechamento Ganho -->
-                        <div class="col-md-2 border-end">
-                            <div class="p-3 bg-light border-bottom">
-                                <h6 class="mb-0">
-                                    <i class="bi bi-trophy text-success"></i> Ganho
-                                    <span class="badge bg-success float-end">{{ stats.por_estagio.fechamento_ganho }}</span>
-                                </h6>
-                            </div>
-                            <div class="p-2" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
-                                {% for opp in pipeline.fechamento_ganho %}
-                                <div class="card mb-2 border-success opportunity-card" data-id="{{ opp.id }}">
-                                    <div class="card-body p-3">
-                                        <h6 class="card-title mb-2">{{ opp.titulo }}</h6>
-                                        <p class="card-text small text-muted mb-2">{{ opp.cliente }}</p>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">{{ opp.data_criacao }}</small>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-three-dots"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{{ url_for('editar_oportunidade', id=opp.id) }}">
-                                                        <i class="bi bi-pencil"></i> Editar
-                                                    </a></li>
-                                                    <li><a class="dropdown-item text-danger" href="#" onclick="excluirOportunidade({{ opp.id }})">
-                                                        <i class="bi bi-trash"></i> Excluir
-                                                    </a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        {% if opp.valor_estimado > 0 %}
-                                        <div class="mt-2">
-                                            <span class="badge bg-success">{{ opp.valor_estimado | formatar_dinheiro }}</span>
-                                            <span class="badge bg-success">100%</span>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
+                        {% with titulo='Ganho', icon='bi-trophy', icon_class='text-success', badge_class='bg-success', quantidade=stats.por_estagio.fechamento_ganho, estagio='fechamento_ganho', oportunidades=pipeline.fechamento_ganho, border_end=true, card_border_class='border-success', valor_badge_class='bg-success', prob_badge_class='bg-success', prob_display='100%' %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
 
-                        <!-- Fechamento Perda -->
-                        <div class="col-md-2">
-                            <div class="p-3 bg-light border-bottom">
-                                <h6 class="mb-0">
-                                    <i class="bi bi-x-circle text-danger"></i> Perda
-                                    <span class="badge bg-danger float-end">{{ stats.por_estagio.fechamento_perda }}</span>
-                                </h6>
-                            </div>
-                            <div class="p-2" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
-                                {% for opp in pipeline.fechamento_perda %}
-                                <div class="card mb-2 border-danger opportunity-card" data-id="{{ opp.id }}">
-                                    <div class="card-body p-3">
-                                        <h6 class="card-title mb-2">{{ opp.titulo }}</h6>
-                                        <p class="card-text small text-muted mb-2">{{ opp.cliente }}</p>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">{{ opp.data_criacao }}</small>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-three-dots"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{{ url_for('editar_oportunidade', id=opp.id) }}">
-                                                        <i class="bi bi-pencil"></i> Editar
-                                                    </a></li>
-                                                    <li><a class="dropdown-item text-danger" href="#" onclick="excluirOportunidade({{ opp.id }})">
-                                                        <i class="bi bi-trash"></i> Excluir
-                                                    </a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        {% if opp.valor_estimado > 0 %}
-                                        <div class="mt-2">
-                                            <span class="badge bg-danger">{{ opp.valor_estimado | formatar_dinheiro }}</span>
-                                            <span class="badge bg-danger">0%</span>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
+                        {% with titulo='Perda', icon='bi-x-circle', icon_class='text-danger', badge_class='bg-danger', quantidade=stats.por_estagio.fechamento_perda, estagio='fechamento_perda', oportunidades=pipeline.fechamento_perda, border_end=false, card_border_class='border-danger', valor_badge_class='bg-danger', prob_badge_class='bg-danger', prob_display='0%' %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>

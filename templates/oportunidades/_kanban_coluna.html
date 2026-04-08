@@ -1,0 +1,15 @@
+<div class="col-md-2{% if border_end %} border-end{% endif %}">
+    <div class="p-3 bg-light border-bottom">
+        <h6 class="mb-0">
+            <i class="bi {{ icon }} {{ icon_class }}"></i> {{ titulo }}
+            <span class="badge {{ badge_class }} float-end">{{ quantidade }}</span>
+        </h6>
+    </div>
+    <div class="p-2 kanban-column-body" data-estagio="{{ estagio }}" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
+        {% for opp in oportunidades %}
+            {% with border_class=card_border_class, valor_badge_class=valor_badge_class, prob_badge_class=prob_badge_class, prob_display=prob_display %}
+                {% include "oportunidades/_kanban_card.html" %}
+            {% endwith %}
+        {% endfor %}
+    </div>
+</div>

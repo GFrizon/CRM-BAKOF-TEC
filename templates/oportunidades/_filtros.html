@@ -1,17 +1,17 @@
-    <!-- Filtros -->
+Ôªø    <!-- Filtros -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col-md-6">
-                            <label class="form-label">Filtrar por Est·gio:</label>
-                            <select class="form-select" id="estagioFilter" onchange="window.location.href='estagio=' + this.value">
-                                <option value="">Todos os est·gios</option>
-                                <option value="prospeccao" {% if estagio_atual == 'prospeccao' %}selected{% endif %}>ProspecÁ„o</option>
-                                <option value="qualificacao" {% if estagio_atual == 'qualificacao' %}selected{% endif %}>QualificaÁ„o</option>
+                            <label class="form-label">Filtrar por Est√°gio:</label>
+                            <select class="form-select" id="estagioFilter" onchange="aplicarFiltroEstagio(this.value)">
+                                <option value="">Todos os est√°gios</option>
+                                <option value="prospeccao" {% if estagio_atual == 'prospeccao' %}selected{% endif %}>Prospec√ß√£o</option>
+                                <option value="qualificacao" {% if estagio_atual == 'qualificacao' %}selected{% endif %}>Qualifica√ß√£o</option>
                                 <option value="proposta" {% if estagio_atual == 'proposta' %}selected{% endif %}>Proposta</option>
-                                <option value="negociacao" {% if estagio_atual == 'negociacao' %}selected{% endif %}>NegociaÁ„o</option>
+                                <option value="negociacao" {% if estagio_atual == 'negociacao' %}selected{% endif %}>Negocia√ß√£o</option>
                                 <option value="fechamento_ganho" {% if estagio_atual == 'fechamento_ganho' %}selected{% endif %}>Fechamento (Ganho)</option>
                                 <option value="fechamento_perda" {% if estagio_atual == 'fechamento_perda' %}selected{% endif %}>Fechamento (Perda)</option>
                             </select>
@@ -26,3 +26,4 @@
             </div>
         </div>
     </div>
+
