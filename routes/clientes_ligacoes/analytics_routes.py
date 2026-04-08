@@ -17,7 +17,8 @@ def register_clientes_ligacoes_analytics_routes(app):
 
         try:
             mes, ano = parse_mes_ano(request.args)
-            payload, status = consultar_resultados_consultores_mes(mes, ano)
+            meta_conversao = float(request.args.get("meta_conversao", 10) or 10)
+            payload, status = consultar_resultados_consultores_mes(mes, ano, meta_conversao=meta_conversao)
             return jsonify(payload), status
         except Exception as e:
             return jsonify({"ok": False, "erro": str(e)}), 500

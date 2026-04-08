@@ -150,12 +150,15 @@ def sincronizacao_automatica_diaria():
             todos_clientes_mysql = Cliente.query.filter_by(ativo=True).all()
             logger.info(f"✅ {len(todos_clientes_mysql)} clientes totais no MySQL")
             
-            # Separar clientes por origem
-            clientes_oracle_mysql = Cliente.query.filter(
+            # Separar clientes Oracle locais (ativos e inativos)
+            clientes_oracle_mysql_todos = Cliente.query.filter(
                 Cliente.cd_cliente_oracle.isnot(None),
-                Cliente.ativo == True
             ).all()
-            logger.info(f" {len(clientes_oracle_mysql)} clientes vindos do Oracle")
+            clientes_oracle_mysql_ativos = [c for c in clientes_oracle_mysql_todos if c.ativo]
+            logger.info(
+                f" {len(clientes_oracle_mysql_todos)} clientes Oracle locais "
+                f"({len(clientes_oracle_mysql_ativos)} ativos)"
+            )
             
             logger.info("\n Verificando consultores disponíveis...")
             consultores = Usuario.query.filter(
@@ -214,7 +217,7 @@ def sincronizacao_automatica_diaria():
             
             # Conjuntos para controle
             codigos_oracle_atuais = {str(c.get('cd_cliente', '')) for c in clientes_oracle}
-            codigos_mysql_atuais = {c.cd_cliente_oracle for c in clientes_oracle_mysql if c.cd_cliente_oracle}
+            codigos_mysql_atuais = {c.cd_cliente_oracle for c in clientes_oracle_mysql_todos if c.cd_cliente_oracle}
             
             # Clientes para adicionar (estão no Oracle mas não no MySQL)
             codigos_para_adicionar = codigos_oracle_atuais - codigos_mysql_atuais
@@ -222,7 +225,8 @@ def sincronizacao_automatica_diaria():
             logger.info(f"   Novos clientes: {len(codigos_para_adicionar)}")
             
             # Clientes para remover (estão no MySQL mas não no Oracle)
-            codigos_para_remover = codigos_mysql_atuais - codigos_oracle_atuais
+            codigos_ativos_mysql = {c.cd_cliente_oracle for c in clientes_oracle_mysql_ativos if c.cd_cliente_oracle}
+            codigos_para_remover = codigos_ativos_mysql - codigos_oracle_atuais
             logger.info(f"   Clientes para remover: {len(codigos_para_remover)}")
             
             # Clientes para atualizar (continuam na lista)
@@ -232,6 +236,7 @@ def sincronizacao_automatica_diaria():
             adicionados = 0
             removidos = 0
             atualizados = 0
+            reativados = 0
             erros = []
             
             # Adicionar novos clientes
@@ -315,7 +320,7 @@ def sincronizacao_automatica_diaria():
             # Remover clientes que sairam da lista
             if codigos_para_remover:
                 logger.info(f"\n➖ Removendo {len(codigos_para_remover)} clientes que sairam da lista...")
-                for cliente_mysql in clientes_oracle_mysql:
+                for cliente_mysql in clientes_oracle_mysql_ativos:
                     if cliente_mysql.cd_cliente_oracle in codigos_para_remover:
                         try:
                             with db.session.begin_nested():
@@ -337,8 +342,16 @@ def sincronizacao_automatica_diaria():
                     if cd_cliente in codigos_para_atualizar:
                         try:
                             with db.session.begin_nested():
-                                cliente_mysql = Cliente.query.filter_by(cd_cliente_oracle=cd_cliente).first()
+                                cliente_mysql = (
+                                    Cliente.query
+                                    .filter_by(cd_cliente_oracle=cd_cliente)
+                                    .order_by(Cliente.ativo.desc(), Cliente.id.desc())
+                                    .first()
+                                )
                                 if cliente_mysql:
+                                    estava_inativo = not bool(cliente_mysql.ativo)
+                                    # Se voltou na lista Oracle (90-150 / proximos / inativos), precisa aparecer.
+                                    cliente_mysql.ativo = True
                                     # Determinar consultor atualizado
                                     consultor_oracle = cliente_oracle.get('consultor', '')
                                     consultor_id = _resolver_consultor_id(
@@ -422,6 +435,8 @@ def sincronizacao_automatica_diaria():
                                     cliente_mysql.data_ultima_sincronizacao = data_sync
                                     db.session.flush()
                                     atualizados += 1
+                                    if estava_inativo:
+                                        reativados += 1
                         except ValueError as e:
                             erros.append(f"Erro de dados ao atualizar {cd_cliente}: {str(e)}")
                         except Exception as e:
@@ -447,6 +462,7 @@ def sincronizacao_automatica_diaria():
             logger.info(f"📈 Clientes adicionados: {adicionados}")
             logger.info(f"📉 Clientes removidos: {removidos}")
             logger.info(f"🔄 Clientes atualizados: {atualizados}")
+            logger.info(f"♻️ Clientes reativados: {reativados}")
             logger.info(f"❌ Erros: {len(erros)}")
             logger.info(f"📊 Total processado: {adicionados + removidos + atualizados}")
             

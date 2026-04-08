@@ -294,17 +294,22 @@
                 <th>Consultor</th>
                 <th class="text-center">Total Ligações</th>
                 <th class="text-center">Vendas</th>
+                <th class="text-center">Retornar</th>
                 <th class="text-center">Conversão</th>
+                <th class="text-center">Meta Conv.</th>
+                <th class="text-center">90-150</th>
+                <th class="text-center">Próx. Inativação</th>
                 <th class="text-end">Receita</th>
               </tr>
             </thead>
             <tbody id="tbodyResultados">
               <tr>
-                <td colspan="5" class="text-center">
+                <td colspan="9" class="text-center">
                   <div class="spinner-border text-primary" role="status"></div>
                 </td>
               </tr>
             </tbody>
+            <tfoot id="tfootResultados"></tfoot>
           </table>
         </div>
       </div>
@@ -527,16 +532,18 @@ async function aplicarFiltroMes() {
   document.getElementById('resultadosFiltrados').style.display = 'block';
   document.getElementById('tbodyResultados').innerHTML = `
     <tr>
-      <td colspan="5" class="text-center py-4">
+      <td colspan="9" class="text-center py-4">
         <div class="spinner-border text-primary" role="status"></div>
         <p class="mt-2 text-muted">Carregando dados...</p>
       </td>
     </tr>
   `;
+  document.getElementById('tfootResultados').innerHTML = '';
   
   const token = ++_reqFiltroMesToken;
   try {
-    const r = await fetch(`/api/resultados-por-mes?mes=${mes}&ano=${ano}`);
+    const metaConversao = 10;
+    const r = await fetch(`/api/resultados-por-mes?mes=${mes}&ano=${ano}&meta_conversao=${metaConversao}`);
     const data = await r.json();
     if (token !== _reqFiltroMesToken) return;
     
@@ -549,7 +556,7 @@ async function aplicarFiltroMes() {
     if (!data.consultores || data.consultores.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="5" class="text-center text-muted py-4">
+          <td colspan="9" class="text-center text-muted py-4">
             <i class="bi bi-inbox display-4 d-block mb-2"></i>
             Nenhum dado encontrado para este período
           </td>
@@ -560,32 +567,50 @@ async function aplicarFiltroMes() {
     
     let html = '';
     data.consultores.forEach(c => {
-      const badgeClass = c.conversao >= 20 ? 'bg-success' : 
-                         c.conversao >= 10 ? 'bg-warning' : 'bg-secondary';
+      const atingiuMeta = Number(c.conversao || 0) >= Number(c.meta_conversao || 0);
       
       html += `
         <tr>
           <td><strong>${c.nome}</strong></td>
-          <td class="text-center"><span class="badge bg-primary">${c.total_ligacoes}</span></td>
-          <td class="text-center"><span class="badge bg-success">${c.vendas}</span></td>
-          <td class="text-center"><span class="badge ${badgeClass}">${c.conversao}%</span></td>
+          <td class="text-center fw-semibold">${c.total_ligacoes}</td>
+          <td class="text-center fw-semibold">${c.vendas}</td>
+          <td class="text-center fw-semibold">${c.total_retornar}</td>
+          <td class="text-center"><span class="fw-semibold ${atingiuMeta ? 'text-success' : 'text-secondary'}">${c.conversao}%</span></td>
+          <td class="text-center"><span class="text-muted fw-semibold">${c.meta_conversao}%</span></td>
+          <td class="text-center fw-semibold">${c.total_90_150}</td>
+          <td class="text-center fw-semibold">${c.total_proximos_inativacao}</td>
           <td class="text-end"><strong class="text-success">${c.receita_fmt}</strong></td>
         </tr>
       `;
     });
     
     tbody.innerHTML = html;
+    const t = data.totais || {};
+    document.getElementById('tfootResultados').innerHTML = `
+      <tr class="table-light">
+        <th>Total resultado do período</th>
+        <th class="text-center">${t.total_ligacoes || 0}</th>
+        <th class="text-center">${t.total_vendas || 0}</th>
+        <th class="text-center">${t.total_retornar || 0}</th>
+        <th class="text-center">${t.conversao || 0}%</th>
+        <th class="text-center">${t.meta_conversao || 0}%</th>
+        <th class="text-center">${t.total_90_150 || 0}</th>
+        <th class="text-center">${t.total_proximos_inativacao || 0}</th>
+        <th class="text-end">${t.receita_fmt || 'R$ 0,00'}</th>
+      </tr>
+    `;
     
   } catch (erro) {
     console.error('Erro:', erro);
     document.getElementById('tbodyResultados').innerHTML = `
       <tr>
-        <td colspan="5" class="text-center text-danger py-4">
+        <td colspan="9" class="text-center text-danger py-4">
           <i class="bi bi-exclamation-triangle display-4 d-block mb-2"></i>
           Erro ao carregar dados: ${erro.message}
         </td>
       </tr>
     `;
+    document.getElementById('tfootResultados').innerHTML = '';
   }
 }
 
