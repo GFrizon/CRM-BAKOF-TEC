@@ -1,0 +1,48 @@
+<!-- ============================================================
+     CABEÃ‡ALHO DA PÁGINA
+     ============================================================ -->
+<div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+  <div>
+    <h2 class="m-0">
+      <i class="bi bi-people-fill me-2" style="color:var(--brand-600);"></i>Meus Clientes
+    </h2>
+    {% if aba == 'oracle' %}
+    <p class="mb-0 mt-1">Clientes sem pedidos há 90-150 dias (Oracle)</p>
+    {% elif aba == 'inativos' %}
+    <p class="mb-0 mt-1">Clientes inativos – sem pedidos entre 181 dias e 2 anos</p>
+    {% elif aba == 'proximos_inativacao' %}
+    <p class="mb-0 mt-1">Clientes com 151-180 dias sem pedido – próximos de inativação</p>
+    {% elif aba == 'pendentes' and current_user.tipo == 'consultor' %}
+    <p class="mb-0 mt-1">Clientes especiais sem contato registrado – por representante</p>
+    {% elif current_user.tipo == 'televendas' %}
+    <p class="mb-0 mt-1">Gerencie seus clientes e registre ligações (Televendas)</p>
+    {% else %}
+    <p class="mb-0 mt-1">Gerencie representantes, clientes e registre ligações</p>
+    {% endif %}
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if aba not in ('oracle', 'inativos') and current_user.tipo in ('consultor', 'supervisor') %}
+    <button class="btn btn-primary btn-sm" onclick="abrirModalAdicionar()">
+      <i class="bi bi-person-plus me-1"></i> Adicionar Cliente
+    </button>
+    {% endif %}
+    {% if is_supervisor %}
+    <button class="btn btn-outline-danger btn-sm" onclick="abrirModalLimpar()">
+      <i class="bi bi-trash me-1"></i> Limpar Clientes
+    </button>
+    <a href="{{ url_for('importar_clientes_view') }}" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-cloud-upload me-1"></i> Importar CSV
+    </a>
+    {% if aba not in ('oracle', 'inativos') %}
+    <button class="btn btn-outline-primary btn-sm" onclick="sincronizarClientesManuaisOracle()" id="btnSyncManuaisOracle">
+      <i class="bi bi-person-check me-1"></i> Sync Manuais
+    </button>
+    {% endif %}
+    <button class="btn btn-outline-secondary btn-sm btn-sync-oracle" onclick="sincronizarOracle()" id="btnSincronizarOracle">
+      <i class="bi bi-arrow-clockwise me-1"></i> Sincronizar Oracle
+    </button>
+    <span id="syncOracleStatusBadge" class="badge text-bg-secondary align-self-center">Sync Oracle: --</span>
+    {% endif %}
+  </div>
+</div>
+

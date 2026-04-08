@@ -1,0 +1,92 @@
+<!-- ============================================================
+     STAT CARDS (consultor)
+     ============================================================ -->
+{% if current_user.tipo in ('consultor', 'televendas') and stats %}
+<div class="row g-3 mb-4">
+  {% if current_user.tipo == 'consultor' %}
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Clientes ativos</span>
+          <i class="bi bi-person-check"></i>
+        </div>
+        <div class="stat-value">{{ stats.total_clientes }}</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if current_user.tipo == 'consultor' %}
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">90-150 dias</span>
+          <i class="bi bi-arrow-repeat"></i>
+        </div>
+        <div class="stat-value">{{ stats.clientes_90_150 or total_oracle }}</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Hoje</span>
+          <i class="bi bi-telephone-outbound"></i>
+        </div>
+        <div class="stat-value">{{ stats.ligacoes_hoje }}</div>
+        <div class="progress mt-2"><div class="progress-bar" style="width:{{ stats.progresso_meta }}%"></div></div>
+        <small class="text-muted" style="font-size:.7rem;">Meta {{ stats.meta_diaria }} - {{ stats.progresso_meta }}%</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Últimos 7 dias</span>
+          <i class="bi bi-calendar-week"></i>
+        </div>
+        <div class="stat-value">{{ stats.ligacoes_semana }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Últimos 30 dias</span>
+          <i class="bi bi-calendar3"></i>
+        </div>
+        <div class="stat-value">{{ stats.ligacoes_mes }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Positivo 30d</span>
+          <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <div class="stat-value" style="color:#2563eb;">{{ stats.positivos_30 or 0 }}</div>
+        <small class="text-muted" style="font-size:.7rem;">{{ stats.taxa_positiva_30 or 0 }}%</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Converteu 30d</span>
+          <i class="bi bi-trophy"></i>
+        </div>
+        <div class="stat-value" style="color:#16a34a;">{{ stats.converteu_30 or 0 }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
