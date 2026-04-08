@@ -1,0 +1,37 @@
+<!-- ============================================================
+     FILTRO INATIVOS (181 dias a 2 anos)
+     ============================================================ -->
+{% if aba == 'inativos' %}
+<div class="panel-card">
+  <div class="panel-header">
+    <i class="bi bi-funnel"></i>
+    <span>Filtrar Clientes Inativos</span>
+  </div>
+  <div class="panel-body" style="padding-bottom:16px;">
+    <form method="get" action="{{ url_for('meus_clientes') }}" class="row g-3">
+      <input type="hidden" name="aba" value="inativos">
+      <div class="col-md-6">
+        <label class="form-label">Status de Crédito:</label>
+        <select class="form-select js-debounce-submit-control" name="conceito_filtro" data-debounce-ms="260">
+          <option value="">Todos os status</option>
+          <option value="LIBERADO"     {% if request.args.get('conceito_filtro') == 'LIBERADO'     %}selected{% endif %}>Liberados</option>
+          <option value="INADIMPLENTE" {% if request.args.get('conceito_filtro') == 'INADIMPLENTE' %}selected{% endif %}>Inadimplentes</option>
+          <option value="SEM_CONCEITO" {% if request.args.get('conceito_filtro') == 'SEM_CONCEITO' %}selected{% endif %}>Sem Conceito</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Consultor Oracle:</label>
+        <select class="form-select js-debounce-submit-control" name="consultor_filtro" data-debounce-ms="260">
+          <option value="">Todos os consultores</option>
+          {% for consultor in consultores_inativos or [] %}
+          <option value="{{ consultor.nome }}" {% if request.args.get('consultor_filtro') == consultor.nome %}selected{% endif %}>
+            {{ consultor.nome }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+

@@ -1,0 +1,42 @@
+<!-- ============================================================
+     FILTRO MENSAL PARA CONSULTORES
+     ============================================================ -->
+{% if current_user.tipo in ('consultor', 'televendas') and meses_disponiveis_consultor %}
+<div class="panel-card">
+  <div class="panel-header">
+    <i class="bi bi-calendar-range"></i>
+    <span>Filtro de Ligações por Mês</span>
+  </div>
+  <div class="panel-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label">Selecione o mês para visualizar suas ligações:</label>
+        <select class="form-select" id="filtroMesConsultor" onchange="aplicarFiltroMesConsultor()">
+          <option value="">Todos (sem filtro)</option>
+          {% for m in meses_disponiveis_consultor %}
+          <option value="{{ m.mes }}-{{ m.ano }}" {% if mes_filtro == m.mes and ano_filtro == m.ano %}selected{% endif %}>
+            {{ m.texto }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4 d-flex flex-column gap-2">
+        <button class="btn btn-primary" onclick="aplicarFiltroMesConsultor()">
+          <i class="bi bi-search me-1"></i> Filtrar
+        </button>
+        {% if mes_filtro and ano_filtro %}
+        <button class="btn btn-outline-secondary" onclick="limparFiltroMesConsultor()">
+          <i class="bi bi-x-circle me-1"></i> Limpar Filtro
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    {% if mes_filtro and ano_filtro %}
+    <div id="resultadosMesSelecionado" class="mt-3" style="display:none;">
+      <div class="alert alert-primary mb-0"><i class="bi bi-hourglass-split me-2"></i>Carregando dados do mês selecionado...</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
