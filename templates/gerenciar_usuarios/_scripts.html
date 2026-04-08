@@ -1,0 +1,175 @@
+﻿<script>
+let modalCriar, modalEditar, modalRedefinirSenha;
+
+document.addEventListener('DOMContentLoaded', () => {
+  modalCriar = new bootstrap.Modal(document.getElementById('modalCriar'));
+  modalEditar = new bootstrap.Modal(document.getElementById('modalEditar'));
+  modalRedefinirSenha = new bootstrap.Modal(document.getElementById('modalRedefinirSenha'));
+});
+
+function toggleMetaDiaria(tipo) {
+  const select = document.getElementById(tipo + 'Tipo');
+  const metaContainer = document.getElementById(tipo + 'MetaContainer');
+  const codigoContainer = document.getElementById(tipo + 'CodigoTg650Container');
+
+  metaContainer.style.display = select.value === 'consultor' ? 'block' : 'none';
+  if (codigoContainer) {
+    codigoContainer.style.display = select.value === 'supervisor_repr' ? 'block' : 'none';
+  }
+}
+
+function abrirModalCriar() {
+  document.getElementById('criarNome').value = '';
+  document.getElementById('criarEmail').value = '';
+  document.getElementById('criarSenha').value = '';
+  document.getElementById('criarTipo').value = 'consultor';
+  document.getElementById('criarMeta').value = '10';
+  document.getElementById('criarCodigoTg650').value = '';
+  toggleMetaDiaria('criar');
+  modalCriar.show();
+}
+
+async function criarUsuario(e) {
+  e.preventDefault();
+  
+  const payload = {
+    nome: document.getElementById('criarNome').value,
+    email: document.getElementById('criarEmail').value,
+    senha: document.getElementById('criarSenha').value,
+    tipo: document.getElementById('criarTipo').value,
+    meta_diaria: parseInt(document.getElementById('criarMeta').value) || 10,
+    codigo_supervisor_tg650: document.getElementById('criarCodigoTg650').value
+  };
+  
+  try {
+    const r = await fetch('/supervisor/usuarios/criar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    
+    const j = await r.json();
+    
+    if (j.ok) {
+      modalCriar.hide();
+      alert(j.mensagem);
+      location.reload();
+    } else {
+      alert(j.mensagem || 'Erro ao criar usuÃ¡rio');
+    }
+  } catch (error) {
+    alert('Erro: ' + error.message);
+  }
+}
+
+function abrirModalEditar(id, nome, email, tipo, meta, codigoTg650) {
+  document.getElementById('editarId').value = id;
+  document.getElementById('editarNome').value = nome;
+  document.getElementById('editarEmail').value = email;
+  document.getElementById('editarTipo').value = tipo;
+  document.getElementById('editarMeta').value = meta || 10;
+  document.getElementById('editarCodigoTg650').value = codigoTg650 || '';
+  toggleMetaDiaria('editar');
+  modalEditar.show();
+}
+
+async function editarUsuario(e) {
+  e.preventDefault();
+  
+  const id = document.getElementById('editarId').value;
+  const payload = {
+    nome: document.getElementById('editarNome').value,
+    email: document.getElementById('editarEmail').value,
+    tipo: document.getElementById('editarTipo').value,
+    meta_diaria: parseInt(document.getElementById('editarMeta').value) || 10,
+    codigo_supervisor_tg650: document.getElementById('editarCodigoTg650').value
+  };
+  
+  try {
+    const r = await fetch(`/supervisor/usuarios/${id}/editar`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    
+    const j = await r.json();
+    
+    if (j.ok) {
+      modalEditar.hide();
+      alert(j.mensagem);
+      location.reload();
+    } else {
+      alert(j.mensagem || 'Erro ao editar usuÃ¡rio');
+    }
+  } catch (error) {
+    alert('Erro: ' + error.message);
+  }
+}
+
+function abrirModalRedefinirSenha(id, nome) {
+  document.getElementById('redefinirId').value = id;
+  document.getElementById('redefinirNome').textContent = nome;
+  document.getElementById('redefinirNovaSenha').value = '';
+  document.getElementById('redefinirConfirmaSenha').value = '';
+  modalRedefinirSenha.show();
+}
+
+async function redefinirSenha(e) {
+  e.preventDefault();
+  
+  const novaSenha = document.getElementById('redefinirNovaSenha').value;
+  const confirmaSenha = document.getElementById('redefinirConfirmaSenha').value;
+  
+  if (novaSenha !== confirmaSenha) {
+    alert('As senhas nÃ£o conferem!');
+    return;
+  }
+  
+  const id = document.getElementById('redefinirId').value;
+  
+  try {
+    const r = await fetch(`/supervisor/usuarios/${id}/redefinir-senha`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ nova_senha: novaSenha })
+    });
+    
+    const j = await r.json();
+    
+    if (j.ok) {
+      modalRedefinirSenha.hide();
+      alert(j.mensagem);
+    } else {
+      alert(j.mensagem || 'Erro ao redefinir senha');
+    }
+  } catch (error) {
+    alert('Erro: ' + error.message);
+  }
+}
+
+async function toggleStatus(id, nome, ativo) {
+  const acao = ativo ? 'inativar' : 'ativar';
+  
+  if (!confirm(`Tem certeza que deseja ${acao} o usuÃ¡rio ${nome}`)) {
+    return;
+  }
+  
+  try {
+    const r = await fetch(`/supervisor/usuarios/${id}/toggle-status`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'}
+    });
+    
+    const j = await r.json();
+    
+    if (j.ok) {
+      alert(j.mensagem);
+      location.reload();
+    } else {
+      alert(j.mensagem || 'Erro ao alterar status');
+    }
+  } catch (error) {
+    alert('Erro: ' + error.message);
+  }
+}
+</script>

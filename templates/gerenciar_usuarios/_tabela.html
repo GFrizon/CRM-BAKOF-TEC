@@ -1,0 +1,107 @@
+﻿<!-- Tabela de UsuÃ¡rios -->
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-table"></i> UsuÃ¡rios do Sistema
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Email</th>
+          <th>Tipo</th>
+          <th>Meta DiÃ¡ria</th>
+          <th>Clientes</th>
+          <th>Status</th>
+          <th>Cadastro</th>
+          <th>AÃ§Ãµes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr class="{% if not u.ativo %}text-muted{% endif %}">
+          <td>
+            <strong>{{ u.nome }}</strong>
+            {% if u.id == current_user.id %}
+              <span class="badge bg-info ms-2">VocÃª</span>
+            {% endif %}
+          </td>
+          <td>{{ u.email }}</td>
+          <td>
+            {% if u.tipo == 'supervisor' %}
+              <span class="badge bg-primary">
+                <i class="bi bi-shield-check"></i> Supervisor
+              </span>
+            {% elif u.tipo == 'televendas' %}
+              <span class="badge bg-warning text-dark">
+                <i class="bi bi-telephone-forward"></i> Televendas
+              </span>
+            {% elif u.tipo == 'supervisor_repr' %}
+              <span class="badge bg-info">
+                <i class="bi bi-eye"></i> Supervisor Repr.
+              </span>
+            {% else %}
+              <span class="badge bg-secondary">
+                <i class="bi bi-person"></i> Consultor
+              </span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.tipo == 'consultor' %}
+              <span class="badge bg-info">{{ u.meta_diaria }} ligaÃ§Ãµes/dia</span>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>
+            {% if u.tipo == 'consultor' %}
+              <span class="badge bg-success">{{ u.total_clientes }}</span>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>
+            {% if u.ativo %}
+              <span class="badge bg-success">
+                <i class="bi bi-check-circle"></i> Ativo
+              </span>
+            {% else %}
+              <span class="badge bg-danger">
+                <i class="bi bi-x-circle"></i> Inativo
+              </span>
+            {% endif %}
+          </td>
+          <td>
+            <small class="text-muted">
+              {{ u.data_cadastro.strftime('%d/%m/%Y') if u.data_cadastro else '-' }}
+            </small>
+          </td>
+          <td>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary" 
+                      onclick="abrirModalEditar({{ u.id }}, '{{ u.nome|e }}', '{{ u.email|e }}', '{{ u.tipo }}', {{ u.meta_diaria }}, '{{ (u.codigo_supervisor_tg650 or '')|e }}')"
+                      title="Editar">
+                <i class="bi bi-pencil"></i>
+              </button>
+              
+              <button class="btn btn-outline-warning" 
+                      onclick="abrirModalRedefinirSenha({{ u.id }}, '{{ u.nome|e }}')"
+                      title="Redefinir Senha">
+                <i class="bi bi-key"></i>
+              </button>
+              
+              {% if u.id != current_user.id %}
+              <button class="btn btn-outline-{% if u.ativo %}danger{% else %}success{% endif %}" 
+                      onclick="toggleStatus({{ u.id }}, '{{ u.nome|e }}', {{ 'true' if u.ativo else 'false' }})"
+                      title="{% if u.ativo %}Inativar{% else %}Ativar{% endif %}">
+                <i class="bi bi-{% if u.ativo %}x-circle{% else %}check-circle{% endif %}"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

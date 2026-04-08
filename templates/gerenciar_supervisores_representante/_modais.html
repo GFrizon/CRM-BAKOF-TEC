@@ -1,0 +1,96 @@
+﻿<!-- Modal Criar/Editar Supervisor -->
+<div class="modal fade" id="modalSupervisor" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSupervisorTitulo">Novo Supervisor de Representante</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formSupervisor">
+                    <input type="hidden" id="supervisorId">
+                    <div class="mb-3">
+                        <label class="form-label">Nome *</label>
+                        <input type="text" class="form-control" id="supervisorNome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="supervisorEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Senha *</label>
+                        <input type="password" class="form-control" id="supervisorSenha">
+                        <small class="text-muted">Deixe em branco para manter a senha atual (ao editar)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">CÃ³digo Supervisor TG650</label>
+                        <input type="text" class="form-control" id="supervisorCodigoTg650">
+                        <small class="text-muted">CÃ³digo do supervisor na tabela Geelemen (TG 650) do Oracle</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarSupervisor()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Gerenciar VÃ­nculos -->
+<div class="modal fade" id="modalVinculos" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-link-45deg"></i> VÃ­nculos de Representantes - <span id="vinculosSupervisorNome"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="vinculosSupervisorId">
+                
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-success btn-sm" onclick="abrirModalAdicionarVinculo()">
+                        <i class="bi bi-plus-circle"></i> Adicionar VÃ­nculo
+                    </button>
+                    <button class="btn btn-info btn-sm" onclick="sincronizarTG650()">
+                        <i class="bi bi-arrow-repeat"></i> Sincronizar TG650
+                    </button>
+                </div>
+
+                <div id="listaVinculos">
+                    <p class="text-center text-muted">Carregando vÃ­nculos...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Adicionar VÃ­nculo -->
+<div class="modal fade" id="modalAdicionarVinculo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar VÃ­nculo de Representante</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAdicionarVinculo">
+                    <div class="mb-3">
+                        <label class="form-label">CÃ³digo do Representante *</label>
+                        <input type="text" class="form-control" id="vinculoCodigoRepresentante" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nome do Representante</label>
+                        <input type="text" class="form-control" id="vinculoNomeRepresentante">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarVinculo()">Adicionar</button>
+            </div>
+        </div>
+    </div>
+</div>
