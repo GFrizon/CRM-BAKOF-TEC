@@ -1,0 +1,28 @@
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <label class="form-label">Filtrar por Estágio:</label>
+                            <select class="form-select" id="estagioFilter" onchange="window.location.href='estagio=' + this.value">
+                                <option value="">Todos os estágios</option>
+                                <option value="prospeccao" {% if estagio_atual == 'prospeccao' %}selected{% endif %}>Prospecção</option>
+                                <option value="qualificacao" {% if estagio_atual == 'qualificacao' %}selected{% endif %}>Qualificação</option>
+                                <option value="proposta" {% if estagio_atual == 'proposta' %}selected{% endif %}>Proposta</option>
+                                <option value="negociacao" {% if estagio_atual == 'negociacao' %}selected{% endif %}>Negociação</option>
+                                <option value="fechamento_ganho" {% if estagio_atual == 'fechamento_ganho' %}selected{% endif %}>Fechamento (Ganho)</option>
+                                <option value="fechamento_perda" {% if estagio_atual == 'fechamento_perda' %}selected{% endif %}>Fechamento (Perda)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <button class="btn btn-outline-secondary" onclick="window.location.href='{{ url_for('oportunidades') }}'">
+                                <i class="bi bi-arrow-clockwise"></i> Limpar Filtros
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
