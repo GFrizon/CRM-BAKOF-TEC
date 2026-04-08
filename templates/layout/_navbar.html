@@ -1,0 +1,73 @@
+﻿  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid container-narrow">
+      <a class="navbar-brand" href="{{ url_for('index') }}">
+        <img src="{{ url_for('static', filename='img/bakof-logo.png') }}" alt="Bakof Tec">
+        <div class="navbar-brand-text">
+          <span class="main" title="CRM - GestÃ£o de Relacionamento com o Cliente">CRM</span>
+          <span class="sub">Relacionamento com Clientes</span>
+        </div>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          {% if current_user.is_authenticated %}
+            {% if current_user.tipo == 'consultor' %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('meus_clientes') }}">
+                  <i class="bi bi-people-fill"></i> Meus Clientes
+                </a>
+              </li>
+            {% elif current_user.tipo == 'supervisor' %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('dashboard_supervisor') }}">
+                  <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('meus_clientes') }}">
+                  <i class="bi bi-people-fill"></i> Clientes
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('importar_clientes_view') }}">
+                  <i class="bi bi-cloud-upload-fill"></i> Importar
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('gerenciar_usuarios') }}">
+                  <i class="bi bi-people-fill"></i> UsuÃ¡rios
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('gerenciar_banners') }}">
+                  <i class="bi bi-megaphone-fill"></i> Banners
+                </a>
+              </li>
+            {% endif %}
+          {% endif %}
+        </ul>
+        <ul class="navbar-nav">
+          {% if current_user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('minha_conta') }}">
+                <i class="bi bi-person-circle"></i> Minha Conta
+              </a>
+            </li>
+
+            <li class="nav-item">
+              <span class="navbar-text user-badge me-3">
+                <i class="bi bi-person-circle"></i> {{ current_user.nome }}
+              </span>
+            </li>
+            <li class="nav-item">
+              <a class="btn btn-sm btn-outline-light" href="{{ url_for('logout') }}">
+                <i class="bi bi-box-arrow-right"></i> Sair
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>

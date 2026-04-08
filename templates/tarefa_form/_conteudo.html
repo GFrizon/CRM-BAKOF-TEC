@@ -1,0 +1,152 @@
+﻿<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="bi bi-{% if tarefa %}pencil{% else %}plus-circle{% endif %}"></i> 
+                        {% if tarefa %}Editar{% else %}Nova{% endif %} Tarefa
+                    </h2>
+                    <p class="text-muted mb-0">
+                        {% if tarefa %}Atualize os dados da tarefa{% else %}Cadastre uma nova tarefa ou compromisso{% endif %}
+                    </p>
+                </div>
+                <a href="{{ url_for('tarefas') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">TÃ­tulo da Tarefa *</label>
+                                    <input type="text" class="form-control" name="titulo" 
+                                           value="{{ tarefa.titulo if tarefa else '' }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Tipo</label>
+                                    <select class="form-select" name="tipo">
+                                        <option value="tarefa_interna" {% if tarefa and tarefa.tipo == 'tarefa_interna' %}selected{% endif %}>Tarefa Interna</option>
+                                        <option value="ligacao" {% if tarefa and tarefa.tipo == 'ligacao' %}selected{% endif %}>LigaÃ§Ã£o</option>
+                                        <option value="email" {% if tarefa and tarefa.tipo == 'email' %}selected{% endif %}>E-mail</option>
+                                        <option value="reuniao" {% if tarefa and tarefa.tipo == 'reuniao' %}selected{% endif %}>ReuniÃ£o</option>
+                                        <option value="visita" {% if tarefa and tarefa.tipo == 'visita' %}selected{% endif %}>Visita</option>
+                                        <option value="follow_up" {% if tarefa and tarefa.tipo == 'follow_up' %}selected{% endif %}>Follow-up</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">DescriÃ§Ã£o</label>
+                            <textarea class="form-control" name="descricao" rows="3">{{ tarefa.descricao if tarefa else '' }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Prioridade</label>
+                                    <select class="form-select" name="prioridade">
+                                        <option value="baixa" {% if tarefa and tarefa.prioridade == 'baixa' %}selected{% endif %}>Baixa</option>
+                                        <option value="media" {% if tarefa and tarefa.prioridade == 'media' %}selected{% endif %}>MÃ©dia</option>
+                                        <option value="alta" {% if tarefa and tarefa.prioridade == 'alta' %}selected{% endif %}>Alta</option>
+                                        <option value="urgente" {% if tarefa and tarefa.prioridade == 'urgente' %}selected{% endif %}>Urgente</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-select" name="status">
+                                        <option value="pendente" {% if tarefa and tarefa.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                                        <option value="em_andamento" {% if tarefa and tarefa.status == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
+                                        <option value="concluida" {% if tarefa and tarefa.status == 'concluida' %}selected{% endif %}>ConcluÃ­da</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Data de Vencimento *</label>
+                                    <input type="datetime-local" class="form-control" name="data_vencimento" required
+                                           value="{{ tarefa.data_vencimento.strftime('%Y-%m-%dT%H:%M') if tarefa else '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Cliente</label>
+                                    <select class="form-select" name="cliente_id">
+                                        <option value="">Selecione um cliente (opcional)...</option>
+                                        {% for cliente in clientes %}
+                                        <option value="{{ cliente.id }}" 
+                                                {% if tarefa and tarefa.cliente_id == cliente.id %}selected{% endif %}>
+                                            {{ cliente.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Oportunidade Relacionada</label>
+                                    <select class="form-select" name="oportunidade_id">
+                                        <option value="">Selecione uma oportunidade (opcional)...</option>
+                                        {% for oportunidade in oportunidades %}
+                                        <option value="{{ oportunidade.id }}" 
+                                                {% if tarefa and tarefa.oportunidade_id == oportunidade.id %}selected{% endif %}>
+                                            {{ oportunidade.titulo }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if current_user.tipo == 'supervisor' %}
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label class="form-label">ResponsÃ¡vel</label>
+                                    <select class="form-select" name="usuario_id">
+                                        {% for consultor in consultores %}
+                                        <option value="{{ consultor.id }}" 
+                                                {% if tarefa and tarefa.usuario_id == consultor.id %}selected{% endif %}>
+                                            {{ consultor.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-{% if tarefa %}pencil{% else %}plus-circle{% endif %}"></i> 
+                                        {% if tarefa %}Atualizar{% else %}Criar{% endif %} Tarefa
+                                    </button>
+                                    <a href="{{ url_for('tarefas') }}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-x-circle"></i> Cancelar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

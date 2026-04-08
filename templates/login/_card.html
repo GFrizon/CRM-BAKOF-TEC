@@ -1,0 +1,87 @@
+﻿  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <!-- Tenta carregar a logo, se falhar mostra Ã­cone -->
+        <img src="{{ url_for('static', filename='img/bakof-logo.png') }}" 
+             alt="Bakof Tec"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="logo-placeholder" style="display: none;">
+          <i class="bi bi-telephone-fill"></i>
+        </div>
+        <h4>CRM</h4>
+        <p>GestÃ£o de Relacionamento com o Cliente</p>
+      </div>
+      
+      <div class="login-body">
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+          {% if mensagens %}
+            {% for categoria, msg in mensagens %}
+              <div class="alert alert-{{ categoria }}" role="alert">
+                <i class="bi bi-{% if categoria == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %}-fill me-2"></i>
+                {{ msg }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        
+        <form method="post">
+          <div class="form-floating">
+            <input type="email" 
+                   class="form-control" 
+                   id="email" 
+                   name="email" 
+                   placeholder="seu@email.com" 
+                   required autofocus>
+            <label for="email">
+              <i class="bi bi-envelope me-2"></i>E-mail
+            </label>
+          </div>
+          
+          <div class="form-floating">
+            <input type="password" 
+                   class="form-control" 
+                   id="senha" 
+                   name="senha" 
+                   placeholder="Senha" 
+                   required>
+            <label for="senha">
+              <i class="bi bi-lock me-2"></i>Senha
+            </label>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" value="1" id="lembrar" name="lembrar" {% if lembrar %}checked{% endif %}>
+            <label class="form-check-label" for="lembrar">
+              Manter conectado
+            </label>
+          </div>
+          
+          <button type="submit" class="btn btn-login">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Entrar no Sistema
+          </button>
+        </form>
+        
+    <div class="card mt-3" style="border: 1px solid #e3e6f0; border-radius: 8px;">
+  <div class="card-body text-center">
+    <h6 class="card-title" style="font-weight: bold;">Precisa de ajuda</h6>
+    <p class="text-muted" style="font-size: 0.9rem;">
+      Fale diretamente comigo no WhatsApp para suporte, acesso ou dÃºvidas.
+    </p>
+    <a href="https://wa.me/555537449976text=OlÃ¡,%20preciso%20de%20ajuda%20no%20sistema%20de%20ligaÃ§Ãµes."
+       target="_blank"
+       style="background-color: #25d366; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: 600;">
+      ðŸ’¬ Conversar no WhatsApp
+    </a>
+  </div>
+</div>
+
+
+      
+      <div class="login-footer">
+        <i class="bi bi-shield-check"></i> Bakof Tec - Sistema de Controle de LigaÃ§Ãµes
+        <div class="mt-2">
+          <small>Â© 2025 - Todos os direitos reservados</small>
+        </div>
+      </div>
+    </div>
+  </div>
