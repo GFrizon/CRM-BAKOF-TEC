@@ -18,7 +18,15 @@ def register_clientes_ligacoes_analytics_routes(app):
         try:
             mes, ano = parse_mes_ano(request.args)
             meta_conversao = float(request.args.get("meta_conversao", 10) or 10)
-            payload, status = consultar_resultados_consultores_mes(mes, ano, meta_conversao=meta_conversao)
+            tipo_operador = (request.args.get("tipo") or "consultor").strip().lower()
+            if tipo_operador not in ("consultor", "televendas"):
+                return jsonify({"ok": False, "erro": "Tipo de dashboard inválido"}), 400
+            payload, status = consultar_resultados_consultores_mes(
+                mes,
+                ano,
+                meta_conversao=meta_conversao,
+                tipo_operador=tipo_operador,
+            )
             return jsonify(payload), status
         except Exception as e:
             return jsonify({"ok": False, "erro": str(e)}), 500

@@ -16,12 +16,12 @@ from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_dedupli
 logger = logging.getLogger(__name__)
 
 
-def _contagem_90_150_por_consultor_mesma_regra_lista_oracle():
-    """Conta 90-150 por consultor com a mesma regra da aba Oracle."""
-    contagem_por_consultor = {}
+def _contagem_90_150_por_usuario_mesma_regra_lista_oracle(tipo_operador="consultor"):
+    """Conta 90-150 por usuario ativo, aderente a regra da aba Oracle."""
+    contagem_por_usuario = {}
     clientes_oracle = carregar_clientes_oracle_deduplicados(logger, periodo_oracle=None)
     if not clientes_oracle:
-        return contagem_por_consultor
+        return contagem_por_usuario
 
     codigos_oracle = {
         str(c.get("cd_cliente") or "").strip()
@@ -29,7 +29,7 @@ def _contagem_90_150_por_consultor_mesma_regra_lista_oracle():
         if c.get("cd_cliente")
     }
     if not codigos_oracle:
-        return contagem_por_consultor
+        return contagem_por_usuario
 
     clientes_locais = (
         Cliente.query
@@ -45,10 +45,14 @@ def _contagem_90_150_por_consultor_mesma_regra_lista_oracle():
         if c.cd_cliente_oracle and c.consultor_id
     }
     if not local_por_cd:
-        return contagem_por_consultor
+        return contagem_por_usuario
 
-    _, mapa_nome_para_id_oracle = carregar_mapa_nome_para_id_usuarios_ativos()
-    mapa_codigo_para_id_oracle = construir_mapa_codigo_para_id(mapa_nome_para_id_oracle)
+    if tipo_operador == "consultor":
+        _, mapa_nome_para_id_oracle = carregar_mapa_nome_para_id_usuarios_ativos()
+        mapa_codigo_para_id_oracle = construir_mapa_codigo_para_id(mapa_nome_para_id_oracle)
+    else:
+        mapa_nome_para_id_oracle = {}
+        mapa_codigo_para_id_oracle = {}
 
     for row in clientes_oracle:
         cd_cliente = str(row.get("cd_cliente") or "").strip()
@@ -58,20 +62,25 @@ def _contagem_90_150_por_consultor_mesma_regra_lista_oracle():
         if not cli_local or not cli_local.consultor_id:
             continue
 
-        consultor_id = int(cli_local.consultor_id)
-        consultor_cliente = str(row.get("consultor") or "").strip()
-        if not consultor_categoria_permitido_para_usuario(
-            tipo_usuario="consultor",
-            consultor_cliente=consultor_cliente,
-            current_user_id=consultor_id,
-            mapa_codigo_para_id=mapa_codigo_para_id_oracle,
-            mapa_nome_para_id=mapa_nome_para_id_oracle,
-        ):
+        usuario_id = int(cli_local.consultor_id)
+        usuario = db.session.get(Usuario, usuario_id)
+        if not usuario or not usuario.ativo or usuario.tipo != tipo_operador:
             continue
 
-        contagem_por_consultor[consultor_id] = contagem_por_consultor.get(consultor_id, 0) + 1
+        consultor_cliente = str(row.get("consultor") or "").strip()
+        if tipo_operador == "consultor":
+            if not consultor_categoria_permitido_para_usuario(
+                tipo_usuario="consultor",
+                consultor_cliente=consultor_cliente,
+                current_user_id=usuario_id,
+                mapa_codigo_para_id=mapa_codigo_para_id_oracle,
+                mapa_nome_para_id=mapa_nome_para_id_oracle,
+            ):
+                continue
 
-    return contagem_por_consultor
+        contagem_por_usuario[usuario_id] = contagem_por_usuario.get(usuario_id, 0) + 1
+
+    return contagem_por_usuario
 
 
 def parse_mes_ano(args):
@@ -80,7 +89,7 @@ def parse_mes_ano(args):
     return mes, ano
 
 
-def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0):
+def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_operador="consultor"):
     if mes < 1 or mes > 12:
         return {"ok": False, "erro": "Mês inválido"}, 400
 
@@ -152,13 +161,13 @@ def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0):
         )
         .outerjoin(subq_lig, subq_lig.c.cid == Usuario.id)
         .outerjoin(subq_carteira, subq_carteira.c.cid == Usuario.id)
-        .filter(Usuario.tipo == "consultor", Usuario.ativo == True)
+        .filter(Usuario.tipo == tipo_operador, Usuario.ativo == True)
         .order_by(desc("receita"))
         .all()
     )
 
     resultado = []
-    contagem_90_150_oracle = _contagem_90_150_por_consultor_mesma_regra_lista_oracle()
+    contagem_90_150_oracle = _contagem_90_150_por_usuario_mesma_regra_lista_oracle(tipo_operador=tipo_operador)
     total_ligacoes_geral = 0
     total_vendas_geral = 0
     total_retornar_geral = 0
@@ -207,7 +216,7 @@ def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0):
         resultado.append(
             {
                 "id": None,
-                "nome": "Não vinculado (fora dos consultores ativos)",
+                "nome": "Não vinculado (fora dos operadores ativos)",
                 "total_ligacoes": 0,
                 "vendas": 0,
                 "total_retornar": 0,

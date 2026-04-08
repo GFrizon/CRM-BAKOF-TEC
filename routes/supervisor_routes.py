@@ -129,11 +129,14 @@ def register_supervisor_routes(app):
             "atualizados": atualizados,
         }
 
+    @app.route("/supervisor/televendas", endpoint="dashboard_supervisor_televendas")
     @app.route("/supervisor", endpoint="dashboard_supervisor")
     @login_required
     def supervisor_dashboard():
         if current_user.tipo != "supervisor":
             return redirect(url_for("meus_clientes"))
+        dashboard_tipo = "televendas" if request.path.endswith("/televendas") else "consultor"
+        dashboard_titulo = "Televendas" if dashboard_tipo == "televendas" else "Consultores"
 
         mes_filtro = int(request.args.get("mes", datetime.now().month))
         ano_filtro = int(request.args.get("ano", datetime.now().year))
@@ -141,7 +144,7 @@ def register_supervisor_routes(app):
         hoje = datetime.now().date()
         desde = datetime.now() - timedelta(days=30)
 
-        total_consultores = Usuario.query.filter_by(tipo="consultor", ativo=True).count()
+        total_consultores = Usuario.query.filter_by(tipo=dashboard_tipo, ativo=True).count()
         total_clientes = Cliente.query.filter_by(ativo=True).count()
         total_ligacoes = Ligacao.query.count()
         ligacoes_hoje = Ligacao.query.filter(func.date(Ligacao.data_hora) == hoje).count()
@@ -226,7 +229,7 @@ def register_supervisor_routes(app):
         rows = (
             db.session.query(Usuario.nome, func.count(Ligacao.id))
             .join(Ligacao, Ligacao.consultor_id == Usuario.id, isouter=True)
-            .filter(Usuario.tipo == "consultor", Usuario.ativo == True)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
             .filter(or_(Ligacao.data_hora >= desde, Ligacao.id == None))
             .group_by(Usuario.id, Usuario.nome)
             .order_by(desc(func.count(Ligacao.id)))
@@ -255,7 +258,7 @@ def register_supervisor_routes(app):
         taxa_conversao_geral_30d = round(_percent(total_vendas_30d, total_resultados_30d), 1) if total_resultados_30d else 0.0
 
         progresso = []
-        consultores = Usuario.query.filter_by(tipo="consultor", ativo=True).order_by(Usuario.nome).all()
+        consultores = Usuario.query.filter_by(tipo=dashboard_tipo, ativo=True).order_by(Usuario.nome).all()
         for u in consultores:
             feitas = (
                 db.session.query(func.count(Ligacao.id))
@@ -276,7 +279,7 @@ def register_supervisor_routes(app):
                 func.sum(case((Ligacao.resultado == "comprou", Ligacao.valor_venda), else_=0)).label("receita"),
             )
             .join(Ligacao, Ligacao.consultor_id == Usuario.id, isouter=True)
-            .filter(Usuario.tipo == "consultor", Usuario.ativo == True)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
             .filter(or_(Ligacao.data_hora >= desde, Ligacao.id == None))
             .group_by(Usuario.id, Usuario.nome)
             .order_by(desc("receita"))
@@ -321,6 +324,8 @@ def register_supervisor_routes(app):
             progresso=progresso,
             consultores=consultores,
             conversao=conversao,
+            dashboard_tipo=dashboard_tipo,
+            dashboard_titulo=dashboard_titulo,
             mes_filtro=mes_filtro,
             ano_filtro=ano_filtro,
             meses_disponiveis=meses_disponiveis,
@@ -345,16 +350,22 @@ def register_supervisor_routes(app):
             inicio = datetime(ano, mes, 1)
             fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
 
-            consultor_nome = "Todos os consultores"
+            tipo_operador = (request.args.get("tipo") or "consultor").strip().lower()
+            if tipo_operador not in ("consultor", "televendas"):
+                return jsonify({"ok": False, "erro": "Tipo de dashboard inválido"}), 400
+
+            consultor_nome = "Todos os operadores"
             if consultor_id:
-                consultor = Usuario.query.filter_by(id=consultor_id, tipo="consultor", ativo=True).first()
+                consultor = Usuario.query.filter_by(id=consultor_id, tipo=tipo_operador, ativo=True).first()
                 if not consultor:
-                    return jsonify({"ok": False, "erro": "Consultor inválido"}), 400
+                    return jsonify({"ok": False, "erro": "Operador inválido"}), 400
                 consultor_nome = consultor.nome
 
             query = (
                 Ligacao.query.options(joinedload(Ligacao.consultor), joinedload(Ligacao.cliente))
+                .join(Usuario, Usuario.id == Ligacao.consultor_id)
                 .filter(Ligacao.data_hora >= inicio, Ligacao.data_hora < fim)
+                .filter(Usuario.tipo == tipo_operador, Usuario.ativo == True)
             )
             if consultor_id:
                 query = query.filter(Ligacao.consultor_id == consultor_id)
