@@ -1,0 +1,116 @@
+﻿<div class="row g-4">
+  <!-- InformaÃ§Ãµes do Perfil -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-info-circle"></i> InformaÃ§Ãµes do Perfil
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label text-muted small">Nome Completo</label>
+          <div class="fw-bold">{{ current_user.nome }}</div>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label text-muted small">Email</label>
+          <div class="fw-bold">{{ current_user.email }}</div>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label text-muted small">Tipo de UsuÃ¡rio</label>
+          <div>
+            {% if current_user.tipo == 'supervisor' %}
+              <span class="badge bg-primary">
+                <i class="bi bi-shield-check"></i> Supervisor
+              </span>
+            {% elif current_user.tipo == 'supervisor_repr' %}
+              <span class="badge bg-info">
+                <i class="bi bi-eye"></i> Supervisor de Representante
+              </span>
+            {% elif current_user.tipo == 'televendas' %}
+              <span class="badge bg-warning text-dark">
+                <i class="bi bi-telephone-forward"></i> Televendas
+              </span>
+            {% else %}
+              <span class="badge bg-secondary">
+                <i class="bi bi-person"></i> Consultor
+              </span>
+            {% endif %}
+          </div>
+        </div>
+        
+        {% if current_user.tipo == 'consultor' %}
+        <div class="mb-3">
+          <label class="form-label text-muted small">Meta DiÃ¡ria</label>
+          <div>
+            <span class="badge bg-info">
+              {{ current_user.meta_diaria or 10 }} ligaÃ§Ãµes/dia
+            </span>
+          </div>
+        </div>
+        {% endif %}
+        
+        <div class="mb-0">
+          <label class="form-label text-muted small">Membro desde</label>
+          <div class="fw-bold">
+            {{ current_user.data_cadastro.strftime('%d/%m/%Y') if current_user.data_cadastro else '-' }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Alterar Senha -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-key"></i> Alterar Senha
+      </div>
+      <div class="card-body">
+        <form onsubmit="alterarSenha(event)">
+          <div class="mb-3">
+            <label class="form-label">Senha Atual *</label>
+            <input type="password" 
+                   class="form-control" 
+                   id="senhaAtual" 
+                   required
+                   placeholder="Digite sua senha atual">
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Nova Senha *</label>
+            <input type="password" 
+                   class="form-control" 
+                   id="novaSenha" 
+                   required 
+                   minlength="6"
+                   placeholder="MÃ­nimo 6 caracteres">
+            <small class="text-muted">A senha deve ter no mÃ­nimo 6 caracteres</small>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Confirmar Nova Senha *</label>
+            <input type="password" 
+                   class="form-control" 
+                   id="confirmaSenha" 
+                   required 
+                   minlength="6"
+                   placeholder="Digite a senha novamente">
+          </div>
+          
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            <small>
+              ApÃ³s alterar a senha, vocÃª continuarÃ¡ conectado. 
+              Use a nova senha no prÃ³ximo login.
+            </small>
+          </div>
+          
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-shield-lock"></i> Alterar Senha
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

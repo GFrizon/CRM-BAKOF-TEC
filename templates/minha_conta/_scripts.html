@@ -1,0 +1,49 @@
+﻿<script>
+async function alterarSenha(e) {
+  e.preventDefault();
+  
+  const senhaAtual = document.getElementById('senhaAtual').value;
+  const novaSenha = document.getElementById('novaSenha').value;
+  const confirmaSenha = document.getElementById('confirmaSenha').value;
+  
+  // ValidaÃ§Ã£o no front-end
+  if (novaSenha !== confirmaSenha) {
+    alert('As senhas nÃ£o conferem!');
+    document.getElementById('confirmaSenha').focus();
+    return;
+  }
+  
+  if (novaSenha.length < 6) {
+    alert('A nova senha deve ter no mÃ­nimo 6 caracteres!');
+    document.getElementById('novaSenha').focus();
+    return;
+  }
+  
+  try {
+    const r = await fetch('/alterar-senha', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        senha_atual: senhaAtual,
+        nova_senha: novaSenha,
+        confirma_senha: confirmaSenha
+      })
+    });
+    
+    const j = await r.json();
+    
+    if (j.ok) {
+      alert(j.mensagem);
+      // Limpa o formulÃ¡rio
+      document.getElementById('senhaAtual').value = '';
+      document.getElementById('novaSenha').value = '';
+      document.getElementById('confirmaSenha').value = '';
+    } else {
+      alert(j.mensagem || 'Erro ao alterar senha');
+    }
+  } catch (error) {
+    alert('Erro: ' + error.message);
+  }
+}
+</script>
+

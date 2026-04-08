@@ -1,0 +1,55 @@
+﻿    <!-- EstatÃ­sticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ stats.total }}</h4>
+                            <small>Total de Tarefas</small>
+                        </div>
+                        <i class="bi bi-list-task fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ stats.por_status.pendente }}</h4>
+                            <small>Pendentes</small>
+                        </div>
+                        <i class="bi bi-clock fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ stats.por_status.em_andamento }}</h4>
+                            <small>Em Andamento</small>
+                        </div>
+                        <i class="bi bi-arrow-repeat fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ stats.atrasadas }}</h4>
+                            <small>Atrasadas</small>
+                        </div>
+                        <i class="bi bi-exclamation-triangle fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

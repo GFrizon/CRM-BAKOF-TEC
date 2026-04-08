@@ -1,0 +1,32 @@
+﻿<script>
+function aplicarFiltroTarefas(chave, valor) {
+    const url = new URL(window.location.href);
+    if (valor) {
+        url.searchParams.set(chave, valor);
+    } else {
+        url.searchParams.delete(chave);
+    }
+    window.location.href = url.toString();
+}
+
+function toggleMinhasTarefas(ativo) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('minhas', ativo ? '1' : '0');
+    window.location.href = url.toString();
+}
+
+function excluirTarefa(id) {
+    document.getElementById('formExcluir').action = '/tarefa/' + id + '/excluir';
+    new bootstrap.Modal(document.getElementById('excluirModal')).show();
+}
+
+function concluirTarefa(id) {
+    document.getElementById('formConcluir').action = '/tarefa/' + id + '/concluir';
+    new bootstrap.Modal(document.getElementById('concluirModal')).show();
+}
+
+// Auto-refresh a cada 5 minutos para atualizar tarefas atrasadas
+setInterval(function() {
+    location.reload();
+}, 300000);
+</script>
