@@ -24,6 +24,8 @@ wheels/
 venv/
 env/
 ENV/
+.venv/
+.venv_local/
 
 # Environment variables
 .env
@@ -54,3 +56,9 @@ logs/
 *.tmp
 *.temp
 temp/
+.tmp/
+
+# Local runtime artifacts
+uploads/
+instance/
+*.rar
