@@ -1,0 +1,110 @@
+<!-- Ranking e Conversão -->
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-trophy-fill"></i> Ranking de Ligações (30 dias) - {{ dashboard_titulo }}
+      </div>
+      <div class="table-container">
+        <table class="table table-hover m-0">
+          <thead>
+            <tr>
+              <th style="width: 60px">#</th>
+              <th>Operador</th>
+              <th style="width: 120px" class="text-center">Ligações</th>
+              <th style="width: 80px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in ranking[:10] %}
+            <tr>
+              <td class="fw-bold text-center">
+                {% if loop.index == 1 %}
+                  <i class="bi bi-trophy-fill text-warning fs-5"></i>
+                {% elif loop.index == 2 %}
+                  <i class="bi bi-award-fill" style="color: #c0c0c0;"></i>
+                {% elif loop.index == 3 %}
+                  <i class="bi bi-award-fill" style="color: #cd7f32;"></i>
+                {% else %}
+                  {{ loop.index }}
+                {% endif %}
+              </td>
+              <td>
+                <div class="fw-bold">{{ r.nome }}</div>
+              </td>
+              <td class="text-center">
+                <span class="badge bg-primary">{{ r.ligacoes }}</span>
+              </td>
+              <td>
+                <div class="progress" style="height: 8px;">
+                  {% set max_ligacoes = ranking[0].ligacoes if ranking else 1 %}
+                  {% set percent = (r.ligacoes / max_ligacoes * 100) if max_ligacoes > 0 else 0 %}
+                  <div class="progress-bar" style="width: {{ percent }}%; background: linear-gradient(90deg, #2563eb, #3b82f6);"></div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+            {% if not ranking %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-4">
+                Nenhum dado disponível
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-graph-up-arrow"></i> Conversão & Receita (30 dias) - {{ dashboard_titulo }}
+      </div>
+      <div class="table-container">
+        <table class="table table-hover m-0">
+          <thead>
+            <tr>
+              <th>Operador</th>
+              <th class="text-center">Lig.</th>
+              <th class="text-center">Vendas</th>
+              <th class="text-center">Conv.</th>
+              <th class="text-end">Receita</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in conversao %}
+            <tr>
+              <td>
+                <div class="fw-bold">{{ r.nome }}</div>
+              </td>
+              <td class="text-center">
+                <span class="text-muted">{{ r.ligacoes }}</span>
+              </td>
+              <td class="text-center">
+                <span class="badge bg-success">{{ r.vendas }}</span>
+              </td>
+              <td class="text-center">
+                <span class="badge {% if r.conversao >= 20 %}bg-success{% elif r.conversao >= 10 %}bg-warning{% else %}bg-secondary{% endif %}">
+                  {{ r.conversao }}%
+                </span>
+              </td>
+              <td class="text-end">
+                <span class="fw-bold text-success">{{ r.receita_fmt }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+            {% if not conversao %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">
+                Nenhum dado disponível
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

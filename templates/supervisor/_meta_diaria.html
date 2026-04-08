@@ -1,0 +1,57 @@
+<!-- Meta Diária dos Consultores -->
+{% if progresso %}
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-bullseye"></i> Meta Diária — Hoje</span>
+    <small class="text-muted">Ligações realizadas vs meta configurada</small>
+  </div>
+  <div class="table-container">
+    <table class="table table-hover m-0">
+      <thead>
+        <tr>
+          <th>Consultor</th>
+          <th class="text-center">Ligações Hoje</th>
+          <th class="text-center">Meta</th>
+          <th style="width:220px">Progresso</th>
+          <th class="text-center">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in progresso %}
+        <tr>
+          <td class="fw-bold">{{ p.nome }}</td>
+          <td class="text-center">
+            <span class="badge bg-primary">{{ p.feitas }}</span>
+          </td>
+          <td class="text-center">
+            <span class="text-muted">{{ p.meta }}</span>
+          </td>
+          <td>
+            {% if p.meta > 0 %}
+            <div class="progress" style="height:10px;border-radius:5px;">
+              <div class="progress-bar
+                {% if p.percentual >= 100 %}bg-success
+                {% elif p.percentual >= 50 %}bg-warning
+                {% else %}bg-danger{% endif %}"
+                style="width:{{ [p.percentual, 100]|min }}%;transition:width .4s;">
+              </div>
+            </div>
+            {% else %}
+            <span class="text-muted" style="font-size:.8rem;">Sem meta</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <span class="badge
+              {% if p.percentual >= 100 %}bg-success
+              {% elif p.percentual >= 50 %}bg-warning
+              {% else %}bg-secondary{% endif %}">
+              {{ p.percentual }}%
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}

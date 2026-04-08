@@ -1,0 +1,342 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let _reqFiltroMesToken = 0;
+let _reqLigacoesMesToken = 0;
+let _chartLigacoesDias = null;
+let _chartResultados = null;
+const DASHBOARD_TIPO = '{{ dashboard_tipo }}';
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.__supervisorDashboardInit) return;
+  window.__supervisorDashboardInit = true;
+  aplicarFiltroMes();
+  carregarLigacoesMes();
+});
+
+window.addEventListener('pageshow', () => {
+  if (_chartLigacoesDias) _chartLigacoesDias.resize();
+  if (_chartResultados) _chartResultados.resize();
+});
+
+// 🆕 FECHAR POP-UP DE NOVIDADES
+async function fecharNovidades() {
+  await fetch('/marcar-novidades-vistas', { method: 'POST' });
+  document.getElementById('modalNovidades').style.display = 'none';
+}
+
+// 🆕 APLICAR FILTRO POR MÊS
+async function aplicarFiltroMes() {
+  const select = document.getElementById('filtroMes');
+  const valor = select.value; // formato: "mes-ano"
+  const [mes, ano] = valor.split('-');
+  
+  const textoSelecionado = select.options[select.selectedIndex].text;
+  document.getElementById('periodoSelecionado').textContent = textoSelecionado;
+  
+  // Mostrar loading
+  document.getElementById('resultadosFiltrados').style.display = 'block';
+  document.getElementById('tbodyResultados').innerHTML = `
+    <tr>
+      <td colspan="9" class="text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Carregando dados...</p>
+      </td>
+    </tr>
+  `;
+  document.getElementById('tfootResultados').innerHTML = '';
+  
+  const token = ++_reqFiltroMesToken;
+  try {
+    const metaConversao = 10;
+    const r = await fetch(`/api/resultados-por-mes?mes=${mes}&ano=${ano}&meta_conversao=${metaConversao}&tipo=${DASHBOARD_TIPO}`);
+    const data = await r.json();
+    if (token !== _reqFiltroMesToken) return;
+    
+    if (!data.ok) {
+      throw new Error(data.erro || 'Erro ao buscar dados');
+    }
+    
+    const tbody = document.getElementById('tbodyResultados');
+    
+    if (!data.consultores || data.consultores.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="9" class="text-center text-muted py-4">
+            <i class="bi bi-inbox display-4 d-block mb-2"></i>
+            Nenhum dado encontrado para este período
+          </td>
+        </tr>
+      `;
+      return;
+    }
+    
+    let html = '';
+    data.consultores.forEach(c => {
+      const atingiuMeta = Number(c.conversao || 0) >= Number(c.meta_conversao || 0);
+      
+      html += `
+        <tr>
+          <td><strong>${c.nome}</strong></td>
+          <td class="text-center fw-semibold">${c.total_ligacoes}</td>
+          <td class="text-center fw-semibold">${c.vendas}</td>
+          <td class="text-center fw-semibold">${c.total_retornar}</td>
+          <td class="text-center"><span class="fw-semibold ${atingiuMeta ? 'text-success' : 'text-secondary'}">${c.conversao}%</span></td>
+          <td class="text-center"><span class="text-muted fw-semibold">${c.meta_conversao}%</span></td>
+          <td class="text-center fw-semibold">${c.total_90_150}</td>
+          <td class="text-center fw-semibold">${c.total_proximos_inativacao}</td>
+          <td class="text-end"><strong class="text-success">${c.receita_fmt}</strong></td>
+        </tr>
+      `;
+    });
+    
+    tbody.innerHTML = html;
+    const t = data.totais || {};
+    document.getElementById('tfootResultados').innerHTML = `
+      <tr class="table-light">
+        <th>Total resultado do período</th>
+        <th class="text-center">${t.total_ligacoes || 0}</th>
+        <th class="text-center">${t.total_vendas || 0}</th>
+        <th class="text-center">${t.total_retornar || 0}</th>
+        <th class="text-center">${t.conversao || 0}%</th>
+        <th class="text-center">${t.meta_conversao || 0}%</th>
+        <th class="text-center">${t.total_90_150 || 0}</th>
+        <th class="text-center">${t.total_proximos_inativacao || 0}</th>
+        <th class="text-end">${t.receita_fmt || 'R$ 0,00'}</th>
+      </tr>
+    `;
+    
+  } catch (erro) {
+    console.error('Erro:', erro);
+    document.getElementById('tbodyResultados').innerHTML = `
+      <tr>
+        <td colspan="9" class="text-center text-danger py-4">
+          <i class="bi bi-exclamation-triangle display-4 d-block mb-2"></i>
+          Erro ao carregar dados: ${erro.message}
+        </td>
+      </tr>
+    `;
+    document.getElementById('tfootResultados').innerHTML = '';
+  }
+}
+
+function escapeHtml(valor) {
+  return String(valor || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function badgeResultado(resultado) {
+  const mapa = {
+    comprou: '<span class="badge bg-success"><i class="bi bi-cart-check"></i> Comprou</span>',
+    nao_comprou: '<span class="badge bg-secondary">Não comprou</span>',
+    retornar: '<span class="badge bg-warning"><i class="bi bi-arrow-clockwise"></i> Retornar</span>',
+    sem_interesse: '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> Sem interesse</span>',
+    relacionamento: '<span class="badge bg-info"><i class="bi bi-heart"></i> Relacionamento</span>',
+    cliente_inativo: '<span class="badge bg-dark"><i class="bi bi-person-x"></i> Cliente inativo</span>'
+  };
+  return mapa[resultado] || mapa.nao_comprou;
+}
+
+async function carregarLigacoesMes() {
+  const consultorId = document.getElementById('filtroConsultorMes').value;
+  const [mes, ano] = document.getElementById('filtroMesDetalhes').value.split('-');
+  const tbody = document.getElementById('tbodyLigacoesMes');
+  const resumo = document.getElementById('resumoLigacoesMes');
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="7" class="text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+      </td>
+    </tr>
+  `;
+  resumo.innerHTML = '';
+
+  const params = new URLSearchParams({ mes, ano });
+  if (consultorId) params.append('consultor_id', consultorId);
+
+  const token = ++_reqLigacoesMesToken;
+  try {
+    params.append('tipo', DASHBOARD_TIPO);
+    const r = await fetch(`/api/supervisor/ligacoes-por-mes?${params.toString()}`);
+    const data = await r.json();
+    if (token !== _reqLigacoesMesToken) return;
+    if (!data.ok) throw new Error(data.erro || 'Erro ao carregar ligações');
+
+    const est = data.estatisticas || {};
+    resumo.innerHTML = `
+      <div class="alert alert-info py-2 mb-2">
+        <strong>${escapeHtml(data.consultor_nome)}</strong>:
+        ${est.total_ligacoes || 0} ligações •
+        ${est.vendas || 0} vendas •
+        ${est.conversao || 0}% conversão •
+        ${escapeHtml(est.receita_fmt || 'R$ 0,00')}
+      </div>
+    `;
+
+    if (!data.ligacoes || data.ligacoes.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">
+            Nenhuma ligação encontrada para esse filtro
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    let html = '';
+    data.ligacoes.forEach((lig) => {
+      html += `
+        <tr>
+          <td>${escapeHtml(lig.data_hora)}</td>
+          <td>${escapeHtml(lig.consultor)}</td>
+          <td>${escapeHtml(lig.cliente)}</td>
+          <td>${escapeHtml(lig.contato)}</td>
+          <td>${badgeResultado(lig.resultado)}</td>
+          <td class="text-end">${escapeHtml(lig.valor_fmt)}</td>
+          <td>${escapeHtml(lig.observacao || '-')}</td>
+        </tr>
+      `;
+    });
+    tbody.innerHTML = html;
+  } catch (error) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center text-danger py-4">
+          <i class="bi bi-exclamation-triangle"></i> ${escapeHtml(error.message)}
+        </td>
+      </tr>
+    `;
+  }
+}
+
+if (typeof Chart === 'undefined') {
+  console.error('Chart.js nao carregou no painel do supervisor.');
+} else {
+// Configuração dos gráficos
+Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+Chart.defaults.font.size = 13;
+
+// Gráfico de Ligações por Dia
+const ctxDias = document.getElementById('chartLigacoesDias');
+if (ctxDias) {
+  const ligacoesDias = {{ ligacoes_por_dia|tojson|safe }};
+  if (_chartLigacoesDias) {
+    _chartLigacoesDias.destroy();
+  }
+  
+  _chartLigacoesDias = new Chart(ctxDias, {
+    type: 'line',
+    data: {
+      labels: ligacoesDias.map(d => d.data).reverse(),
+      datasets: [{
+        label: 'Ligações',
+        data: ligacoesDias.map(d => d.total).reverse(),
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        pointBackgroundColor: '#2563eb',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 14, weight: 'bold' },
+          bodyFont: { size: 13 }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+            callback: value => Number.isInteger(value) ? value : ''
+          },
+          grid: { color: 'rgba(0, 0, 0, 0.05)' }
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+// Gráfico de Resultados
+const ctxResultados = document.getElementById('chartResultados');
+if (ctxResultados) {
+  const resultados = {{ resultados_chart|tojson|safe }};
+  if (_chartResultados) {
+    _chartResultados.destroy();
+  }
+  
+  _chartResultados = new Chart(ctxResultados, {
+    type: 'doughnut',
+    data: {
+      labels: ['Comprou', 'Não Comprou', 'Retornar', 'Sem Interesse', 'Relacionamento', 'Cliente Inativo'],
+      datasets: [{
+        data: [
+          resultados.comprou || 0,
+          resultados.nao_comprou || 0,
+          resultados.retornar || 0,
+          resultados.sem_interesse || 0,
+          resultados.relacionamento || 0,
+          resultados.cliente_inativo || 0
+        ],
+        backgroundColor: [
+          'rgba(16, 185, 129, 0.8)',
+          'rgba(107, 114, 128, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(75, 85, 99, 0.8)'
+        ],
+        borderColor: ['#10b981', '#6b7280', '#f59e0b', '#ef4444', '#3b82f6', '#4b5563'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            padding: 10,
+            font: { size: 11 },
+            usePointStyle: true,
+            pointStyle: 'circle',
+            boxWidth: 6,
+            boxHeight: 6
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          callbacks: {
+            label: context => {
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percent = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+              return `${context.label}: ${context.parsed} (${percent}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+}
+</script>

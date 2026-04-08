@@ -1,0 +1,37 @@
+<!-- 🆕 TABELA DE RESULTADOS FILTRADOS -->
+<div class="row g-4 mb-4" id="resultadosFiltrados" style="display: none;">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <i class="bi bi-calendar3"></i> Resultados do Período - <span id="periodoSelecionado"></span>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Operador</th>
+                <th class="text-center">Total Ligações</th>
+                <th class="text-center">Vendas</th>
+                <th class="text-center">Retornar</th>
+                <th class="text-center">Conversão</th>
+                <th class="text-center">Meta Conv.</th>
+                <th class="text-center">90-150</th>
+                <th class="text-center">Próx. Inativação</th>
+                <th class="text-end">Receita</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyResultados">
+              <tr>
+                <td colspan="9" class="text-center">
+                  <div class="spinner-border text-primary" role="status"></div>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot id="tfootResultados"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
