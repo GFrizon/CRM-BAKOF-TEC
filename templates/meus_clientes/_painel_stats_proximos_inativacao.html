@@ -1,0 +1,47 @@
+<!-- ============================================================
+     PAINEL DE ESTATÍSTICAS PROXIMOS INATIVAÇÃO
+     ============================================================ -->
+{% if aba == 'proximos_inativacao' and stats_proximos is defined and stats_proximos %}
+<div class="panel-card mt-3" style="border-left:4px solid #d97706;">
+  <div class="panel-body">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 class="mb-0 fw-bold" style="color:#b45309;">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Clientes próximos de inativação – 151 a 180 dias sem pedido
+      </h6>
+      <span class="badge" style="background:#d97706;color:#fff;">{{ total_proximos }} clientes</span>
+    </div>
+    <div class="row g-3 text-center">
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat-card">
+          <div class="oracle-stat-value" style="color:#16a34a;">{{ stats_proximos.liberados }}</div>
+          <div class="oracle-stat-label">Liberados</div>
+          <div class="oracle-stat-perc">{{ stats_proximos.perc_liberados }}%</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat-card">
+          <div class="oracle-stat-value" style="color:#dc2626;">{{ stats_proximos.inadimplentes }}</div>
+          <div class="oracle-stat-label">Inadimplentes</div>
+          <div class="oracle-stat-perc">{{ stats_proximos.perc_inadimplentes }}%</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat-card">
+          <div class="oracle-stat-value" style="color:var(--brand-700);">{{ stats_proximos.ticket_medio | formatar_dinheiro }}</div>
+          <div class="oracle-stat-label">Ticket Médio</div>
+          <div class="oracle-stat-perc">&nbsp;</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat-card">
+          <div class="oracle-stat-value" style="color:#b45309;">{{ stats_proximos.dias_sem_pedido }}d</div>
+          <div class="oracle-stat-label">Média Dias Sem Pedido</div>
+          <div class="oracle-stat-perc"><small class="text-muted">Inativa em &lt;{{ 181 - stats_proximos.dias_sem_pedido }}d avg</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+

@@ -1,0 +1,71 @@
+<!-- ============================================================
+     PAINEL DE ESTATÍSTICAS ORACLE
+     ============================================================ -->
+{% if aba == 'oracle' %}
+<div class="panel-card">
+  <div class="panel-header">
+    <i class="bi bi-database"></i>
+    <span>Estatísticas - Clientes sem pedidos 90-150 dias</span>
+    <small><i class="bi bi-arrow-clockwise"></i> Atualizado diariamente do banco Oracle</small>
+  </div>
+  <div class="panel-body">
+    <div class="row g-4">
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#dcfce7;"><i class="bi bi-check-circle" style="color:#16a34a;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#16a34a;">Liberados</div>
+            <div class="oracle-stat-val">{{ stats_oracle.liberados or 0 }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#fee2e2;"><i class="bi bi-exclamation-triangle" style="color:#dc2626;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#dc2626;">Inadimplentes</div>
+            <div class="oracle-stat-val">{{ stats_oracle.inadimplentes or 0 }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:var(--brand-50);"><i class="bi bi-currency-dollar" style="color:var(--brand-600);"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:var(--brand-600);">Ticket Médio</div>
+            <div class="oracle-stat-val" style="font-size:.85rem;">{{ stats_oracle.ticket_medio | formatar_dinheiro }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#f0fdf4;"><i class="bi bi-calendar3" style="color:#15803d;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#15803d;">Média Dias</div>
+            <div class="oracle-stat-val">{{ "%.0f"|format(stats_oracle.dias_sem_pedido or 0) }}d</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-4">
+      <div class="dist-bar">
+        <div class="segment" style="background:#16a34a;width:{{ stats_oracle.perc_liberados or 0 }}%;">
+          {{ stats_oracle.perc_liberados or 0 }}%
+        </div>
+        <div class="segment" style="background:#dc2626;width:{{ stats_oracle.perc_inadimplentes or 0 }}%;">
+          {{ stats_oracle.perc_inadimplentes or 0 }}%
+        </div>
+        <div class="segment" style="background:#94a3b8;width:{{ stats_oracle.perc_sem_conceito or 0 }}%;">
+          {{ stats_oracle.perc_sem_conceito or 0 }}%
+        </div>
+      </div>
+      <div class="d-flex gap-4 mt-2" style="font-size:.72rem;color:var(--text-2);">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#16a34a;margin-right:4px;"></span>Liberados</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#dc2626;margin-right:4px;"></span>Inadimplentes</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#94a3b8;margin-right:4px;"></span>Sem Conceito</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
