@@ -279,6 +279,43 @@ def register_supervisor_routes(app):
             "meses_disponiveis": _ultimos_meses(12),
         }
 
+    def _montar_contexto_supervisor_dashboard(
+        dashboard_tipo: str,
+        dashboard_titulo: str,
+        mes_filtro: int,
+        ano_filtro: int,
+        mostrar_novidades: bool,
+    ) -> dict:
+        hoje = datetime.now().date()
+        desde = datetime.now() - timedelta(days=30)
+        operadores_ids_query = (
+            db.session.query(Usuario.id)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+        )
+        filtrar_carteira_por_vinculo = (dashboard_tipo == "consultor")
+        kpis = _calcular_kpis_dashboard_supervisor(
+            dashboard_tipo=dashboard_tipo,
+            operadores_ids_query=operadores_ids_query,
+            filtrar_carteira_por_vinculo=filtrar_carteira_por_vinculo,
+            hoje=hoje,
+        )
+        dados_dashboard = _carregar_dados_dashboard_supervisor(
+            dashboard_tipo=dashboard_tipo,
+            hoje=hoje,
+            desde=desde,
+        )
+
+        return {
+            **kpis,
+            **dados_dashboard,
+            "dashboard_tipo": dashboard_tipo,
+            "dashboard_titulo": dashboard_titulo,
+            "mes_filtro": mes_filtro,
+            "ano_filtro": ano_filtro,
+            "mostrar_novidades": mostrar_novidades,
+            "banners_ativos": get_banners_ativos(),
+        }
+
     def _sincronizar_vinculos_tg650_supervisor_repr(supervisor_id: int, codigo_supervisor_tg650: str):
         codigo_base = s(codigo_supervisor_tg650)
         if not codigo_base:
@@ -369,72 +406,14 @@ def register_supervisor_routes(app):
 
         mes_filtro = int(request.args.get("mes", datetime.now().month))
         ano_filtro = int(request.args.get("ano", datetime.now().year))
-
-        hoje = datetime.now().date()
-        desde = datetime.now() - timedelta(days=30)
-
-        operadores_ids_query = (
-            db.session.query(Usuario.id)
-            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
-        )
-        filtrar_carteira_por_vinculo = (dashboard_tipo == "consultor")
-        kpis = _calcular_kpis_dashboard_supervisor(
-            dashboard_tipo=dashboard_tipo,
-            operadores_ids_query=operadores_ids_query,
-            filtrar_carteira_por_vinculo=filtrar_carteira_por_vinculo,
-            hoje=hoje,
-        )
-        total_consultores = kpis["total_consultores"]
-        total_clientes = kpis["total_clientes"]
-        total_ligacoes = kpis["total_ligacoes"]
-        ligacoes_hoje = kpis["ligacoes_hoje"]
-        total_sem_pedido_90_150 = kpis["total_sem_pedido_90_150"]
-        total_proximos_inativacao = kpis["total_proximos_inativacao"]
-        total_inativos = kpis["total_inativos"]
-        total_retorno_atrasado = kpis["total_retorno_atrasado"]
-        total_carteira_risco = kpis["total_carteira_risco"]
-        dados_dashboard = _carregar_dados_dashboard_supervisor(
-            dashboard_tipo=dashboard_tipo,
-            hoje=hoje,
-            desde=desde,
-        )
-        ranking = dados_dashboard["ranking"]
-        lig_por_dia = dados_dashboard["ligacoes_por_dia"]
-        resultados_chart = dados_dashboard["resultados_chart"]
-        total_vendas_30d = dados_dashboard["total_vendas_30d"]
-        taxa_conversao_geral_30d = dados_dashboard["taxa_conversao_geral_30d"]
-        progresso = dados_dashboard["progresso"]
-        consultores = dados_dashboard["consultores"]
-        conversao = dados_dashboard["conversao"]
-        meses_disponiveis = dados_dashboard["meses_disponiveis"]
-
-        return render_template(
-            "supervisor.html",
-            total_consultores=total_consultores,
-            total_clientes=total_clientes,
-            total_ligacoes=total_ligacoes,
-            ligacoes_hoje=ligacoes_hoje,
-            total_sem_pedido_90_150=total_sem_pedido_90_150,
-            total_proximos_inativacao=total_proximos_inativacao,
-            total_inativos=total_inativos,
-            total_retorno_atrasado=total_retorno_atrasado,
-            total_carteira_risco=total_carteira_risco,
-            total_vendas_30d=total_vendas_30d,
-            taxa_conversao_geral_30d=taxa_conversao_geral_30d,
-            ranking=ranking,
-            ligacoes_por_dia=lig_por_dia,
-            resultados_chart=resultados_chart,
-            progresso=progresso,
-            consultores=consultores,
-            conversao=conversao,
+        contexto = _montar_contexto_supervisor_dashboard(
             dashboard_tipo=dashboard_tipo,
             dashboard_titulo=dashboard_titulo,
             mes_filtro=mes_filtro,
             ano_filtro=ano_filtro,
-            meses_disponiveis=meses_disponiveis,
             mostrar_novidades=not current_user.viu_novidades,
-            banners_ativos=get_banners_ativos(),
         )
+        return render_template("supervisor.html", **contexto)
 
     @app.route("/api/supervisor/ligacoes-por-mes")
     @login_required
