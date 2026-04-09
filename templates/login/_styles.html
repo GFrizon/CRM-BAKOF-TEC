@@ -164,6 +164,12 @@
       background: transparent;
     }
 
+    /* Bootstrap 5.3 adiciona ::after branco na label (efeito "notch") — remover */
+    .form-floating > .form-control:focus ~ label::after,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label::after {
+      background-color: transparent !important;
+    }
+
     /* Anular fundo branco do autofill do browser */
     input:-webkit-autofill,
     input:-webkit-autofill:hover,
