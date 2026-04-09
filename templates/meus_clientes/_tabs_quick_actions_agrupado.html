@@ -1,36 +1,39 @@
 <div class="panel-card" style="overflow:visible;">
-  <div class="panel-body" style="padding-bottom:0;">
+  <div class="panel-body carteiras-shell" style="padding:12px; background:#eef3fb; border-radius:12px;">
+    <div class="carteiras-header">
+      <span class="carteiras-title"><i class="bi bi-collection me-1"></i> Carteiras</span>
+    </div>
     <div class="modern-tabs nav">
       {% set visao_televendas = (current_user.tipo == 'televendas') or (current_user.tipo == 'supervisor' and dashboard_tipo == 'televendas') %}
       {% set visao_consultores = (current_user.tipo == 'consultor') or (current_user.tipo == 'supervisor' and dashboard_tipo == 'consultor') %}
 
       {% if visao_consultores %}
-      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes', dashboard_tipo=dashboard_tipo) }}">
+      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
         <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
       </a>
-      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle', dashboard_tipo=dashboard_tipo) }}">
+      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
         <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-150d</span><span class="tab-count">{{ total_oracle }}</span>
       </a>
-      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao', dashboard_tipo=dashboard_tipo) }}">
+      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
         <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
       </a>
-      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados', dashboard_tipo=dashboard_tipo) }}">
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
         <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
       </a>
-      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo) }}">
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
         <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
         {% if total_retornar and total_retornar > 0 %}
         <i class="bi bi-dot tab-alert"></i>
         {% endif %}
       </a>
       {% elif visao_televendas %}
-      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo) }}">
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
         <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
-      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados', dashboard_tipo=dashboard_tipo) }}">
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
         <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
       </a>
-      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo) }}">
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
         <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
         {% if total_retornar and total_retornar > 0 %}
         <i class="bi bi-dot tab-alert"></i>
@@ -38,26 +41,26 @@
       </a>
       {% else %}
       {% if current_user.tipo != 'supervisor_repr' %}
-      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes') }}">
+      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes', visao='clientes') }}">
         <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
       </a>
       {% endif %}
-      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle') }}">
+      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle', visao='clientes') }}">
         <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-150d</span><span class="tab-count">{{ total_oracle }}</span>
       </a>
       {% if current_user.tipo == 'supervisor' %}
-      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos') }}">
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos', visao='clientes') }}">
         <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
       {% endif %}
-      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao') }}">
+      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao', visao='clientes') }}">
         <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
       </a>
       {% if current_user.tipo != 'supervisor_repr' %}
-      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados') }}">
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados', visao='clientes') }}">
         <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
       </a>
-      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar') }}">
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', visao='clientes') }}">
         <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
         {% if total_retornar and total_retornar > 0 %}
         <i class="bi bi-dot tab-alert"></i>

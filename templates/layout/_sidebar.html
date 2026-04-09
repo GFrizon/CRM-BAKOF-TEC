@@ -16,12 +16,18 @@
   <!-- Navegação -->
   <nav class="sidebar-nav">
     {% if current_user.is_authenticated %}
+      {% set visao_sidebar_padrao = 'dashboard' if current_user.tipo in ('consultor', 'televendas', 'supervisor_repr') else 'clientes' %}
+      {% set visao_sidebar = visao|default(request.args.get('visao') or visao_sidebar_padrao, true) %}
 
       {% if current_user.tipo == 'consultor' %}
         <span class="sidebar-section-label">Menu</span>
-        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' %}active{% endif %}"
-           href="{{ url_for('meus_clientes') }}">
-          <i class="bi bi-people-fill"></i> Meus Clientes
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'dashboard' %}active{% endif %}"
+           href="{{ url_for('meus_clientes', visao='dashboard', aba='pendentes') }}">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'clientes' %}active{% endif %}"
+           href="{{ url_for('meus_clientes', visao='clientes', aba='pendentes') }}">
+          <i class="bi bi-people-fill"></i> Clientes
         </a>
         <a class="sidebar-link {% if request.endpoint == 'minha_conta' %}active{% endif %}"
            href="{{ url_for('minha_conta') }}">
@@ -59,8 +65,13 @@
 
       {% elif current_user.tipo in ('supervisor_repr', 'televendas') %}
         <span class="sidebar-section-label">Menu</span>
-        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' %}active{% endif %}"
-           href="{{ url_for('meus_clientes') }}">
+        {% set aba_padrao = 'inativos' if current_user.tipo == 'televendas' else 'oracle' %}
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'dashboard' %}active{% endif %}"
+           href="{{ url_for('meus_clientes', visao='dashboard', aba=aba_padrao) }}">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'clientes' %}active{% endif %}"
+           href="{{ url_for('meus_clientes', visao='clientes', aba=aba_padrao) }}">
           <i class="bi bi-people-fill"></i> Clientes
         </a>
         <a class="sidebar-link {% if request.endpoint == 'minha_conta' %}active{% endif %}"

@@ -42,6 +42,7 @@ def render_aba_inativos(
     total_proximos_badge: int,
     cache_store: dict,
     dashboard_tipo=None,
+    visao=None,
 ):
     # REGRA VALIDADA (2026-03): lista de inativos vem da base local sincronizada diariamente.
     app.logger.info("=== INICIANDO TRATAMENTO ABA INATIVOS ===")
@@ -306,4 +307,5 @@ def render_aba_inativos(
         mes_filtro=None,
         ano_filtro=None,
         dashboard_tipo=dashboard_tipo,
+        visao=visao,
     )

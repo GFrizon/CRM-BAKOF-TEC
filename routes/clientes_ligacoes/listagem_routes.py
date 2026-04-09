@@ -46,6 +46,7 @@ def register_clientes_ligacoes_listagem_routes(app):
         if contexto_inicial.get("response") is not None:
             return contexto_inicial["response"]
         aba = contexto_inicial["aba"]
+        visao = contexto_inicial["visao"]
         dashboard_tipo = contexto_inicial["dashboard_tipo"]
         total_oracle_badge = contexto_inicial["total_oracle_badge"]
         total_proximos_badge = contexto_inicial["total_proximos_badge"]
@@ -69,6 +70,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                 total_inativos_badge=total_inativos_badge,
                 total_proximos_badge=total_proximos_badge,
                 dashboard_tipo=dashboard_tipo,
+                visao=visao,
             )
 
         if aba == 'inativos':
@@ -84,6 +86,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                 total_proximos_badge=total_proximos_badge,
                 cache_store=_INATIVOS_COUNT_CACHE,
                 dashboard_tipo=dashboard_tipo,
+                visao=visao,
             )
 
         if aba == 'proximos_inativacao':
@@ -95,6 +98,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                 total_inativos_badge=total_inativos_badge,
                 q=request.args.get('q', ''),
                 dashboard_tipo=dashboard_tipo,
+                visao=visao,
             )
 
         return render_fluxo_operacional(
@@ -108,6 +112,7 @@ def register_clientes_ligacoes_listagem_routes(app):
             cache_store=_INATIVOS_COUNT_CACHE,
             cache_ttl_seconds=_INATIVOS_COUNT_CACHE_TTL_SECONDS,
             dashboard_tipo=dashboard_tipo,
+            visao=visao,
         )
 
     @app.route('/api/clientes/badges')

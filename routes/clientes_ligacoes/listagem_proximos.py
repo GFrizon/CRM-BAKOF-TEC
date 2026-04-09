@@ -13,6 +13,7 @@ def render_aba_proximos_inativacao(
     total_inativos_badge: int,
     q: str,
     dashboard_tipo=None,
+    visao=None,
 ):
     representantes_ordenados_px, total_proximos_count, stats_proximos = (
         preparar_contexto_proximos_inativacao(
@@ -45,4 +46,5 @@ def render_aba_proximos_inativacao(
         mes_filtro=None,
         ano_filtro=None,
         dashboard_tipo=dashboard_tipo,
+        visao=visao,
     )

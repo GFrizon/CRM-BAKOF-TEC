@@ -2,9 +2,15 @@
      CABEÇALHO DA PÁGINA
      ============================================================ -->
 <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+  {% set visao_padrao = 'dashboard' if current_user.tipo in ('consultor', 'televendas', 'supervisor_repr') else 'clientes' %}
+  {% set visao_atual = visao|default(request.args.get('visao') or visao_padrao, true) %}
   <div>
     <h2 class="m-0">
+      {% if visao_atual == 'dashboard' %}
+      <i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard
+      {% else %}
       <i class="bi bi-people-fill me-2 text-primary"></i>Meus Clientes
+      {% endif %}
     </h2>
     {% if aba == 'oracle' %}
     <p class="mb-0 mt-1">Clientes sem pedidos há 90-150 dias (Oracle)</p>
@@ -20,6 +26,7 @@
     <p class="mb-0 mt-1">Gerencie representantes, clientes e registre ligações</p>
     {% endif %}
   </div>
+  {% if visao_atual == 'clientes' %}
   <div class="d-flex flex-wrap gap-2">
     {% if aba not in ('oracle', 'inativos') and current_user.tipo in ('consultor', 'supervisor') %}
     <button class="btn btn-primary btn-sm" onclick="abrirModalAdicionar()">
@@ -44,5 +51,6 @@
     <span id="syncOracleStatusBadge" class="badge text-bg-secondary align-self-center">Sync Oracle: --</span>
     {% endif %}
   </div>
+  {% endif %}
 </div>
 

@@ -29,6 +29,12 @@ def preparar_contexto_inicial_listagem(request, current_user):
         aba_padrao = "pendentes"
 
     aba = request.args.get("aba", aba_padrao)
+    visao = (request.args.get("visao") or "").strip().lower()
+    if visao not in ("dashboard", "clientes"):
+        if current_user.tipo in ("consultor", "televendas", "supervisor_repr"):
+            visao = "dashboard"
+        else:
+            visao = "clientes"
     dashboard_tipo = (request.args.get("dashboard_tipo") or "").strip().lower()
     if dashboard_tipo not in ("consultor", "televendas"):
         dashboard_tipo = None
@@ -57,21 +63,29 @@ def preparar_contexto_inicial_listagem(request, current_user):
 
     if current_user.tipo not in ("televendas", "supervisor") and aba == "inativos":
         aba_destino = "oracle" if current_user.tipo == "supervisor_repr" else "pendentes"
-        return {"response": redirect(url_for("meus_clientes", aba=aba_destino))}
+        return {"response": redirect(url_for("meus_clientes", aba=aba_destino, visao=visao))}
 
     if current_user.tipo == "televendas" and aba in ("pendentes", "oracle", "proximos_inativacao"):
-        return {"response": redirect(url_for("meus_clientes", aba="inativos"))}
+        return {"response": redirect(url_for("meus_clientes", aba="inativos", visao=visao))}
 
     if current_user.tipo == "supervisor":
         # Mundo televendas: apenas inativos/contatados/retornar.
         if dashboard_tipo == "televendas" and aba in ("pendentes", "oracle", "proximos_inativacao"):
-            return {"response": redirect(url_for("meus_clientes", aba="inativos", dashboard_tipo="televendas"))}
+            return {
+                "response": redirect(
+                    url_for("meus_clientes", aba="inativos", dashboard_tipo="televendas", visao=visao)
+                )
+            }
         # Mundo consultores: sem aba de inativos.
         if dashboard_tipo == "consultor" and aba == "inativos":
-            return {"response": redirect(url_for("meus_clientes", aba="pendentes", dashboard_tipo="consultor"))}
+            return {
+                "response": redirect(
+                    url_for("meus_clientes", aba="pendentes", dashboard_tipo="consultor", visao=visao)
+                )
+            }
 
     if current_user.tipo == "supervisor_repr" and aba in ("pendentes", "contatados", "retornar"):
-        return {"response": redirect(url_for("meus_clientes", aba="oracle"))}
+        return {"response": redirect(url_for("meus_clientes", aba="oracle", visao=visao))}
 
     apenas_meus = True if current_user.tipo in ("consultor", "televendas") else (request.args.get("meus") == "1")
 
@@ -94,6 +108,7 @@ def preparar_contexto_inicial_listagem(request, current_user):
     return {
         "response": None,
         "aba": aba,
+        "visao": visao,
         "dashboard_tipo": dashboard_tipo,
         "total_oracle_badge": total_oracle_badge,
         "total_proximos_badge": total_proximos_badge,

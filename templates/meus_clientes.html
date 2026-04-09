@@ -5,23 +5,35 @@
 {% include "meus_clientes/_styles.html" %}
 
 <div id="meusClientesRoot" data-aba-atual="{{ aba }}">
+{% set visao_padrao = 'dashboard' if current_user.tipo in ('consultor', 'televendas', 'supervisor_repr') else 'clientes' %}
+{% set visao_atual = visao|default(request.args.get('visao') or visao_padrao, true) %}
+{% set visao_televendas = (current_user.tipo == 'televendas') or (current_user.tipo == 'supervisor' and dashboard_tipo == 'televendas') %}
 {% include "meus_clientes/_modal_novidades.html" %}
 {% include "meus_clientes/_page_header.html" %}
 
+<div id="secao-dashboard" class="{% if visao_atual != 'dashboard' %}d-none{% endif %}">
 {% include "meus_clientes/_stats_cards.html" %}
 
 {% include "meus_clientes/_filtro_mensal_consultor.html" %}
 
 {% include "meus_clientes/_filtro_oracle_periodo.html" %}
 
+{% if not visao_televendas %}
 {% include "meus_clientes/_filtro_inativos.html" %}
+{% endif %}
 
 {% include "meus_clientes/_painel_stats_oracle.html" %}
 
 {% include "meus_clientes/_painel_stats_inativos.html" %}
 
 {% include "meus_clientes/_painel_stats_proximos_inativacao.html" %}
+</div>
 
+<div id="secao-clientes" class="{% if visao_atual != 'clientes' %}d-none{% endif %}">
+{% if aba == 'inativos' and visao_televendas %}
+{% set filtro_inativos_compacto = true %}
+{% include "meus_clientes/_filtro_inativos.html" %}
+{% endif %}
 {% include "meus_clientes/_busca_filtros.html" %}
 
 {% set retornos_atrasados = total_retornos_atrasados|default(0)|int %}
@@ -42,7 +54,7 @@
     </span>
     {% if aba != 'retornar' %}
     <a
-      href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo) }}"
+      href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes') }}"
       class="btn btn-sm btn-outline-danger py-0 px-2"
     >
       Ver lista
@@ -74,6 +86,7 @@
 {% endif %}
 
 {% include "meus_clientes/_modais.html" %}
+</div>
 
 </div>
 {% endblock %}
