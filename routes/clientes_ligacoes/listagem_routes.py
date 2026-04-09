@@ -17,6 +17,10 @@ _INATIVOS_COUNT_CACHE = {}
 _INATIVOS_COUNT_CACHE_TTL_SECONDS = 600
 
 
+def limpar_cache_contagem_inativos():
+    _INATIVOS_COUNT_CACHE.clear()
+
+
 def register_clientes_ligacoes_listagem_routes(app):
     def _calcular_badges_operacionais(aba, apenas_meus, codigos_representantes_vinculados, dashboard_tipo=None):
         q = Cliente.query.options(joinedload(Cliente.ligacoes)).filter(Cliente.ativo == True)

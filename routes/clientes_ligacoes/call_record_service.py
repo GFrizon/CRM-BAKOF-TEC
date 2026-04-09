@@ -3,6 +3,7 @@ from datetime import datetime
 from core.extensions import db
 from core.helpers import s
 from core.models import Cliente, Ligacao
+from routes.clientes_ligacoes.cache_invalidation import invalidar_caches_listagens_clientes
 from routes.clientes_ligacoes.ligacao_helpers import (
     calcular_proxima_ligacao,
     mensagem_sucesso_ligacao,
@@ -52,6 +53,7 @@ def registrar_ligacao_service(current_user, cliente_id, payload):
     cli.em_atendimento_por = None
     cli.em_atendimento_ate = None
     db.session.commit()
+    invalidar_caches_listagens_clientes("registro de ligacao")
 
     msg = mensagem_sucesso_ligacao(resultado, cli.proxima_ligacao)
     return {

@@ -3,6 +3,7 @@ from datetime import datetime
 from core.extensions import db
 from core.helpers import s, so_digits
 from core.models import Cliente, Nota
+from routes.clientes_ligacoes.cache_invalidation import invalidar_caches_listagens_clientes
 
 
 def criar_ou_atualizar_cliente_manual(payload, current_user):
@@ -65,6 +66,7 @@ def criar_ou_atualizar_cliente_manual(payload, current_user):
             db.session.add(n)
 
             db.session.commit()
+            invalidar_caches_listagens_clientes("criacao/reativacao de cliente manual")
             return {
                 "ok": True,
                 "mensagem": "Cliente atualizado (reativado) com sucesso!",
@@ -99,6 +101,7 @@ def criar_ou_atualizar_cliente_manual(payload, current_user):
     db.session.add(n)
 
     db.session.commit()
+    invalidar_caches_listagens_clientes("criacao de cliente manual")
     return {
         "ok": True,
         "mensagem": "Cliente criado com sucesso!",

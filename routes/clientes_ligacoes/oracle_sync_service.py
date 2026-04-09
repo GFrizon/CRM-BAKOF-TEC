@@ -4,6 +4,7 @@ import time
 from core.extensions import db
 from core.helpers import so_digits
 from core.models import Cliente
+from routes.clientes_ligacoes.cache_invalidation import invalidar_caches_listagens_clientes
 from routes.clientes_ligacoes.oracle_sync_helpers import aplicar_dados_oracle_no_cliente
 
 
@@ -25,6 +26,7 @@ def sincronizar_cliente_oracle_por_id_service(cliente_id, payload):
     aplicar_dados_oracle_no_cliente(cliente, cliente_oracle)
     db.session.add(cliente)
     db.session.commit()
+    invalidar_caches_listagens_clientes("sincronizacao de cliente com oracle")
 
     return {
         "ok": True,
@@ -94,6 +96,7 @@ def sincronizar_clientes_manuais_oracle_service():
         atualizados += 1
 
     db.session.commit()
+    invalidar_caches_listagens_clientes("sincronizacao em lote de clientes manuais com oracle")
 
     logger.info(
         f"[Sync Manuais] RESUMO: Total={total_base}, Atualizados={atualizados}, "

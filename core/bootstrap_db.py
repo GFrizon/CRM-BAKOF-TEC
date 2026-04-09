@@ -26,6 +26,27 @@ def _column_exists(table_name, column_name):
     return row is not None
 
 
+def _index_exists(table_name, index_name):
+    try:
+        row = db.session.execute(
+            text(
+                """
+                SELECT 1
+                FROM INFORMATION_SCHEMA.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = :table_name
+                  AND INDEX_NAME = :index_name
+                LIMIT 1
+                """
+            ),
+            {"table_name": table_name, "index_name": index_name},
+        ).first()
+        return row is not None
+    except Exception:
+        db.session.rollback()
+        return False
+
+
 def _run_ddl(sql, ok_msg=None):
     try:
         db.session.execute(text(sql))
@@ -35,6 +56,15 @@ def _run_ddl(sql, ok_msg=None):
     except Exception as e:
         db.session.rollback()
         logger.warning("Erro ao executar DDL: %s - %s", sql, e)
+
+
+def _ensure_index(table_name, index_name, columns_sql):
+    if _index_exists(table_name, index_name):
+        return
+    _run_ddl(
+        f"ALTER TABLE {table_name} ADD INDEX {index_name} ({columns_sql})",
+        ok_msg=f"[OK] Indice criado: {table_name}.{index_name} ({columns_sql})",
+    )
 
 
 def _parse_mysql_enum_values(column_type):
@@ -168,6 +198,14 @@ def bootstrap_app_database():
     for column_name, campo_sql in campos_oracle:
         if not _column_exists("clientes", column_name):
             _run_ddl(campo_sql, ok_msg=f"[OK] Campo Oracle adicionado: {column_name}")
+
+    # Indices para acelerar filtros/contagens das carteiras e dashboards.
+    _ensure_index("clientes", "idx_clientes_ativo_consultor", "ativo, consultor_id")
+    _ensure_index("clientes", "idx_clientes_ativo_proxima", "ativo, proxima_ligacao")
+    _ensure_index("clientes", "idx_clientes_ativo_ultimo_pedido", "ativo, ultimo_pedido_oracle")
+    _ensure_index("clientes", "idx_clientes_cd_oracle_ativo", "cd_cliente_oracle, ativo")
+    _ensure_index("ligacoes", "idx_ligacoes_cliente_consultor_data", "cliente_id, consultor_id, data_hora")
+    _ensure_index("ligacoes", "idx_ligacoes_consultor_data", "consultor_id, data_hora")
 
     if not MAIL_PASSWORD:
         logger.warning("MAIL_PASSWORD nao configurado. Email nao funcionara.")

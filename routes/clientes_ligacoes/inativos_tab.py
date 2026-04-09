@@ -9,6 +9,11 @@ _INATIVOS_ORACLE_ENRICH_CACHE = {
 _INATIVOS_ORACLE_ENRICH_TTL = timedelta(minutes=10)
 
 
+def limpar_cache_inativos_enriquecidos():
+    _INATIVOS_ORACLE_ENRICH_CACHE["ts"] = None
+    _INATIVOS_ORACLE_ENRICH_CACHE["data"] = None
+
+
 def carregar_clientes_inativos_enriquecidos(logger):
     limite_max = datetime.now() - timedelta(days=181)
     limite_min = datetime.now() - timedelta(days=730)

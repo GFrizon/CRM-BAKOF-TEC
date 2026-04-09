@@ -5,6 +5,7 @@ from core.extensions import db
 from core.helpers import get_pos, s, so_digits
 from core.models import Usuario
 from routes.clientes_ligacoes.access_control import resposta_supervisor_repr_somente_leitura
+from routes.clientes_ligacoes.cache_invalidation import invalidar_caches_listagens_clientes
 from routes.clientes_ligacoes.call_record_service import registrar_ligacao_service
 from routes.clientes_ligacoes.client_manual_service import criar_ou_atualizar_cliente_manual
 from routes.clientes_ligacoes.contact_service import iniciar_contato_service
@@ -177,6 +178,7 @@ def register_clientes_ligacoes_management_routes(app):
             for erro in erros[:50]:
                 flash(erro, "warning")
 
+            invalidar_caches_listagens_clientes("importacao de clientes")
             return redirect(url_for("meus_clientes"))
 
         consultores = Usuario.query.filter_by(tipo="consultor", ativo=True).order_by(Usuario.nome.asc()).all()
@@ -199,6 +201,7 @@ def register_clientes_ligacoes_management_routes(app):
 
             total = inativar_clientes_do_consultor(consultor_id)
             db.session.commit()
+            invalidar_caches_listagens_clientes("limpeza de carteira de consultor")
             return jsonify({"ok": True, "mensagem": f"{total} clientes removidos com sucesso."})
         except Exception as e:
             db.session.rollback()

@@ -8,6 +8,7 @@ from flask_login import current_user, login_required
 
 from core.extensions import db
 from core.models import Cliente, Usuario
+from routes.clientes_ligacoes.cache_invalidation import invalidar_caches_listagens_clientes
 from sqlalchemy import or_
 from oracle_service import get_clientes_inativos_oracle, get_clientes_oracle, get_valor_total_365dias, test_oracle_connection
 from telefone_utils import identificar_ddd_padrao, padronizar_telefone
@@ -51,6 +52,7 @@ def register_oracle_routes(app):
                 sync_state["running"] = False
                 sync_state["finished_at"] = datetime.now()
                 sync_lock.release()
+                invalidar_caches_listagens_clientes("finalizacao da sincronizacao oracle em background")
 
         try:
             thread = threading.Thread(target=sincronizar_background)
@@ -471,6 +473,7 @@ def register_oracle_routes(app):
 
             db.session.add(novo_cliente)
             db.session.commit()
+            invalidar_caches_listagens_clientes("garantia de cliente local oracle")
 
             return jsonify({
                 "success": True,

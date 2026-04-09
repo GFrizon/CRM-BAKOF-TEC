@@ -2,6 +2,7 @@ from sqlalchemy.orm import joinedload
 
 from core.extensions import db
 from core.models import Cliente, Ligacao
+from routes.clientes_ligacoes.cache_invalidation import invalidar_caches_listagens_clientes
 from routes.clientes_ligacoes.interaction_serializers import (
     serializar_detalhes_ligacao,
     serializar_historico_ligacoes,
@@ -23,6 +24,7 @@ def editar_observacao_ligacao_service(ligacao_id, current_user, observacao, norm
 
     ligacao.observacao = normalizador_texto(observacao) or None
     db.session.commit()
+    invalidar_caches_listagens_clientes("edicao de observacao de ligacao")
     return {"ok": True, "mensagem": "Observação atualizada com sucesso!"}, 200
 
 
@@ -36,6 +38,7 @@ def editar_ligacao_service(ligacao_id, current_user, payload, normalizador_texto
 
     aplicar_payload_edicao_ligacao(ligacao, payload or {}, normalizador_texto)
     db.session.commit()
+    invalidar_caches_listagens_clientes("edicao de ligacao")
     return {"ok": True, "mensagem": "Ligação atualizada com sucesso!"}, 200
 
 

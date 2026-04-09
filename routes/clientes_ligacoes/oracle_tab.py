@@ -5,6 +5,10 @@ _ORACLE_90_150_CACHE = {}
 _ORACLE_90_150_CACHE_TTL = timedelta(minutes=5)
 
 
+def limpar_cache_clientes_oracle():
+    _ORACLE_90_150_CACHE.clear()
+
+
 def carregar_clientes_oracle_deduplicados(logger, periodo_oracle):
     if periodo_oracle and periodo_oracle not in ("90", "150", "180"):
         logger.warning(f"Valor invalido para periodo_oracle: {periodo_oracle}")
