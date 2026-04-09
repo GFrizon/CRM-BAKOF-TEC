@@ -1,4 +1,4 @@
-﻿    {% with mensagens = get_flashed_messages(with_categories=true) %}
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
       {% if mensagens %}
         {% for categoria, msg in mensagens %}
           <div class="alert alert-{{ categoria }} alert-dismissible fade show" role="alert">
