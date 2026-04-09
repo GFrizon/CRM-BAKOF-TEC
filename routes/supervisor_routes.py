@@ -182,19 +182,7 @@ def register_supervisor_routes(app):
         try:
             # Mesma fonte da aba Oracle para manter o número idêntico ao da lista.
             clientes_oracle = carregar_clientes_oracle_deduplicados(app.logger, periodo_oracle=None)
-            codigos_oracle = {
-                str(c.get("cd_cliente") or "").strip()
-                for c in (clientes_oracle or [])
-                if c.get("cd_cliente")
-            }
-            total_sem_pedido_90_150_query = (
-                Cliente.query
-                .filter(
-                    Cliente.ativo == True,
-                    Cliente.cd_cliente_oracle.in_(codigos_oracle),
-                )
-            )
-            total_sem_pedido_90_150 = total_sem_pedido_90_150_query.count() if codigos_oracle else 0
+            total_sem_pedido_90_150 = len(clientes_oracle or [])
         except Exception:
             # Fallback local caso Oracle indisponível.
             total_sem_pedido_90_150_query = (
