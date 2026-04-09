@@ -4,7 +4,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
 from core.extensions import db
-from core.models import Cliente, Ligacao
+from core.models import Cliente, Ligacao, Usuario
 from routes.clientes_ligacoes.badges import calcular_total_inativos_badge_com_cache
 from routes.clientes_ligacoes.listagem_access import preparar_contexto_inicial_listagem
 from routes.clientes_ligacoes.listagem_inativos import render_aba_inativos
@@ -18,8 +18,14 @@ _INATIVOS_COUNT_CACHE_TTL_SECONDS = 600
 
 
 def register_clientes_ligacoes_listagem_routes(app):
-    def _calcular_badges_operacionais(aba, apenas_meus, codigos_representantes_vinculados):
+    def _calcular_badges_operacionais(aba, apenas_meus, codigos_representantes_vinculados, dashboard_tipo=None):
         q = Cliente.query.options(joinedload(Cliente.ligacoes)).filter(Cliente.ativo == True)
+        if current_user.tipo == "supervisor" and dashboard_tipo in ("consultor", "televendas"):
+            operadores_ids_query = (
+                db.session.query(Usuario.id)
+                .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+            )
+            q = q.filter(Cliente.consultor_id.in_(operadores_ids_query))
         if current_user.tipo == "televendas":
             clientes_ligados_por_tv = (
                 db.session.query(Ligacao.cliente_id)
@@ -138,6 +144,7 @@ def register_clientes_ligacoes_listagem_routes(app):
             aba=aba,
             apenas_meus=apenas_meus,
             codigos_representantes_vinculados=codigos_representantes_vinculados,
+            dashboard_tipo=contexto_inicial["dashboard_tipo"],
         )
 
         return jsonify(

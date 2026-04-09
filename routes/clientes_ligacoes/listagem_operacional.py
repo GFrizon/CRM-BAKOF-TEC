@@ -35,6 +35,13 @@ def render_fluxo_operacional(
     mes_filtro, ano_filtro = parse_filtro_mes_ano(request.args, current_user.tipo)
 
     q = Cliente.query.options(joinedload(Cliente.ligacoes)).filter(Cliente.ativo == True)
+    if current_user.tipo == "supervisor" and dashboard_tipo in ("consultor", "televendas"):
+        operadores_ids_query = (
+            db.session.query(Usuario.id)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+        )
+        q = q.filter(Cliente.consultor_id.in_(operadores_ids_query))
+
     if current_user.tipo == "televendas":
         clientes_ligados_por_tv = (
             db.session.query(Ligacao.cliente_id)
