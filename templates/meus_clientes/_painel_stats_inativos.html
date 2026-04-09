@@ -37,7 +37,14 @@
             <div class="fw-semibold text-success mb-1">Entraram hoje ({{ (movimento_inativos_detalhes.entraram or [])|length }})</div>
             <div style="max-height:180px; overflow:auto; font-size:.82rem;">
               {% for c in movimento_inativos_detalhes.entraram or [] %}
-              <div class="border-bottom py-1">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente }})</span></div>
+              <div class="border-bottom py-1 d-flex justify-content-between gap-2">
+                <span>{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente }})</span></span>
+                <span class="text-muted small">
+                  {% if c.ultimo_contato_por %}
+                  contatado por <strong>{{ c.ultimo_contato_por }}</strong>
+                  {% endif %}
+                </span>
+              </div>
               {% else %}
               <div class="text-muted">Sem entradas hoje.</div>
               {% endfor %}
@@ -47,7 +54,14 @@
             <div class="fw-semibold text-danger mb-1">Sairam hoje ({{ (movimento_inativos_detalhes.sairam or [])|length }})</div>
             <div style="max-height:180px; overflow:auto; font-size:.82rem;">
               {% for c in movimento_inativos_detalhes.sairam or [] %}
-              <div class="border-bottom py-1">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente }})</span></div>
+              <div class="border-bottom py-1 d-flex justify-content-between gap-2">
+                <span>{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente }})</span></span>
+                <span class="text-muted small">
+                  {% if c.ultimo_contato_por %}
+                  contatado por <strong>{{ c.ultimo_contato_por }}</strong>
+                  {% endif %}
+                </span>
+              </div>
               {% else %}
               <div class="text-muted">Sem saídas hoje.</div>
               {% endfor %}

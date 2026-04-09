@@ -2,6 +2,7 @@
 <script>
 let _reqFiltroMesToken = 0;
 let _reqLigacoesMesToken = 0;
+let _reqDetalheConversaoToken = 0;
 let _chartLigacoesDias = null;
 let _chartResultados = null;
 const DASHBOARD_TIPO = '{{ dashboard_tipo }}';
@@ -78,7 +79,11 @@ async function aplicarFiltroMes() {
         <tr>
           <td><strong>${c.nome}</strong></td>
           <td class="text-center fw-semibold">${c.total_ligacoes}</td>
-          <td class="text-center fw-semibold">${c.vendas}</td>
+          <td class="text-center fw-semibold">
+            ${(c.id && Number(c.vendas || 0) > 0)
+              ? `<button type="button" class="btn btn-sm btn-link p-0 fw-semibold text-decoration-none" onclick="abrirDetalheConversao(${c.id}, '${String(c.nome || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${c.vendas}</button>`
+              : `${c.vendas}`}
+          </td>
           <td class="text-center fw-semibold">${c.total_retornar}</td>
           <td class="text-center"><span class="fw-semibold ${atingiuMeta ? 'text-success' : 'text-secondary'}">${c.conversao}%</span></td>
           <td class="text-center"><span class="text-muted fw-semibold">${c.meta_conversao}%</span></td>
@@ -138,6 +143,62 @@ function badgeResultado(resultado) {
     cliente_inativo: '<span class="badge bg-dark"><i class="bi bi-person-x"></i> Cliente inativo</span>'
   };
   return mapa[resultado] || mapa.nao_comprou;
+}
+
+async function abrirDetalheConversao(operadorId, operadorNome) {
+  const filtro = document.getElementById('filtroMes');
+  const valor = (filtro && filtro.value) ? filtro.value : '';
+  const [mes, ano] = valor.split('-');
+  if (!operadorId || !mes || !ano) return;
+
+  const titulo = document.getElementById('detalheConversaoTitulo');
+  const resumo = document.getElementById('detalheConversaoResumo');
+  const tbody = document.getElementById('tbodyDetalheConversao');
+  if (!titulo || !resumo || !tbody) return;
+
+  titulo.textContent = `Conversoes de ${operadorNome || 'Operador'} - ${mes}/${ano}`;
+  resumo.innerHTML = '<span class="text-muted">Carregando...</span>';
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+
+  const modalEl = document.getElementById('modalDetalheConversao');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+
+  const token = ++_reqDetalheConversaoToken;
+  try {
+    const params = new URLSearchParams({
+      mes: String(mes),
+      ano: String(ano),
+      operador_id: String(operadorId),
+      tipo: DASHBOARD_TIPO,
+    });
+    const r = await fetch(`/api/resultados-por-mes/detalhe-conversao?${params.toString()}`);
+    const data = await r.json();
+    if (token !== _reqDetalheConversaoToken) return;
+    if (!data.ok) throw new Error(data.erro || 'Erro ao carregar detalhe');
+
+    const rs = data.resumo || {};
+    resumo.innerHTML = `<strong>Compradores:</strong> ${rs.compradores || 0} <span class="mx-2">|</span> <strong>Cruzou saida:</strong> ${rs.cruzaram_saida || 0} <span class="mx-2">|</span> <strong>Nao cruzou:</strong> ${rs.nao_cruzaram || 0}`;
+
+    const itens = data.itens || [];
+    if (!itens.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhum cliente com compra no periodo.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = itens.map((it) => `
+      <tr>
+        <td>${escapeHtml(it.cliente_nome)} <span class="text-muted">(${escapeHtml(it.cd_cliente_oracle || '-')})</span></td>
+        <td class="text-center">${it.qtd_compras || 0}</td>
+        <td class="text-center">${escapeHtml(it.ultima_compra_em || '-')}</td>
+        <td class="text-end">${escapeHtml(it.receita_fmt || 'R$ 0,00')}</td>
+        <td class="text-center">${it.cruzou_saida ? '<span class="text-success fw-semibold">✓</span>' : '<span class="text-danger fw-semibold">✕</span>'}</td>
+      </tr>
+    `).join('');
+  } catch (erro) {
+    resumo.innerHTML = `<span class="text-danger">${escapeHtml(erro.message || 'Erro')}</span>`;
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Erro ao carregar.</td></tr>';
+  }
 }
 
 async function carregarLigacoesMes() {

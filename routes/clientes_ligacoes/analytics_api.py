@@ -12,6 +12,7 @@ from routes.clientes_ligacoes.consultor_mapping import (
 )
 from routes.clientes_ligacoes.listagem_permissions import consultor_categoria_permitido_para_usuario
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
+from services.inativos_movimento_service import carregar_movimentos_inativos_mes
 
 logger = logging.getLogger(__name__)
 
@@ -299,3 +300,92 @@ def consultar_ligacoes_consultor_mes(consultor_id, mes, ano):
             "taxa_positiva": round(taxa_positiva, 1),
         },
     }
+
+
+def consultar_detalhe_conversao_operador_mes(operador_id, mes, ano, tipo_operador="consultor"):
+    if mes < 1 or mes > 12:
+        return {"ok": False, "erro": "Mes invalido"}, 400
+
+    operador = Usuario.query.filter_by(id=operador_id, tipo=tipo_operador).first()
+    if not operador:
+        return {"ok": False, "erro": "Operador invalido"}, 404
+
+    inicio = datetime(ano, mes, 1)
+    fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
+
+    rows = (
+        db.session.query(
+            Cliente.id.label("cliente_id"),
+            Cliente.nome.label("cliente_nome"),
+            Cliente.cd_cliente_oracle.label("cd_cliente_oracle"),
+            func.count(Ligacao.id).label("qtd_compras"),
+            func.max(Ligacao.data_hora).label("ultima_compra_em"),
+            func.sum(Ligacao.valor_venda).label("receita"),
+        )
+        .join(Ligacao, Ligacao.cliente_id == Cliente.id)
+        .filter(
+            Ligacao.consultor_id == operador_id,
+            Ligacao.resultado == "comprou",
+            Ligacao.data_hora >= inicio,
+            Ligacao.data_hora < fim,
+        )
+        .group_by(Cliente.id, Cliente.nome, Cliente.cd_cliente_oracle)
+        .order_by(func.max(Ligacao.data_hora).desc())
+        .all()
+    )
+
+    movimentos_mes = carregar_movimentos_inativos_mes(ano, mes)
+    saidas_por_cd = {}
+    for mov in movimentos_mes:
+        data_ref = str(mov.get("data_ref") or "")
+        for item in (mov.get("sairam") or []):
+            cd = str((item or {}).get("cd_cliente") or "").strip()
+            if not cd:
+                continue
+            if cd not in saidas_por_cd:
+                saidas_por_cd[cd] = data_ref
+
+    itens = []
+    cruzaram_saida = 0
+    for row in rows:
+        cd = str(row.cd_cliente_oracle or "").strip()
+        cruzou = bool(cd and cd in saidas_por_cd)
+        if cruzou:
+            cruzaram_saida += 1
+        receita = float(row.receita or 0)
+        itens.append(
+            {
+                "cliente_id": int(row.cliente_id),
+                "cliente_nome": row.cliente_nome or "-",
+                "cd_cliente_oracle": cd,
+                "qtd_compras": int(row.qtd_compras or 0),
+                "ultima_compra_em": (
+                    row.ultima_compra_em.strftime("%d/%m/%Y %H:%M")
+                    if row.ultima_compra_em
+                    else "-"
+                ),
+                "receita": receita,
+                "receita_fmt": formatar_dinheiro(receita),
+                "cruzou_saida": cruzou,
+                "saida_data_ref": saidas_por_cd.get(cd),
+            }
+        )
+
+    total_compradores = len(itens)
+    payload = {
+        "ok": True,
+        "operador": {
+            "id": int(operador.id),
+            "nome": operador.nome,
+            "tipo": operador.tipo,
+        },
+        "mes": int(mes),
+        "ano": int(ano),
+        "itens": itens,
+        "resumo": {
+            "compradores": int(total_compradores),
+            "cruzaram_saida": int(cruzaram_saida),
+            "nao_cruzaram": int(max(0, total_compradores - cruzaram_saida)),
+        },
+    }
+    return payload, 200

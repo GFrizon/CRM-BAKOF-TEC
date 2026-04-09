@@ -512,16 +512,61 @@ def sincronizacao_automatica_diaria():
                     .filter(Cliente.cd_cliente_oracle.in_(list(codigos_movimento)))
                     .all()
                 )
+
+                cliente_ids_mov = [c.id for c in rows_mov if c and c.id]
+                ultimo_contato_por_cliente = {}
+                if cliente_ids_mov:
+                    sub_ult = (
+                        db.session.query(
+                            Ligacao.cliente_id.label("cid"),
+                            db.func.max(Ligacao.data_hora).label("ultima_data"),
+                        )
+                        .filter(Ligacao.cliente_id.in_(cliente_ids_mov))
+                        .group_by(Ligacao.cliente_id)
+                        .subquery()
+                    )
+                    ult_rows = (
+                        db.session.query(
+                            Ligacao.cliente_id,
+                            Ligacao.data_hora,
+                            Ligacao.resultado,
+                            Usuario.nome.label("consultor_nome"),
+                        )
+                        .join(
+                            sub_ult,
+                            db.and_(
+                                sub_ult.c.cid == Ligacao.cliente_id,
+                                sub_ult.c.ultima_data == Ligacao.data_hora,
+                            ),
+                        )
+                        .outerjoin(Usuario, Usuario.id == Ligacao.consultor_id)
+                        .all()
+                    )
+                    for row in ult_rows:
+                        ultimo_contato_por_cliente[int(row.cliente_id)] = {
+                            "consultor_nome": str(row.consultor_nome or "").strip(),
+                            "data_hora": row.data_hora,
+                            "resultado": str(row.resultado or "").strip(),
+                        }
+
                 for cli in rows_mov:
                     cd = str(cli.cd_cliente_oracle or "").strip()
                     if not cd:
                         continue
+                    contato = ultimo_contato_por_cliente.get(int(cli.id)) if cli.id else None
                     detalhes_por_codigo[cd] = {
                         "cd_cliente": cd,
                         "cliente": str(cli.nome or "").strip(),
                         "representante": str(cli.representante_oracle or "").strip(),
                         "consultor": str(cli.categoria_consultor or "").strip(),
                         "uf": str(cli.uf or "").strip(),
+                        "ultimo_contato_por": (contato.get("consultor_nome") if contato else ""),
+                        "ultima_ligacao_em": (
+                            contato.get("data_hora").strftime("%d/%m/%Y %H:%M")
+                            if contato and contato.get("data_hora")
+                            else ""
+                        ),
+                        "ultimo_resultado": (contato.get("resultado") if contato else ""),
                     }
 
             def _detalhe(cd):
@@ -533,6 +578,9 @@ def sincronizacao_automatica_diaria():
                     "representante": "",
                     "consultor": "",
                     "uf": "",
+                    "ultimo_contato_por": "",
+                    "ultima_ligacao_em": "",
+                    "ultimo_resultado": "",
                 }
 
             salvar_movimento_inativos(

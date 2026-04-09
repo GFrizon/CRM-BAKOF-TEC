@@ -35,3 +35,33 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="modalDetalheConversao" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detalheConversaoTitulo">Detalhe de Conversão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="detalheConversaoResumo" class="alert alert-light border mb-3"></div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th class="text-center">Qtd Compras</th>
+                <th class="text-center">Última Compra</th>
+                <th class="text-end">Receita</th>
+                <th class="text-center">Cruzamento Saída</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyDetalheConversao">
+              <tr><td colspan="5" class="text-center text-muted py-4">Sem dados.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

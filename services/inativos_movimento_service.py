@@ -77,3 +77,23 @@ def carregar_movimento_inativos(data_ref=None):
         return dias.get(chave_recente)
     except Exception:
         return None
+
+
+def carregar_movimentos_inativos_mes(ano: int, mes: int):
+    path = _storage_path()
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        dias = payload.get("dias") if isinstance(payload, dict) else None
+        if not isinstance(dias, dict):
+            return []
+        prefixo = f"{int(ano):04d}-{int(mes):02d}-"
+        itens = []
+        for chave, valor in dias.items():
+            if str(chave).startswith(prefixo) and isinstance(valor, dict):
+                itens.append(valor)
+        itens.sort(key=lambda x: str(x.get("data_ref") or ""))
+        return itens
+    except Exception:
+        return []
