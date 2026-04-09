@@ -1,16 +1,14 @@
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="bi bi-shield-check"></i> Auditoria do Sistema</h2>
-                <div>
-                    <a href="{{ url_for('dashboard_supervisor') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Voltar
-                    </a>
-                </div>
-            </div>
+<div class="page-header d-flex justify-content-between align-items-center">
+  <div>
+    <h2><i class="bi bi-shield-check text-primary me-2"></i>Auditoria do Sistema</h2>
+    <p>Hist&oacute;rico de a&ccedil;&otilde;es dos usu&aacute;rios</p>
+  </div>
+  <a href="{{ url_for('dashboard_supervisor') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar
+  </a>
+</div>
 
-            <!-- Filtros -->
+<!-- Filtros -->
             <div class="card mb-4">
                 <div class="card-body">
                     <form method="GET" class="row g-3">
@@ -169,6 +167,3 @@
                     {% endif %}
                 </div>
             </div>
-        </div>
-    </div>
-</div>

@@ -1,26 +1,17 @@
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="bi bi-{% if oportunidade %}pencil{% else %}plus-circle{% endif %}"></i> 
-                        {% if oportunidade %}Editar{% else %}Nova{% endif %} Oportunidade
-                    </h2>
-                    <p class="text-muted mb-0">
-                        {% if oportunidade %}Atualize os dados da oportunidade{% else %}Cadastre uma nova oportunidade de vendas{% endif %}
-                    </p>
-                </div>
-                <a href="{{ url_for('oportunidades') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Voltar
-                </a>
-            </div>
-        </div>
-    </div>
+<div class="page-header d-flex justify-content-between align-items-center">
+  <div>
+    <h2>
+      <i class="bi bi-{% if oportunidade %}pencil{% else %}plus-circle{% endif %} text-primary me-2"></i>
+      {% if oportunidade %}Editar{% else %}Nova{% endif %} Oportunidade
+    </h2>
+    <p>{% if oportunidade %}Atualize os dados da oportunidade{% else %}Cadastre uma nova oportunidade de vendas{% endif %}</p>
+  </div>
+  <a href="{{ url_for('oportunidades') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar
+  </a>
+</div>
 
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
+<div class="card">
                 <div class="card-body">
                     <form method="POST">
                         <div class="row">
@@ -127,6 +118,3 @@
                     </form>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
