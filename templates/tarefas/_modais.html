@@ -4,14 +4,14 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Confirmar Cancelamento</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <p>Tem certeza que deseja cancelar esta tarefa</p>
                 <p class="text-muted">Esta aÃ§Ã£o nÃ£o poderÃ¡ ser desfeita.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <form id="formExcluir" method="POST" style="display: inline;">
                     <button type="submit" class="btn btn-danger">Confirmar Cancelamento</button>
                 </form>
@@ -20,22 +20,22 @@
     </div>
 </div>
 
-<!-- Modal de ConclusÃ£o -->
+<!-- Modal de Conclusão -->
 <div class="modal fade" id="concluirModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Confirmar ConclusÃ£o</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title">Confirmar Conclusão</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <p>Tem certeza que deseja concluir esta tarefa</p>
-                <p class="text-muted">A tarefa serÃ¡ marcada como concluÃ­da e movida para a lista de tarefas concluÃ­das.</p>
+                <p class="text-muted">A tarefa será marcada como concluída e movida para a lista de tarefas concluídas.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <form id="formConcluir" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-success">Confirmar ConclusÃ£o</button>
+                    <button type="submit" class="btn btn-success">Confirmar Conclusão</button>
                 </form>
             </div>
         </div>

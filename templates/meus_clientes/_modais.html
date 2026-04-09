@@ -6,7 +6,7 @@
     <div class="modal-content">
       <form onsubmit="salvarLigacao(event)">
         <div class="modal-header brand-header">
-          <h5 class="modal-title" style="color:#fff;"><i class="bi bi-telephone-plus me-2"></i>Registrar Ligação</h5>
+          <h5 class="modal-title"><i class="bi bi-telephone-plus me-2"></i>Registrar Ligação</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -63,7 +63,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">
             <i class="bi bi-save me-1"></i> Salvar
           </button>
@@ -80,7 +80,7 @@
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header brand-header">
-        <h5 class="modal-title" style="color:#000000;"><i class="bi bi-eye me-2"></i>Detalhes do Cliente Oracle</h5>
+        <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Detalhes do Cliente Oracle</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="detalhesOracleContent">
@@ -90,7 +90,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
         <button type="button" class="btn btn-primary" onclick="registrarLigacaoDesdeDetalhes()">
           <i class="bi bi-telephone-plus me-1"></i> Registrar Ligação
         </button>
@@ -107,7 +107,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Histórico de Ligações</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="historicoContent">
         <p class="text-muted">Carregando...</p>
@@ -124,7 +124,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Observação</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="ligacaoIdEdit">
@@ -132,7 +132,7 @@
         <textarea class="form-control" id="observacaoEdit" rows="4"></textarea>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary" onclick="salvarEdicaoObs()">
           <i class="bi bi-save me-1"></i> Salvar
         </button>
@@ -149,7 +149,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Ligação</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="editLigacaoId">
@@ -172,14 +172,14 @@
           <label class="form-label">Observação</label>
           <textarea class="form-control" id="editObservacao" rows="3"></textarea>
         </div>
-        <div class="alert alert-primary mb-0" style="border-radius:8px;font-size:.82rem;">
+        <div class="alert alert-primary mb-0 small">
           <i class="bi bi-info-circle me-1"></i>
           <strong>Data/Hora:</strong> <span id="editDataHora"></span> &nbsp;|&nbsp;
           <strong>Contato:</strong> <span id="editContatoNome"></span>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary" onclick="salvarEdicaoLigacao()">
           <i class="bi bi-save me-1"></i> Salvar Alterações
         </button>
@@ -195,8 +195,8 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirmar limpeza</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirmar limpeza</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <p class="text-muted">Isso irá inativar todos os clientes do consultor selecionado. Deseja continuar</p>
@@ -207,7 +207,7 @@
         </select>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-danger" onclick="confirmarLimpeza()">
           <i class="bi bi-trash me-1"></i> Limpar
         </button>
@@ -224,13 +224,13 @@
     <div class="modal-content">
       <form onsubmit="salvarCliente(event)">
         <div class="modal-header brand-header">
-          <h5 class="modal-title" style="color:#fff;"><i class="bi bi-person-plus me-2"></i>Adicionar Cliente</h5>
+          <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Adicionar Cliente</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label">Nome *</label>
-            <input type="text" class="form-control text-uppercase" id="novo_nome" required style="text-transform:uppercase;">
+            <input type="text" class="form-control text-uppercase" id="novo_nome" required>
           </div>
           <div class="row g-2">
             <div class="col-md-8">
@@ -258,7 +258,7 @@
           <input type="hidden" id="novo_contato">
           <div class="mt-3">
             <label class="form-label">Representante</label>
-            <input type="text" class="form-control text-uppercase" id="novo_representante" style="text-transform:uppercase;">
+            <input type="text" class="form-control text-uppercase" id="novo_representante">
           </div>
           {% if is_supervisor %}
           <div class="mt-3">
@@ -276,7 +276,7 @@
           </small>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
           <button type="submit" class="btn btn-primary">
             <i class="bi bi-save me-1"></i> Salvar
           </button>
