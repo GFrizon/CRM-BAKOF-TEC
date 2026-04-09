@@ -361,118 +361,118 @@ body.tab-switching {
    CARDS DE REPRESENTANTES
    ============================================================ */
 .rep-card {
-  background: linear-gradient(180deg, #f7faff 0%, #f3f8ff 100%);
-  border: 1px solid #dbe4ef;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
-  margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--brand-500);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(15,23,42,.04);
+  margin-bottom: 10px;
   overflow: hidden;
-  transition: box-shadow .2s, transform .2s, border-color .2s;
+  transition: box-shadow .2s, transform .15s, border-color .2s;
 }
 .rep-card:hover {
-  box-shadow: 0 10px 26px rgba(15, 23, 42, .08);
-  border-color: #c9d7ea;
-  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(15,23,42,.10);
+  border-color: var(--brand-200);
+  border-left-color: var(--brand-600);
+  transform: translateX(2px);
 }
 
 .rep-header {
-  background: linear-gradient(180deg, #eef4ff 0%, #e7f0ff 100%);
-  border-bottom: 1px solid #d8e4f4;
-  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 13px 16px 13px 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
   user-select: none;
-  transition: background .15s, border-color .15s;
+  transition: background .15s;
 }
-.rep-header:hover {
-  background: linear-gradient(180deg, #e8f1ff 0%, #deebff 100%);
-  border-bottom-color: #cddcef;
-}
+.rep-header:hover { background: var(--surface-2); }
 
 .rep-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #edf3ff 0%, #e2ecff 100%);
-  border: 1px solid #d3e0f5;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-800));
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 10px;
+  margin-right: 12px;
   flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(37,99,235,.28);
 }
-.rep-avatar i { color: #34558a; font-size: 14px; }
+.rep-avatar i { color: #fff; font-size: 16px; }
 
 .rep-name {
-  font-size: .9rem;
-  font-weight: 650;
-  color: #10233f;
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--text-1);
   line-height: 1.2;
 }
 .rep-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 2px;
+  gap: 5px;
+  margin-top: 3px;
+  flex-wrap: wrap;
 }
 .rep-badge {
-  background: #eef3fb;
-  color: #415a7e;
+  background: #eff6ff;
+  color: #1d4ed8;
   font-size: .68rem;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 99px;
-  border: 1px solid #d8e3f3;
+  border: 1px solid #bfdbfe;
 }
 .rep-chevron {
-  color: #5d7391;
-  font-size: 13px;
+  color: var(--brand-500);
+  font-size: 14px;
   transition: transform .25s ease;
 }
 .rep-chevron.open { transform: rotate(180deg); }
 
 /* ============================================================
-   MÃ‰TRICAS DENTRO DO REPRESENTANTE
+   MÉTRICAS DENTRO DO REPRESENTANTE
    ============================================================ */
 .rep-metrics {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
-  border-top: 1px solid #e2eaf5;
-  border-bottom: 1px solid #dde6f2;
-  background: #f5f9ff;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
 }
-@media (max-width: 768px) { .rep-metrics { grid-template-columns: repeat(2, 1fr); } }
 
 .metric-item {
-  padding: 11px 14px;
+  padding: 12px 14px;
   text-align: center;
   border-right: 1px solid var(--border);
-  background: rgba(255, 255, 255, .45);
   transition: background .15s;
 }
 .metric-item:last-child { border-right: none; }
-.metric-item:hover { background: rgba(255, 255, 255, .7); }
+.metric-item:hover { background: rgba(59,130,246,.04); }
 
 .metric-icon {
-  font-size: .9rem;
-  margin-bottom: 4px;
+  font-size: .82rem;
+  font-weight: 800;
+  margin-bottom: 3px;
   line-height: 1;
+  color: var(--text-3);
 }
 .metric-label {
-  font-size: .68rem;
+  font-size: .66rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .04em;
-  color: #7a8ea8;
+  letter-spacing: .05em;
+  color: var(--text-3);
 }
 .metric-value {
-  font-size: .9rem;
+  font-size: .95rem;
   font-weight: 700;
-  color: #1f3553;
-  margin-top: 2px;
+  color: var(--text-1);
+  margin-top: 3px;
 }
 
 /* Tags consultores */
