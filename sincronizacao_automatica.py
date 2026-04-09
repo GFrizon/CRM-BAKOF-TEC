@@ -98,6 +98,7 @@ def sincronizacao_automatica_diaria():
             get_clientes_proximos_inativacao_oracle,
             get_valor_total_365dias,
         )
+        from services.inativos_movimento_service import salvar_movimento_inativos
         
         with app.app_context():
             data_sync = datetime.now()
@@ -487,8 +488,10 @@ def sincronizacao_automatica_diaria():
                 ).all()
                 if c.cd_cliente_oracle
             }
-            inativos_entraram = len(inativos_depois_sync - inativos_antes_sync)
-            inativos_sairam = len(inativos_antes_sync - inativos_depois_sync)
+            codigos_entraram = sorted(inativos_depois_sync - inativos_antes_sync)
+            codigos_sairam = sorted(inativos_antes_sync - inativos_depois_sync)
+            inativos_entraram = len(codigos_entraram)
+            inativos_sairam = len(codigos_sairam)
 
             resumo = SyncResumoDiario.query.filter_by(data_ref=data_ref).first()
             if not resumo:
@@ -499,6 +502,47 @@ def sincronizacao_automatica_diaria():
             resumo.total_inativos = len(inativos_depois_sync)
             resumo.atualizado_em = data_sync
             db.session.commit()
+
+            # Persistir detalhes diarios (clientes que entraram/sairam da base inativos)
+            codigos_movimento = set(codigos_entraram) | set(codigos_sairam)
+            detalhes_por_codigo = {}
+            if codigos_movimento:
+                rows_mov = (
+                    Cliente.query
+                    .filter(Cliente.cd_cliente_oracle.in_(list(codigos_movimento)))
+                    .all()
+                )
+                for cli in rows_mov:
+                    cd = str(cli.cd_cliente_oracle or "").strip()
+                    if not cd:
+                        continue
+                    detalhes_por_codigo[cd] = {
+                        "cd_cliente": cd,
+                        "cliente": str(cli.nome or "").strip(),
+                        "representante": str(cli.representante_oracle or "").strip(),
+                        "consultor": str(cli.categoria_consultor or "").strip(),
+                        "uf": str(cli.uf or "").strip(),
+                    }
+
+            def _detalhe(cd):
+                if cd in detalhes_por_codigo:
+                    return detalhes_por_codigo[cd]
+                return {
+                    "cd_cliente": cd,
+                    "cliente": "",
+                    "representante": "",
+                    "consultor": "",
+                    "uf": "",
+                }
+
+            salvar_movimento_inativos(
+                data_ref=data_ref,
+                atualizado_em=data_sync,
+                entraram=[_detalhe(cd) for cd in codigos_entraram],
+                sairam=[_detalhe(cd) for cd in codigos_sairam],
+                total_inativos=len(inativos_depois_sync),
+            )
+
             logger.info(
                 "📉 Movimento inativos hoje: +%s / -%s (total %s)",
                 inativos_entraram,

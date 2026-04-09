@@ -27,6 +27,7 @@ from routes.clientes_ligacoes.domain_utils import (
 from routes.clientes_ligacoes.listagem_grouping_utils import consolidar_dados_grupos
 from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enriquecidos
 from routes.clientes_ligacoes.televendas_stats import montar_stats_produtividade_televendas
+from services.inativos_movimento_service import carregar_movimento_inativos
 
 
 def render_aba_inativos(
@@ -227,6 +228,7 @@ def render_aba_inativos(
         "total": int(resumo_sync_hoje.total_inativos) if resumo_sync_hoje else int(total_inativos),
         "atualizado_em": (resumo_sync_hoje.atualizado_em if resumo_sync_hoje else None),
     }
+    movimento_inativos_detalhes = carregar_movimento_inativos(datetime.now().date()) or {}
 
     total_pendentes = 0
     total_contatados = 0
@@ -300,6 +302,7 @@ def render_aba_inativos(
         stats={},
         stats_inativos=stats_inativos,
         movimento_inativos_hoje=movimento_inativos_hoje,
+        movimento_inativos_detalhes=movimento_inativos_detalhes,
         stats_televendas=stats_televendas,
         consultores_inativos=consultores_inativos,
         q=request.args.get("q", ""),

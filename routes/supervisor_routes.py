@@ -8,10 +8,11 @@ from werkzeug.security import generate_password_hash
 
 from core.extensions import db
 from core.helpers import _percent, formatar_dinheiro, s
-from core.models import Banner, Cliente, Ligacao, Usuario, SupervisorRepresentanteVinculo
+from core.models import Banner, Cliente, Ligacao, Usuario, SupervisorRepresentanteVinculo, SyncResumoDiario
 from routes.clientes_ligacoes.badges import _total_inativos_badge
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
 from services.banner_service import get_banners_ativos
+from services.inativos_movimento_service import carregar_movimento_inativos
 
 
 def _ultimos_meses(qtd=12):
@@ -334,10 +335,20 @@ def register_supervisor_routes(app):
             hoje=hoje,
             desde=desde,
         )
+        resumo_sync_hoje = SyncResumoDiario.query.filter_by(data_ref=datetime.now().date()).first()
+        movimento_inativos_hoje = {
+            "entraram": int(resumo_sync_hoje.inativos_entraram) if resumo_sync_hoje else 0,
+            "sairam": int(resumo_sync_hoje.inativos_sairam) if resumo_sync_hoje else 0,
+            "total": int(resumo_sync_hoje.total_inativos) if resumo_sync_hoje else 0,
+            "atualizado_em": (resumo_sync_hoje.atualizado_em if resumo_sync_hoje else None),
+        }
+        movimento_inativos_detalhes = carregar_movimento_inativos(datetime.now().date()) or {}
 
         return {
             **kpis,
             **dados_dashboard,
+            "movimento_inativos_hoje": movimento_inativos_hoje,
+            "movimento_inativos_detalhes": movimento_inativos_detalhes,
             "dashboard_tipo": dashboard_tipo,
             "dashboard_titulo": dashboard_titulo,
             "mes_filtro": mes_filtro,
