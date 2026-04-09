@@ -12,6 +12,7 @@ def render_aba_proximos_inativacao(
     total_oracle_badge: int,
     total_inativos_badge: int,
     q: str,
+    dashboard_tipo=None,
 ):
     representantes_ordenados_px, total_proximos_count, stats_proximos = (
         preparar_contexto_proximos_inativacao(
@@ -43,4 +44,5 @@ def render_aba_proximos_inativacao(
         meses_disponiveis_consultor=[],
         mes_filtro=None,
         ano_filtro=None,
+        dashboard_tipo=dashboard_tipo,
     )

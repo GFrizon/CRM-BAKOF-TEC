@@ -35,6 +35,7 @@ def render_aba_oracle(
     apenas_meus: bool,
     total_inativos_badge: int,
     total_proximos_badge: int,
+    dashboard_tipo=None,
 ):
     # REGRA VALIDADA (2026-03): usar Oracle como fonte de verdade da lista 90-150d.
     # Nao voltar para filtro principal via MySQL local.
@@ -235,5 +236,6 @@ def render_aba_oracle(
         meses_disponiveis_consultor=[],
         mes_filtro=None,
         ano_filtro=None,
+        dashboard_tipo=dashboard_tipo,
     )
 

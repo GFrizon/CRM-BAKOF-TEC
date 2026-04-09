@@ -40,13 +40,20 @@ def preparar_contexto_inicial_listagem(request, current_user):
         # Mantem badge alinhado com a mesma base/regra da aba Oracle.
         total_oracle_badge = _total_oracle_badge_consultor_lista_oracle(current_user.id)
     elif current_user.tipo == "supervisor":
-        # Mantem badge alinhado com a mesma base/regra da aba Oracle.
-        total_oracle_badge = _total_oracle_badge_supervisor_lista_oracle()
+        # Supervisor com dashboard "televendas" nao usa campanha 90-150d.
+        if dashboard_tipo == "televendas":
+            total_oracle_badge = 0
+        else:
+            # Mantem badge alinhado com a mesma base/regra da aba Oracle.
+            total_oracle_badge = _total_oracle_badge_supervisor_lista_oracle()
     else:
         total_oracle_badge = _total_oracle_badge()
-    total_proximos_badge = _total_proximos_badge(
-        current_user.id if current_user.tipo in ("consultor", "televendas") else None
-    )
+    if current_user.tipo == "supervisor" and dashboard_tipo == "televendas":
+        total_proximos_badge = 0
+    else:
+        total_proximos_badge = _total_proximos_badge(
+            current_user.id if current_user.tipo in ("consultor", "televendas") else None
+        )
 
     if current_user.tipo not in ("televendas", "supervisor") and aba == "inativos":
         aba_destino = "oracle" if current_user.tipo == "supervisor_repr" else "pendentes"
@@ -54,6 +61,14 @@ def preparar_contexto_inicial_listagem(request, current_user):
 
     if current_user.tipo == "televendas" and aba in ("pendentes", "oracle", "proximos_inativacao"):
         return {"response": redirect(url_for("meus_clientes", aba="inativos"))}
+
+    if current_user.tipo == "supervisor":
+        # Mundo televendas: apenas inativos/contatados/retornar.
+        if dashboard_tipo == "televendas" and aba in ("pendentes", "oracle", "proximos_inativacao"):
+            return {"response": redirect(url_for("meus_clientes", aba="inativos", dashboard_tipo="televendas"))}
+        # Mundo consultores: sem aba de inativos.
+        if dashboard_tipo == "consultor" and aba == "inativos":
+            return {"response": redirect(url_for("meus_clientes", aba="pendentes", dashboard_tipo="consultor"))}
 
     if current_user.tipo == "supervisor_repr" and aba in ("pendentes", "contatados", "retornar"):
         return {"response": redirect(url_for("meus_clientes", aba="oracle"))}
