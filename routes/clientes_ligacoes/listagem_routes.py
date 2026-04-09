@@ -72,6 +72,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                 apenas_meus=apenas_meus,
                 total_inativos_badge=total_inativos_badge,
                 total_proximos_badge=total_proximos_badge,
+                dashboard_tipo=dashboard_tipo,
             )
 
         if aba == 'inativos':
@@ -97,6 +98,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                 total_oracle_badge=total_oracle_badge,
                 total_inativos_badge=total_inativos_badge,
                 q=request.args.get('q', ''),
+                dashboard_tipo=dashboard_tipo,
             )
 
         return render_fluxo_operacional(

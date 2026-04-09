@@ -9,6 +9,7 @@ from werkzeug.security import generate_password_hash
 from core.extensions import db
 from core.helpers import _percent, formatar_dinheiro, s
 from core.models import Banner, Cliente, Ligacao, Usuario, SupervisorRepresentanteVinculo
+from routes.clientes_ligacoes.badges import _total_inativos_badge
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
 
 
@@ -193,10 +194,6 @@ def register_supervisor_routes(app):
                     Cliente.cd_cliente_oracle.in_(codigos_oracle),
                 )
             )
-            if filtrar_carteira_por_vinculo:
-                total_sem_pedido_90_150_query = total_sem_pedido_90_150_query.filter(
-                    Cliente.consultor_id.in_(operadores_ids_query)
-                )
             total_sem_pedido_90_150 = total_sem_pedido_90_150_query.count() if codigos_oracle else 0
         except Exception:
             # Fallback local caso Oracle indisponível.
@@ -209,10 +206,6 @@ def register_supervisor_routes(app):
                     Cliente.ultimo_pedido_oracle.between(limite_150, limite_90),
                 )
             )
-            if filtrar_carteira_por_vinculo:
-                total_sem_pedido_90_150_query = total_sem_pedido_90_150_query.filter(
-                    Cliente.consultor_id.in_(operadores_ids_query)
-                )
             total_sem_pedido_90_150 = total_sem_pedido_90_150_query.count()
         total_proximos_inativacao_query = (
             Cliente.query
@@ -223,10 +216,6 @@ def register_supervisor_routes(app):
                 Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
             )
         )
-        if filtrar_carteira_por_vinculo:
-            total_proximos_inativacao_query = total_proximos_inativacao_query.filter(
-                Cliente.consultor_id.in_(operadores_ids_query)
-            )
         total_proximos_inativacao = total_proximos_inativacao_query.count()
         total_inativos_query = (
             Cliente.query
@@ -242,6 +231,9 @@ def register_supervisor_routes(app):
                 Cliente.consultor_id.in_(operadores_ids_query)
             )
         total_inativos = total_inativos_query.count()
+        if dashboard_tipo == "televendas":
+            # Alinha com a mesma fonte usada na aba de Inativos.
+            total_inativos = int(_total_inativos_badge(None) or 0)
 
         # Retornos vencidos: clientes com proxima_ligacao no passado (equipe não ligou).
         total_retorno_atrasado_query = (
