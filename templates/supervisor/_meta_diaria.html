@@ -28,7 +28,7 @@
           </td>
           <td>
             {% if p.meta > 0 %}
-            <div class="progress" style="height:10px;border-radius:5px;">
+            <div class="progress progress-md">
               <div class="progress-bar
                 {% if p.percentual >= 100 %}bg-success
                 {% elif p.percentual >= 50 %}bg-warning
@@ -37,7 +37,7 @@
               </div>
             </div>
             {% else %}
-            <span class="text-muted" style="font-size:.8rem;">Sem meta</span>
+            <small class="text-muted">Sem meta</small>
             {% endif %}
           </td>
           <td class="text-center">

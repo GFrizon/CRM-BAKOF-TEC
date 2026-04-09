@@ -885,6 +885,15 @@ html, body {
   background: linear-gradient(90deg, var(--brand-600), var(--brand-400));
 }
 
+.progress-sm { height: 8px; }
+.progress-md { height: 10px; }
+
+/* =============================================================================
+   RANKING — ícones de posição
+   ============================================================================= */
+.rank-silver { color: #9ca3af; font-size: 1.1rem; }
+.rank-bronze { color: #b87333; font-size: 1.1rem; }
+
 /* =============================================================================
    OVERRIDE Bootstrap card-header.bg-warning (legado Oracle)
    ============================================================================= */
