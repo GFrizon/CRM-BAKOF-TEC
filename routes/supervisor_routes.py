@@ -150,10 +150,9 @@ def register_supervisor_routes(app):
         )
         filtrar_carteira_por_vinculo = (dashboard_tipo == "consultor")
         total_consultores = Usuario.query.filter_by(tipo=dashboard_tipo, ativo=True).count()
-        total_clientes_query = Cliente.query.filter(Cliente.ativo == True)
-        if filtrar_carteira_por_vinculo:
-            total_clientes_query = total_clientes_query.filter(Cliente.consultor_id.in_(operadores_ids_query))
-        total_clientes = total_clientes_query.count()
+        # Regra solicitada: card "Total de Clientes" sempre global
+        # (mesmo valor em Consultores e Televendas).
+        total_clientes = Cliente.query.filter(Cliente.ativo == True).count()
         total_ligacoes = (
             db.session.query(func.count(Ligacao.id))
             .join(Usuario, Usuario.id == Ligacao.consultor_id)

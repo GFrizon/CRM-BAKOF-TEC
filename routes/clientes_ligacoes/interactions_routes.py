@@ -1,4 +1,4 @@
-﻿from flask import jsonify, request
+from flask import jsonify, request
 from flask_login import current_user, login_required
 
 from core.extensions import db

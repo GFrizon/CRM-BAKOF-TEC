@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 import threading
 import unicodedata
 
@@ -10,6 +11,8 @@ from core.models import Cliente, Usuario
 from sqlalchemy import or_
 from oracle_service import get_clientes_inativos_oracle, get_clientes_oracle, get_valor_total_365dias, test_oracle_connection
 from telefone_utils import identificar_ddd_padrao, padronizar_telefone
+
+logger = logging.getLogger(__name__)
 
 
 def register_oracle_routes(app):
@@ -43,7 +46,7 @@ def register_oracle_routes(app):
             except Exception as e:
                 sync_state["last_success"] = False
                 sync_state["last_error"] = str(e)
-                print(f"Erro na sincronizacao background: {e}")
+                logger.exception("Erro na sincronizacao background")
             finally:
                 sync_state["running"] = False
                 sync_state["finished_at"] = datetime.now()

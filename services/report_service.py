@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 
 from flask_mail import Message
 from sqlalchemy import and_, case, func
@@ -7,6 +8,8 @@ from core.config import MAIL_PASSWORD, MAIL_RECIPIENTS
 from core.extensions import db, mail
 from core.helpers import _kfmt, _percent, formatar_dinheiro
 from core.models import Cliente, Ligacao, SyncResumoDiario, Usuario
+
+logger = logging.getLogger(__name__)
 
 
 def _build_assunto_relatorio():
@@ -392,24 +395,24 @@ def build_relatorio_html():
 def enviar_relatorio_email(recipients=None):
     recs = recipients or MAIL_RECIPIENTS
     if not recs:
-        print("Email: Sem destinatarios")
+        logger.warning("Email: Sem destinatarios")
         return False, "Sem destinatarios configurados."
 
     if not MAIL_PASSWORD:
-        print("Email: Senha nao configurada")
+        logger.warning("Email: Senha nao configurada")
         return False, "MAIL_PASSWORD nao configurado."
 
     html = build_relatorio_html()
     assunto = _build_assunto_relatorio()
 
     try:
-        print(f"Tentando enviar email para: {', '.join(recs)}")
+        logger.info("Tentando enviar email para: %s", ", ".join(recs))
         msg = Message(subject=assunto, recipients=recs)
         msg.html = html
         mail.send(msg)
-        print("Email enviado com sucesso!")
+        logger.info("Email enviado com sucesso")
         return True, f"Relatorio enviado para: {', '.join(recs)}"
     except Exception as e:
-        print(f"Erro ao enviar email: {e}")
+        logger.exception("Erro ao enviar email")
         return False, f"Falha ao enviar e-mail: {e}"
 

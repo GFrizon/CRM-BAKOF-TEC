@@ -1,4 +1,4 @@
-﻿from routes.clientes_ligacoes.access_control import bloquear_escrita_supervisor_repr
+from routes.clientes_ligacoes.access_control import bloquear_escrita_supervisor_repr
 from routes.clientes_ligacoes.analytics_routes import (
     register_clientes_ligacoes_analytics_routes,
 )
