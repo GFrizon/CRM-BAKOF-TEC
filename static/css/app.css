@@ -895,17 +895,36 @@ html, body {
 .rank-bronze { color: #b87333; font-size: 1.1rem; }
 
 /* =============================================================================
-   OVERRIDE Bootstrap card-header.bg-warning (legado Oracle)
+   OVERRIDE Bootstrap card-header.bg-* — uniformiza visual com design system
    ============================================================================= */
-.card-header.bg-warning {
+.card-header.bg-primary {
   background: linear-gradient(135deg, var(--brand-700), var(--brand-600)) !important;
   color: #fff !important;
   border-bottom: none !important;
 }
-
-.card-header.bg-warning .text-dark,
-.card-header.bg-warning strong,
-.card-header.bg-warning .text-muted {
+.card-header.bg-warning {
+  background: linear-gradient(135deg, #b45309, #d97706) !important;
+  color: #fff !important;
+  border-bottom: none !important;
+}
+.card-header.bg-info {
+  background: linear-gradient(135deg, #0e7490, #0891b2) !important;
+  color: #fff !important;
+  border-bottom: none !important;
+}
+.card-header.bg-success {
+  background: linear-gradient(135deg, #15803d, #16a34a) !important;
+  color: #fff !important;
+  border-bottom: none !important;
+}
+.card-header.bg-danger {
+  background: linear-gradient(135deg, #b91c1c, #dc2626) !important;
+  color: #fff !important;
+  border-bottom: none !important;
+}
+.card-header[class*="bg-"] .text-dark,
+.card-header[class*="bg-"] .text-muted,
+.card-header[class*="bg-"] strong {
   color: rgba(255,255,255,0.85) !important;
 }
 
