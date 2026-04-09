@@ -1,157 +1,242 @@
   <style>
-    :root{
-      --brand-50:#eff6ff;
-      --brand-100:#dbeafe;
-      --brand-500:#3b82f6;
-      --brand-600:#2563eb;
-      --brand-700:#1d4ed8;
-      --brand-800:#1e40af;
-      --brand-900:#1e3a8a;
-      --surface:#ffffff;
-      --surface-2:#f8fafc;
-      --border:#e2e8f0;
-      --text-2:#475569;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --brand-400: #60a5fa;
+      --brand-500: #3b82f6;
+      --brand-600: #2563eb;
+      --brand-700: #1d4ed8;
+      --brand-800: #1e40af;
+      --brand-900: #1e3a8a;
+      --surface:   #ffffff;
+      --surface-2: #f8fafc;
+      --border:    #e2e8f0;
+      --text-1:    #0f172a;
+      --text-2:    #475569;
+      --text-3:    #94a3b8;
     }
 
-    /* Fundo com o azul Bakof */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-800) 100%);
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #1e40af 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
-    
+
+    /* Fundo com padrão sutil de grade */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
     .login-container {
       width: 100%;
-      max-width: 420px;
-      padding: 15px;
+      max-width: 440px;
+      padding: 16px;
+      position: relative;
+      z-index: 1;
     }
-    
+
     .login-card {
       background: var(--surface);
-      border-radius: 24px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      border-radius: 20px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.05);
       overflow: hidden;
-      animation: slideUp 0.5s ease-out;
+      animation: slideUp 0.4s cubic-bezier(.16,1,.3,1);
     }
-    
+
     @keyframes slideUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(24px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
     }
-    
-    /* Header do card com azul Bakof */
+
     .login-header {
-      background: linear-gradient(135deg, var(--brand-800) 0%, var(--brand-600) 100%);
-      padding: 2.5rem 2rem;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #1d4ed8 100%);
+      padding: 2.4rem 2rem 2rem;
       text-align: center;
       color: white;
+      position: relative;
+      overflow: hidden;
     }
-    
+
+    .login-header::after {
+      content: '';
+      position: absolute;
+      bottom: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 60px;
+      background: radial-gradient(ellipse, rgba(59,130,246,0.3) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
     .login-header .logo-placeholder {
-      width: 80px; height: 80px;
+      width: 72px; height: 72px;
       margin: 0 auto 1rem;
-      background: rgba(255,255,255,0.2);
-      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 18px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 2.5rem;
+      font-size: 2.2rem;
+      backdrop-filter: blur(4px);
     }
-    
-    /* âœ… Logo colorida (sem filtros) */
+
     .login-header img {
-      height: 70px;
+      height: 64px;
       margin-bottom: 1rem;
       filter: none !important;
       mix-blend-mode: normal !important;
       opacity: 1 !important;
       background: transparent !important;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
     }
-    
-    .login-header h4 { margin: 0; font-weight: 600; font-size: 1.5rem; }
-    .login-header p   { margin: 0.5rem 0 0; opacity: 0.9; font-size: 0.95rem; }
-    
-    .login-body { padding: 2.5rem 2rem; }
-    
-    .form-floating { margin-bottom: 1.2rem; }
-    
+
+    .login-header h4 {
+      margin: 0;
+      font-weight: 700;
+      font-size: 1.4rem;
+      letter-spacing: -0.02em;
+    }
+
+    .login-header p {
+      margin: 0.4rem 0 0;
+      opacity: 0.75;
+      font-size: 0.875rem;
+      font-weight: 400;
+    }
+
+    .login-body { padding: 2rem; }
+
+    .form-floating { margin-bottom: 1rem; }
+
     .form-control {
-      border-radius: 12px;
+      border-radius: 10px;
       border: 1px solid var(--border);
-      padding: 1rem 1.2rem;
-      font-size: 1rem;
-      transition: all 0.3s ease;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      background: var(--surface);
+      color: var(--text-1);
     }
-    
-    /* realce no foco em azul Bakof */
+
     .form-control:focus {
-      border-color: var(--brand-600);
-      box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.15);
+      border-color: var(--brand-500);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+      outline: none;
     }
-    
+
     .form-floating > label {
-      padding: 1rem 1.2rem;
+      color: var(--text-3);
+      font-size: 0.875rem;
+    }
+
+    .form-check-label {
+      font-size: 0.875rem;
       color: var(--text-2);
     }
-    
-    /* Botão no azul Bakof; hover levemente mais escuro */
+
     .btn-login {
       width: 100%;
-      padding: 1rem;
-      border-radius: 12px;
-      font-weight: 600;
-      font-size: 1.05rem;
-      background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-600) 100%);
+      padding: 0.85rem;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      font-family: inherit;
+      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
       border: none;
       color: white;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.28);
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 16px rgba(37,99,235,0.35);
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
+
     .btn-login:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.38);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 22px rgba(37,99,235,0.45);
     }
-    .btn-login:active { transform: translateY(0); }
-    
+
+    .btn-login:active { transform: translateY(0); box-shadow: none; }
+
     .alert {
-      border-radius: 12px;
+      border-radius: 10px;
       border: none;
-      padding: 1rem 1.2rem;
-      margin-bottom: 1.5rem;
+      padding: 0.875rem 1rem;
+      margin-bottom: 1.2rem;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .alert-danger { background: #fff5f5; color: #c53030; }
-    
+
+    .alert-danger  { background: #fff1f2; color: #be123c; border-left: 3px solid #fb7185; }
+    .alert-success { background: #f0fdf4; color: #15803d; border-left: 3px solid #4ade80; }
+    .alert-warning { background: #fffbeb; color: #92400e; border-left: 3px solid #fbbf24; }
+    .alert-info    { background: #eff6ff; color: #1d4ed8; border-left: 3px solid #60a5fa; }
+
     .login-footer {
       text-align: center;
-      padding: 1.5rem;
+      padding: 1.2rem 2rem;
       background: var(--surface-2);
-      color: var(--text-2);
-      font-size: 0.85rem;
+      color: var(--text-3);
+      font-size: 0.78rem;
+      border-top: 1px solid var(--border);
     }
-    
-    .demo-info {
-      background: var(--surface-2);
+
+    /* Card de suporte */
+    .support-card {
+      border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 1rem;
-      margin-top: 1.5rem;
+      padding: 1rem 1.2rem;
+      margin-top: 1.2rem;
+      background: var(--surface-2);
+      text-align: center;
     }
-    .demo-info h6 {
-      font-size: 0.85rem;
-      font-weight: 600;
+
+    .support-card h6 {
+      font-size: 0.82rem;
+      font-weight: 700;
       color: var(--text-2);
-      margin-bottom: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .demo-credential {
-      background: white;
-      border-radius: 8px;
-      padding: 0.75rem;
       margin-bottom: 0.5rem;
-      font-size: 0.85rem;
-      display: flex; align-items: center; gap: 0.5rem;
     }
-    .demo-credential i { color: var(--brand-700); }
-    .demo-credential code { background: #e9ecef; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
+
+    .support-card p {
+      font-size: 0.8rem;
+      color: var(--text-3);
+      margin-bottom: 0.75rem;
+    }
+
+    .btn-whatsapp {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: #16a34a;
+      color: white;
+      padding: 8px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.83rem;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+
+    .btn-whatsapp:hover { background: #15803d; color: white; }
   </style>
