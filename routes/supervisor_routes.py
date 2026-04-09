@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import case, desc, func, or_
+from sqlalchemy import case, desc, func
 from sqlalchemy.orm import joinedload
 from werkzeug.security import generate_password_hash
 
@@ -11,6 +11,7 @@ from core.helpers import _percent, formatar_dinheiro, s
 from core.models import Banner, Cliente, Ligacao, Usuario, SupervisorRepresentanteVinculo
 from routes.clientes_ligacoes.badges import _total_inativos_badge
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
+from services.banner_service import get_banners_ativos
 
 
 def _ultimos_meses(qtd=12):
@@ -38,16 +39,6 @@ def _ultimos_meses(qtd=12):
         mes = (atual % 12) + 1
         meses.append({"mes": mes, "ano": ano, "texto": f"{meses_nomes[mes]}/{ano}"})
     return meses
-
-
-def get_banners_ativos():
-    agora = datetime.now()
-    return (
-        Banner.query.filter(Banner.ativo == True)
-        .filter(or_(Banner.data_expiracao == None, Banner.data_expiracao >= agora))
-        .order_by(Banner.data_criacao.desc())
-        .all()
-    )
 
 
 def register_supervisor_routes(app):

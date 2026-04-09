@@ -15,7 +15,7 @@ from routes.clientes_ligacoes.dashboard_operacional import (
 )
 from routes.clientes_ligacoes.lista_operacional import filtrar_listas_por_termo, ordenar_clientes_por_aba
 from routes.clientes_ligacoes.listagem_operacional_classificacao import classificar_listas_operacionais
-from routes.supervisor_routes import get_banners_ativos
+from services.banner_service import get_banners_ativos
 
 
 def render_fluxo_operacional(
