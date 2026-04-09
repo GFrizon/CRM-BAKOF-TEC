@@ -316,6 +316,78 @@ def register_supervisor_routes(app):
             "banners_ativos": get_banners_ativos(),
         }
 
+    def _consultar_ligacoes_mes_supervisor(
+        *,
+        mes: int,
+        ano: int,
+        tipo_operador: str,
+        consultor_id: int | None,
+    ):
+        inicio = datetime(ano, mes, 1)
+        fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
+
+        consultor_nome = "Todos os operadores"
+        if consultor_id:
+            consultor = Usuario.query.filter_by(id=consultor_id, tipo=tipo_operador, ativo=True).first()
+            if not consultor:
+                return {"ok": False, "erro": "Operador invalido"}, 400
+            consultor_nome = consultor.nome
+
+        query = (
+            Ligacao.query.options(joinedload(Ligacao.consultor), joinedload(Ligacao.cliente))
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
+            .filter(Ligacao.data_hora >= inicio, Ligacao.data_hora < fim)
+            .filter(Usuario.tipo == tipo_operador, Usuario.ativo == True)
+        )
+        if consultor_id:
+            query = query.filter(Ligacao.consultor_id == consultor_id)
+
+        ligacoes = query.order_by(Ligacao.data_hora.desc()).all()
+
+        itens = []
+        vendas = 0
+        receita = 0.0
+        for lig in ligacoes:
+            resultado = lig.resultado or "nao_comprou"
+            valor = float(lig.valor_venda or 0)
+            if resultado == "comprou":
+                vendas += 1
+                receita += valor
+
+            itens.append(
+                {
+                    "id": lig.id,
+                    "data_hora": lig.data_hora.strftime("%d/%m/%Y %H:%M"),
+                    "consultor": lig.consultor.nome if lig.consultor else "-",
+                    "cliente": lig.cliente.nome if lig.cliente else "-",
+                    "contato": lig.contato_nome or "-",
+                    "resultado": resultado,
+                    "valor": valor,
+                    "valor_fmt": formatar_dinheiro(valor),
+                    "observacao": lig.observacao or "",
+                }
+            )
+
+        total = len(itens)
+        conversao = _percent(vendas, total) if total else 0.0
+
+        payload = {
+            "ok": True,
+            "mes": mes,
+            "ano": ano,
+            "consultor_id": consultor_id,
+            "consultor_nome": consultor_nome,
+            "ligacoes": itens,
+            "estatisticas": {
+                "total_ligacoes": total,
+                "vendas": vendas,
+                "conversao": round(conversao, 1),
+                "receita": receita,
+                "receita_fmt": formatar_dinheiro(receita),
+            },
+        }
+        return payload, 200
+
     def _sincronizar_vinculos_tg650_supervisor_repr(supervisor_id: int, codigo_supervisor_tg650: str):
         codigo_base = s(codigo_supervisor_tg650)
         if not codigo_base:
@@ -427,79 +499,21 @@ def register_supervisor_routes(app):
             consultor_id = request.args.get("consultor_id", type=int)
 
             if mes < 1 or mes > 12:
-                return jsonify({"ok": False, "erro": "Mês inválido"}), 400
-
-            inicio = datetime(ano, mes, 1)
-            fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
+                return jsonify({"ok": False, "erro": "Mes invalido"}), 400
 
             tipo_operador = (request.args.get("tipo") or "consultor").strip().lower()
             if tipo_operador not in ("consultor", "televendas"):
-                return jsonify({"ok": False, "erro": "Tipo de dashboard inválido"}), 400
+                return jsonify({"ok": False, "erro": "Tipo de dashboard invalido"}), 400
 
-            consultor_nome = "Todos os operadores"
-            if consultor_id:
-                consultor = Usuario.query.filter_by(id=consultor_id, tipo=tipo_operador, ativo=True).first()
-                if not consultor:
-                    return jsonify({"ok": False, "erro": "Operador inválido"}), 400
-                consultor_nome = consultor.nome
-
-            query = (
-                Ligacao.query.options(joinedload(Ligacao.consultor), joinedload(Ligacao.cliente))
-                .join(Usuario, Usuario.id == Ligacao.consultor_id)
-                .filter(Ligacao.data_hora >= inicio, Ligacao.data_hora < fim)
-                .filter(Usuario.tipo == tipo_operador, Usuario.ativo == True)
+            payload, status = _consultar_ligacoes_mes_supervisor(
+                mes=mes,
+                ano=ano,
+                tipo_operador=tipo_operador,
+                consultor_id=consultor_id,
             )
-            if consultor_id:
-                query = query.filter(Ligacao.consultor_id == consultor_id)
-
-            ligacoes = query.order_by(Ligacao.data_hora.desc()).all()
-
-            itens = []
-            vendas = 0
-            receita = 0.0
-            for lig in ligacoes:
-                resultado = lig.resultado or "nao_comprou"
-                valor = float(lig.valor_venda or 0)
-                if resultado == "comprou":
-                    vendas += 1
-                    receita += valor
-
-                itens.append(
-                    {
-                        "id": lig.id,
-                        "data_hora": lig.data_hora.strftime("%d/%m/%Y %H:%M"),
-                        "consultor": lig.consultor.nome if lig.consultor else "-",
-                        "cliente": lig.cliente.nome if lig.cliente else "-",
-                        "contato": lig.contato_nome or "-",
-                        "resultado": resultado,
-                        "valor": valor,
-                        "valor_fmt": formatar_dinheiro(valor),
-                        "observacao": lig.observacao or "",
-                    }
-                )
-
-            total = len(itens)
-            conversao = _percent(vendas, total) if total else 0.0
-
-            return jsonify(
-                {
-                    "ok": True,
-                    "mes": mes,
-                    "ano": ano,
-                    "consultor_id": consultor_id,
-                    "consultor_nome": consultor_nome,
-                    "ligacoes": itens,
-                    "estatisticas": {
-                        "total_ligacoes": total,
-                        "vendas": vendas,
-                        "conversao": round(conversao, 1),
-                        "receita": receita,
-                        "receita_fmt": formatar_dinheiro(receita),
-                    },
-                }
-            )
+            return jsonify(payload), status
         except ValueError:
-            return jsonify({"ok": False, "erro": "Parâmetros inválidos"}), 400
+            return jsonify({"ok": False, "erro": "Parametros invalidos"}), 400
         except Exception as e:
             return jsonify({"ok": False, "erro": str(e)}), 500
 
