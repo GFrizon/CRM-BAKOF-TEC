@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from flask import render_template
 from sqlalchemy import and_
+from sqlalchemy.orm import selectinload
 
 from core.extensions import db
 from core.models import Cliente, Ligacao
@@ -61,6 +62,7 @@ def render_aba_oracle(
     if codigos_oracle:
         clientes_locais = (
             Cliente.query
+            .options(selectinload(Cliente.consultor))
             .filter(
                 Cliente.cd_cliente_oracle.in_(codigos_oracle),
                 Cliente.ativo == True,

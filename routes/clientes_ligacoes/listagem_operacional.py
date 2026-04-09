@@ -1,9 +1,9 @@
 from datetime import datetime
 
 from flask import render_template
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 
-from core.models import Cliente, Usuario
+from core.models import Cliente, Ligacao, Usuario
 from routes.clientes_ligacoes.agrupamento_view import montar_representantes_agrupados
 from routes.clientes_ligacoes.badges import calcular_total_inativos_badge_com_cache
 from routes.clientes_ligacoes.listagem_base_filters import aplicar_filtro_base_clientes
@@ -33,7 +33,19 @@ def render_fluxo_operacional(
     # Parametros de filtro mensal para consultores e televendas
     mes_filtro, ano_filtro = parse_filtro_mes_ano(request.args, current_user.tipo)
 
-    q = Cliente.query.options(joinedload(Cliente.ligacoes)).filter(Cliente.ativo == True)
+    q = (
+        Cliente.query
+        .options(
+            # Evita explosao de linhas do joinedload com muitos historicos.
+            selectinload(Cliente.ligacoes).load_only(
+                Ligacao.id,
+                Ligacao.consultor_id,
+                Ligacao.data_hora,
+                Ligacao.resultado,
+            )
+        )
+        .filter(Cliente.ativo == True)
+    )
     q = aplicar_filtro_base_clientes(
         query=q,
         current_user=current_user,

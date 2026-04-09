@@ -1,6 +1,21 @@
+from datetime import datetime, timedelta
+
+
+_ORACLE_90_150_CACHE = {}
+_ORACLE_90_150_CACHE_TTL = timedelta(minutes=5)
+
+
 def carregar_clientes_oracle_deduplicados(logger, periodo_oracle):
     if periodo_oracle and periodo_oracle not in ("90", "150", "180"):
         logger.warning(f"Valor invalido para periodo_oracle: {periodo_oracle}")
+
+    cache_key = str(periodo_oracle or "default")
+    cache_item = _ORACLE_90_150_CACHE.get(cache_key)
+    if cache_item:
+        idade = datetime.now() - cache_item["ts"]
+        if idade <= _ORACLE_90_150_CACHE_TTL:
+            # Copia rasa para evitar mutacao acidental do cache por chamadas futuras.
+            return list(cache_item["data"])
 
     try:
         from oracle_service import get_clientes_oracle
@@ -26,5 +41,10 @@ def carregar_clientes_oracle_deduplicados(logger, periodo_oracle):
         if dt_novo and (not dt_atual or dt_novo > dt_atual):
             clientes_oracle_por_cd[cd] = row
 
-    return list(clientes_oracle_por_cd.values())
+    clientes_deduplicados = list(clientes_oracle_por_cd.values())
+    _ORACLE_90_150_CACHE[cache_key] = {
+        "ts": datetime.now(),
+        "data": clientes_deduplicados,
+    }
+    return list(clientes_deduplicados)
 
