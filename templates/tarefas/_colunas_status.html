@@ -128,12 +128,12 @@
             </div>
         </div>
 
-        <!-- ConcluÃ­das -->
+        <!-- Concluídas -->
         <div class="col-md-4 mb-4">
             <div class="card">
                 <div class="card-header bg-success text-white">
                     <h6 class="mb-0">
-                        <i class="bi bi-check-circle"></i> ConcluÃ­das
+                        <i class="bi bi-check-circle"></i> Concluídas
                         <span class="badge bg-light text-dark float-end">{{ stats.por_status.concluida }}</span>
                     </h6>
                 </div>
@@ -151,7 +151,7 @@
                                         <span class="badge bg-secondary">{{ tarefa.tipo.replace('_', ' ').title() }}</span>
                                     </div>
                                     <small class="text-muted">
-                                        <i class="bi bi-calendar-check"></i> ConcluÃ­da em: {{ tarefa.data_vencimento }}
+                                        <i class="bi bi-calendar-check"></i> Concluída em: {{ tarefa.data_vencimento }}
                                         {% if tarefa.cliente != 'N/A' %}
                                         <br><i class="bi bi-person"></i> {{ tarefa.cliente }}
                                         {% endif %}
@@ -171,7 +171,7 @@
                         </div>
                     </div>
                     {% else %}
-                    <p class="text-muted text-center">Nenhuma tarefa concluÃ­da</p>
+                    <p class="text-muted text-center">Nenhuma tarefa concluída</p>
                     {% endfor %}
                 </div>
             </div>

@@ -1,7 +1,7 @@
-<!-- Tabela de UsuÃ¡rios -->
+<!-- Tabela de Usuários -->
 <div class="card">
   <div class="card-header">
-    <i class="bi bi-table"></i> UsuÃ¡rios do Sistema
+    <i class="bi bi-table"></i> Usuários do Sistema
   </div>
   <div class="table-responsive">
     <table class="table table-hover">
@@ -10,11 +10,11 @@
           <th>Nome</th>
           <th>Email</th>
           <th>Tipo</th>
-          <th>Meta DiÃ¡ria</th>
+          <th>Meta Diária</th>
           <th>Clientes</th>
           <th>Status</th>
           <th>Cadastro</th>
-          <th>AÃ§Ãµes</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -23,7 +23,7 @@
           <td>
             <strong>{{ u.nome }}</strong>
             {% if u.id == current_user.id %}
-              <span class="badge bg-info ms-2">VocÃª</span>
+              <span class="badge bg-info ms-2">Você</span>
             {% endif %}
           </td>
           <td>{{ u.email }}</td>
@@ -48,7 +48,7 @@
           </td>
           <td>
             {% if u.tipo == 'consultor' %}
-              <span class="badge bg-info">{{ u.meta_diaria }} ligaÃ§Ãµes/dia</span>
+              <span class="badge bg-info">{{ u.meta_diaria }} ligações/dia</span>
             {% else %}
               -
             {% endif %}

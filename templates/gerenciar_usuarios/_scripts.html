@@ -55,7 +55,7 @@ async function criarUsuario(e) {
       alert(j.mensagem);
       location.reload();
     } else {
-      alert(j.mensagem || 'Erro ao criar usuÃ¡rio');
+      alert(j.mensagem || 'Erro ao criar usuário');
     }
   } catch (error) {
     alert('Erro: ' + error.message);
@@ -99,7 +99,7 @@ async function editarUsuario(e) {
       alert(j.mensagem);
       location.reload();
     } else {
-      alert(j.mensagem || 'Erro ao editar usuÃ¡rio');
+      alert(j.mensagem || 'Erro ao editar usuário');
     }
   } catch (error) {
     alert('Erro: ' + error.message);
@@ -121,7 +121,7 @@ async function redefinirSenha(e) {
   const confirmaSenha = document.getElementById('redefinirConfirmaSenha').value;
   
   if (novaSenha !== confirmaSenha) {
-    alert('As senhas nÃ£o conferem!');
+    alert('As senhas não conferem!');
     return;
   }
   
@@ -150,7 +150,7 @@ async function redefinirSenha(e) {
 async function toggleStatus(id, nome, ativo) {
   const acao = ativo ? 'inativar' : 'ativar';
   
-  if (!confirm(`Tem certeza que deseja ${acao} o usuÃ¡rio ${nome}`)) {
+  if (!confirm(`Tem certeza que deseja ${acao} o usuário ${nome}`)) {
     return;
   }
   

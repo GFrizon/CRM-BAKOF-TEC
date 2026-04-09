@@ -17,7 +17,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label class="form-label">TÃ­tulo da Tarefa *</label>
+                                    <label class="form-label">Título da Tarefa *</label>
                                     <input type="text" class="form-control" name="titulo" 
                                            value="{{ tarefa.titulo if tarefa else '' }}" required>
                                 </div>
@@ -27,9 +27,9 @@
                                     <label class="form-label">Tipo</label>
                                     <select class="form-select" name="tipo">
                                         <option value="tarefa_interna" {% if tarefa and tarefa.tipo == 'tarefa_interna' %}selected{% endif %}>Tarefa Interna</option>
-                                        <option value="ligacao" {% if tarefa and tarefa.tipo == 'ligacao' %}selected{% endif %}>LigaÃ§Ã£o</option>
+                                        <option value="ligacao" {% if tarefa and tarefa.tipo == 'ligacao' %}selected{% endif %}>Ligação</option>
                                         <option value="email" {% if tarefa and tarefa.tipo == 'email' %}selected{% endif %}>E-mail</option>
-                                        <option value="reuniao" {% if tarefa and tarefa.tipo == 'reuniao' %}selected{% endif %}>ReuniÃ£o</option>
+                                        <option value="reuniao" {% if tarefa and tarefa.tipo == 'reuniao' %}selected{% endif %}>Reunião</option>
                                         <option value="visita" {% if tarefa and tarefa.tipo == 'visita' %}selected{% endif %}>Visita</option>
                                         <option value="follow_up" {% if tarefa and tarefa.tipo == 'follow_up' %}selected{% endif %}>Follow-up</option>
                                     </select>
@@ -38,7 +38,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">DescriÃ§Ã£o</label>
+                            <label class="form-label">Descrição</label>
                             <textarea class="form-control" name="descricao" rows="3">{{ tarefa.descricao if tarefa else '' }}</textarea>
                         </div>
 
@@ -48,7 +48,7 @@
                                     <label class="form-label">Prioridade</label>
                                     <select class="form-select" name="prioridade">
                                         <option value="baixa" {% if tarefa and tarefa.prioridade == 'baixa' %}selected{% endif %}>Baixa</option>
-                                        <option value="media" {% if tarefa and tarefa.prioridade == 'media' %}selected{% endif %}>MÃ©dia</option>
+                                        <option value="media" {% if tarefa and tarefa.prioridade == 'media' %}selected{% endif %}>Média</option>
                                         <option value="alta" {% if tarefa and tarefa.prioridade == 'alta' %}selected{% endif %}>Alta</option>
                                         <option value="urgente" {% if tarefa and tarefa.prioridade == 'urgente' %}selected{% endif %}>Urgente</option>
                                     </select>
@@ -60,7 +60,7 @@
                                     <select class="form-select" name="status">
                                         <option value="pendente" {% if tarefa and tarefa.status == 'pendente' %}selected{% endif %}>Pendente</option>
                                         <option value="em_andamento" {% if tarefa and tarefa.status == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
-                                        <option value="concluida" {% if tarefa and tarefa.status == 'concluida' %}selected{% endif %}>ConcluÃ­da</option>
+                                        <option value="concluida" {% if tarefa and tarefa.status == 'concluida' %}selected{% endif %}>Concluída</option>
                                     </select>
                                 </div>
                             </div>
@@ -108,7 +108,7 @@
                         <div class="row">
                             <div class="col-md-12">
                                 <div class="mb-3">
-                                    <label class="form-label">ResponsÃ¡vel</label>
+                                    <label class="form-label">Responsável</label>
                                     <select class="form-select" name="usuario_id">
                                         {% for consultor in consultores %}
                                         <option value="{{ consultor.id }}" 

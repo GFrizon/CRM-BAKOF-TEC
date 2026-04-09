@@ -1,9 +1,9 @@
 <div class="row g-4">
-  <!-- InformaÃ§Ãµes do Perfil -->
+  <!-- Informações do Perfil -->
   <div class="col-md-6">
     <div class="card">
       <div class="card-header">
-        <i class="bi bi-info-circle"></i> InformaÃ§Ãµes do Perfil
+        <i class="bi bi-info-circle"></i> Informações do Perfil
       </div>
       <div class="card-body">
         <div class="mb-3">
@@ -17,7 +17,7 @@
         </div>
         
         <div class="mb-3">
-          <label class="form-label text-muted small">Tipo de UsuÃ¡rio</label>
+          <label class="form-label text-muted small">Tipo de Usuário</label>
           <div>
             {% if current_user.tipo == 'supervisor' %}
               <span class="badge bg-primary">
@@ -41,10 +41,10 @@
         
         {% if current_user.tipo == 'consultor' %}
         <div class="mb-3">
-          <label class="form-label text-muted small">Meta DiÃ¡ria</label>
+          <label class="form-label text-muted small">Meta Diária</label>
           <div>
             <span class="badge bg-info">
-              {{ current_user.meta_diaria or 10 }} ligaÃ§Ãµes/dia
+              {{ current_user.meta_diaria or 10 }} ligações/dia
             </span>
           </div>
         </div>
@@ -84,8 +84,8 @@
                    id="novaSenha" 
                    required 
                    minlength="6"
-                   placeholder="MÃ­nimo 6 caracteres">
-            <small class="text-muted">A senha deve ter no mÃ­nimo 6 caracteres</small>
+                   placeholder="Mínimo 6 caracteres">
+            <small class="text-muted">A senha deve ter no mínimo 6 caracteres</small>
           </div>
           
           <div class="mb-3">
@@ -101,8 +101,8 @@
           <div class="alert alert-info">
             <i class="bi bi-info-circle"></i>
             <small>
-              ApÃ³s alterar a senha, vocÃª continuarÃ¡ conectado. 
-              Use a nova senha no prÃ³ximo login.
+              Após alterar a senha, você continuará conectado. 
+              Use a nova senha no próximo login.
             </small>
           </div>
           

@@ -50,7 +50,7 @@
                         <div class="row">
                             <div class="col-md-8">
                                 <div class="mb-3">
-                                    <label class="form-label">TÃ­tulo da Oportunidade *</label>
+                                    <label class="form-label">Título da Oportunidade *</label>
                                     <input type="text" class="form-control" name="titulo" 
                                            value="{{ oportunidade.titulo if oportunidade else '' }}" required>
                                 </div>
@@ -66,19 +66,19 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">DescriÃ§Ã£o</label>
+                            <label class="form-label">Descrição</label>
                             <textarea class="form-control" name="descricao" rows="4">{{ oportunidade.descricao if oportunidade else '' }}</textarea>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label class="form-label">EstÃ¡gio *</label>
+                                    <label class="form-label">Estágio *</label>
                                     <select class="form-select" name="estagio" required>
-                                        <option value="prospeccao" {% if oportunidade and oportunidade.estagio == 'prospeccao' %}selected{% endif %}>ProspecÃ§Ã£o</option>
-                                        <option value="qualificacao" {% if oportunidade and oportunidade.estagio == 'qualificacao' %}selected{% endif %}>QualificaÃ§Ã£o</option>
+                                        <option value="prospeccao" {% if oportunidade and oportunidade.estagio == 'prospeccao' %}selected{% endif %}>Prospecção</option>
+                                        <option value="qualificacao" {% if oportunidade and oportunidade.estagio == 'qualificacao' %}selected{% endif %}>Qualificação</option>
                                         <option value="proposta" {% if oportunidade and oportunidade.estagio == 'proposta' %}selected{% endif %}>Proposta</option>
-                                        <option value="negociacao" {% if oportunidade and oportunidade.estagio == 'negociacao' %}selected{% endif %}>NegociaÃ§Ã£o</option>
+                                        <option value="negociacao" {% if oportunidade and oportunidade.estagio == 'negociacao' %}selected{% endif %}>Negociação</option>
                                         <option value="fechamento_ganho" {% if oportunidade and oportunidade.estagio == 'fechamento_ganho' %}selected{% endif %}>Fechamento (Ganho)</option>
                                         <option value="fechamento_perda" {% if oportunidade and oportunidade.estagio == 'fechamento_perda' %}selected{% endif %}>Fechamento (Perda)</option>
                                     </select>
@@ -96,10 +96,10 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">PrÃ³ximo Contato</label>
+                            <label class="form-label">Próximo Contato</label>
                             <input type="datetime-local" class="form-control" name="data_proximo_contato"
                                    value="{{ oportunidade.data_proximo_contato.strftime('%Y-%m-%dT%H:%M') if oportunidade and oportunidade.data_proximo_contato else '' }}">
-                            <small class="text-muted">Data e hora para o prÃ³ximo contato com o cliente</small>
+                            <small class="text-muted">Data e hora para o próximo contato com o cliente</small>
                         </div>
 
                         <div class="row">

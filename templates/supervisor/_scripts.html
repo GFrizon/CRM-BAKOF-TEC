@@ -18,13 +18,13 @@ window.addEventListener('pageshow', () => {
   if (_chartResultados) _chartResultados.resize();
 });
 
-// 🆕 FECHAR POP-UP DE NOVIDADES
+// FECHAR POP-UP DE NOVIDADES
 async function fecharNovidades() {
   await fetch('/marcar-novidades-vistas', { method: 'POST' });
   document.getElementById('modalNovidades').style.display = 'none';
 }
 
-// 🆕 APLICAR FILTRO POR MÊS
+// APLICAR FILTRO POR MÊS
 async function aplicarFiltroMes() {
   const select = document.getElementById('filtroMes');
   const valor = select.value; // formato: "mes-ano"

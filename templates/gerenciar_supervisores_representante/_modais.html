@@ -23,9 +23,9 @@
                         <small class="text-muted">Deixe em branco para manter a senha atual (ao editar)</small>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">CÃ³digo Supervisor TG650</label>
+                        <label class="form-label">Código Supervisor TG650</label>
                         <input type="text" class="form-control" id="supervisorCodigoTg650">
-                        <small class="text-muted">CÃ³digo do supervisor na tabela Geelemen (TG 650) do Oracle</small>
+                        <small class="text-muted">Código do supervisor na tabela Geelemen (TG 650) do Oracle</small>
                     </div>
                 </form>
             </div>
@@ -37,13 +37,13 @@
     </div>
 </div>
 
-<!-- Modal Gerenciar VÃ­nculos -->
+<!-- Modal Gerenciar Vínculos -->
 <div class="modal fade" id="modalVinculos" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="bi bi-link-45deg"></i> VÃ­nculos de Representantes - <span id="vinculosSupervisorNome"></span>
+                    <i class="bi bi-link-45deg"></i> Vínculos de Representantes - <span id="vinculosSupervisorNome"></span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -52,7 +52,7 @@
                 
                 <div class="d-flex gap-2 mb-3">
                     <button class="btn btn-success btn-sm" onclick="abrirModalAdicionarVinculo()">
-                        <i class="bi bi-plus-circle"></i> Adicionar VÃ­nculo
+                        <i class="bi bi-plus-circle"></i> Adicionar Vínculo
                     </button>
                     <button class="btn btn-info btn-sm" onclick="sincronizarTG650()">
                         <i class="bi bi-arrow-repeat"></i> Sincronizar TG650
@@ -60,25 +60,25 @@
                 </div>
 
                 <div id="listaVinculos">
-                    <p class="text-center text-muted">Carregando vÃ­nculos...</p>
+                    <p class="text-center text-muted">Carregando vínculos...</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Adicionar VÃ­nculo -->
+<!-- Modal Adicionar Vínculo -->
 <div class="modal fade" id="modalAdicionarVinculo" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Adicionar VÃ­nculo de Representante</h5>
+                <h5 class="modal-title">Adicionar Vínculo de Representante</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="formAdicionarVinculo">
                     <div class="mb-3">
-                        <label class="form-label">CÃ³digo do Representante *</label>
+                        <label class="form-label">Código do Representante *</label>
                         <input type="text" class="form-control" id="vinculoCodigoRepresentante" required>
                     </div>
                     <div class="mb-3">

@@ -93,7 +93,7 @@ function toggleCamposResultado() {
   boxRetorno.style.display = 'block';
 }
 
-// HISTÃ“RICO COM BOTÃƒO DE EDITAR
+// HISTÓRICO COM BOTÃO DE EDITAR
 function historico(id) {
   modalHistorico.show();
   fetch(`/historico-ligacoes/${id}`)
@@ -132,11 +132,11 @@ function historico(id) {
     })
     .catch(() => {
       document.getElementById('historicoContent').innerHTML =
-        '<p class="text-danger">Erro ao carregar histórico.</p>';
+        '<p class="text-danger">Erro ao carregar Histórico.</p>';
     });
 }
 
-// ABRIR MODAL DE EDIÃ‡ÃƒO COMPLETA
+// ABRIR MODAL DE EDIÇÃO COMPLETA
 async function editarLigacaoCompleta(ligacaoId) {
   try {
     const r = await fetch(`/api/detalhes-ligacao/${ligacaoId}`);
@@ -205,7 +205,7 @@ async function salvarEdicaoLigacao() {
       })
     });
     const j = await r.json();
-    if (j.ok) { modalEditarLigacao.hide(); alert(j.mensagem || 'Ligação atualizada!'); location.reload(); }
+    if (j.ok) { modalEditarLigacao.hide(); alert(j.mensagem || 'ligação atualizada!'); location.reload(); }
     else       { alert(j.mensagem || 'Erro ao atualizar ligação'); }
   } catch (erro) { console.error('Erro:', erro); alert('Erro ao atualizar ligação'); }
 }
@@ -227,7 +227,7 @@ async function salvarEdicaoObs() {
       body: JSON.stringify({ observacao: novaObs })
     });
     const j = await r.json();
-    if (j.ok) { modalEditarObs.hide(); alert(j.mensagem || 'Observação atualizada!'); location.reload(); }
+    if (j.ok) { modalEditarObs.hide(); alert(j.mensagem || 'observação atualizada!'); location.reload(); }
     else       { alert(j.mensagem || 'Erro ao atualizar'); }
   } catch (erro) { console.error('Erro:', erro); alert('Erro ao atualizar observação'); }
 }
@@ -525,7 +525,7 @@ async function atualizarBadgesAbasAssincrono() {
     _definirContadorAba('contatados', b.contatados);
     _definirContadorAba('retornar', b.retornar);
     // Na aba Oracle, preserva o contador renderizado no servidor
-    // para manter consistência com o painel de estatísticas exibido.
+    // para manter consist?ncia com o painel de estat?sticas exibido.
     if (ABA_ATUAL !== 'oracle') {
       _definirContadorAba('oracle', b.oracle);
     }
@@ -847,11 +847,11 @@ function normalizarNumeroWhatsApp(telefone) {
 function abrirWhatsApp(telefone, nomeCliente = '') {
   const numero = normalizarNumeroWhatsApp(telefone);
   if (!numero) {
-    alert('Telefone inválido para WhatsApp.');
+    alert('Telefone inv?lido para WhatsApp.');
     return false;
   }
 
-  // Usa clique sintético em anchor para evitar bloqueio de popup.
+  // Usa clique sint?tico em anchor para evitar bloqueio de popup.
   const a = document.createElement('a');
   a.href = `https://wa.me/${numero}`;
   a.target = '_blank';
@@ -1176,7 +1176,7 @@ function _iniciarDebounceFiltros() {
   });
 }
 
-// CARREGAR DADOS DO MÃŠS SELECIONADO
+// CARREGAR DADOS DO MÊS SELECIONADO
 document.addEventListener('DOMContentLoaded', async function() {
   _atualizarAbaAtualPeloDOM();
   _habilitarTransicaoAbas();
@@ -1200,16 +1200,16 @@ document.addEventListener('DOMContentLoaded', async function() {
           const stats = data.estatisticas;
           resultadosDiv.innerHTML = `
             <div class="row g-3">
-              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Total Ligações</div><div class="stat-value">${stats.total_ligacoes}</div></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Total ligações</div><div class="stat-value">${stats.total_ligacoes}</div></div></div></div>
               <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Positivo</div><div class="stat-value" style="color:#2563eb;">${stats.positivos || 0}</div><small class="text-muted">${stats.taxa_positiva || 0}%</small></div></div></div>
               <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Converteu</div><div class="stat-value" style="color:#16a34a;">${stats.vendas}</div></div></div></div>
-              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Conversão</div><div class="stat-value">${stats.taxa_conversao}%</div></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Convers?o</div><div class="stat-value">${stats.taxa_conversao}%</div></div></div></div>
               <div class="col-md-4"><div class="card stat-card"><div class="card-body"><div class="text-muted">Receita</div><div class="stat-value" style="font-size:1.1rem;">${stats.receita_fmt}</div></div></div></div>
             </div>
             ${data.ligacoes.length > 0 ? `
               <div class="mt-3">
                 <div style="font-size:.85rem;font-weight:700;color:var(--text-1);margin-bottom:10px;">
-                  <i class="bi bi-telephone me-1"></i>Ligações do Período
+                  <i class="bi bi-telephone me-1"></i>ligações do Período
                 </div>
                 <div class="rep-table-wrap"><table class="table rep-table">
                   <thead><tr><th>Data</th><th>Cliente</th><th>Resultado</th><th>Valor</th></tr></thead>
@@ -1223,13 +1223,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                       </tr>`).join('')}
                   </tbody>
                 </table></div>
-              </div>` : '<div class="alert alert-warning mt-3">Nenhuma ligação encontrada no período.</div>'}
+              </div>` : '<div class="alert alert-warning mt-3">Nenhuma ligação encontrada no Período.</div>'}
           `;
         } else {
           resultadosDiv.innerHTML = `<div class="alert alert-danger">Erro: ${data.erro}</div>`;
         }
       } catch (error) {
-        resultadosDiv.innerHTML = `<div class="alert alert-danger">Erro ao carregar dados do mês.</div>`;
+        resultadosDiv.innerHTML = `<div class="alert alert-danger">Erro ao carregar dados do MÊS.</div>`;
       }
     }
   }
@@ -1335,7 +1335,7 @@ function atualizarTabelaClientes(clientes) {
       <td>
         <div class="d-flex gap-1">
           <button class="action-btn btn btn-outline-secondary" onclick="abrirDetalhesClienteComSync(${c.id}, '${(c.cd_cliente_oracle || '').replace(/'/g,"\\'")}', '${(c.cnpj || '').replace(/'/g,"\\'")}')" title="Ver Detalhes Oracle"><i class="bi bi-eye"></i></button>
-          <button class="action-btn btn btn-primary" onclick="abrirForm(${c.id}, '${c.nome.replace(/'/g,"\\'")}', '${(c.telefone || '').replace(/'/g,"\\'")}', '${(c.cd_cliente_oracle || '').replace(/'/g,"\\'")}')" title="Registrar Ligação"><i class="bi bi-telephone-plus"></i></button>
+          <button class="action-btn btn btn-primary" onclick="abrirForm(${c.id}, '${c.nome.replace(/'/g,"\\'")}', '${(c.telefone || '').replace(/'/g,"\\'")}', '${(c.cd_cliente_oracle || '').replace(/'/g,"\\'")}')" title="Registrar ligação"><i class="bi bi-telephone-plus"></i></button>
           ${(ABA_ATUAL !== 'pendentes' || Number(c.total_ligacoes || 0) > 0)
             ? `<button class="action-btn btn btn-outline-secondary" onclick="historico(${c.id})" title="Histórico"><i class="bi bi-clock-history"></i></button>`
             : ''}
@@ -1607,7 +1607,7 @@ function sincronizarClientesManuaisOracle() {
     .then(r => r.json())
     .then(data => {
       const ok = !!(data.ok || data.success);
-      alert(data.mensagem || (ok ? 'Sync concluído.' : 'Erro ao sincronizar clientes manuais.'));
+      alert(data.mensagem || (ok ? 'Sync conclu?do.' : 'Erro ao sincronizar clientes manuais.'));
       if (ok) location.reload();
     })
     .catch(() => alert('Erro ao sincronizar clientes manuais com Oracle.'))
@@ -2057,7 +2057,7 @@ function _comparer(idx, asc) {
   return function(a, b) {
     var va = _getCellValue(a, idx);
     var vb = _getCellValue(b, idx);
-    // tenta comparar como número
+    // tenta comparar como n?mero
     var na = parseFloat(va.replace(/[^\d,.-]/g, '').replace(',', '.'));
     var nb = parseFloat(vb.replace(/[^\d,.-]/g, '').replace(',', '.'));
     if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na;
@@ -2123,15 +2123,15 @@ function sincronizarClientesManuais() {
   .then(response => response.json())
   .then(data => {
     if (data.ok) {
-      let msg = `Sincronização concluída!\n\n` +
+      let msg = `SINCRONIZAÇÃO concluída!\n\n` +
             `Total: ${data.total_base || 0}\n` +
             `Atualizados: ${data.atualizados || 0}\n` +
-            `Não encontrados: ${data.nao_encontrados || 0}\n` +
+            `N?o encontrados: ${data.nao_encontrados || 0}\n` +
             `Sem CNPJ: ${data.sem_cnpj || 0}`;
       
-      // Mostrar lista de não encontrados para debug
+      // Mostrar lista de n?o encontrados para debug
       if (data.nao_encontrados_lista && data.nao_encontrados_lista.length > 0) {
-        msg += `\n\nNão encontrados (primeiros 10):\n${data.nao_encontrados_lista.join('\n')}`;
+        msg += `\n\nN?o encontrados (primeiros 10):\n${data.nao_encontrados_lista.join('\n')}`;
       }
       
       alert(msg);

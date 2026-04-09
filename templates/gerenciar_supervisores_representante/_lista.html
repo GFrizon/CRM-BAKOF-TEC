@@ -17,11 +17,11 @@
                         <tr>
                             <th>Nome</th>
                             <th>Email</th>
-                            <th>CÃ³digo TG650</th>
-                            <th>VÃ­nculos Ativos</th>
+                            <th>Código TG650</th>
+                            <th>Vínculos Ativos</th>
                             <th>Status</th>
                             <th>Data Cadastro</th>
-                            <th>AÃ§Ãµes</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -34,7 +34,7 @@
                                     {% if sup.codigo_supervisor_tg650 %}
                                         <span class="badge bg-info">{{ sup.codigo_supervisor_tg650 }}</span>
                                     {% else %}
-                                        <span class="text-muted">NÃ£o configurado</span>
+                                        <span class="text-muted">Não configurado</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -50,7 +50,7 @@
                                 <td>{{ sup.data_cadastro.strftime('%d/%m/%Y') if sup.data_cadastro else '-' }}</td>
                                 <td>
                                     <button class="btn btn-sm btn-primary" onclick="gerenciarVinculos({{ sup.id }}, '{{ sup.nome }}')">
-                                        <i class="bi bi-link-45deg"></i> VÃ­nculos
+                                        <i class="bi bi-link-45deg"></i> Vínculos
                                     </button>
                                     <button class="btn btn-sm btn-warning" onclick="editarSupervisor({{ sup.id }})">
                                         <i class="bi bi-pencil"></i>

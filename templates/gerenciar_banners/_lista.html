@@ -11,13 +11,13 @@
             <table class="table table-hover">
               <thead>
                 <tr>
-                  <th>TÃ­tulo</th>
+                  <th>Título</th>
                   <th>Mensagem</th>
                   <th>Tipo</th>
                   <th>Status</th>
-                  <th>Data ExpiraÃ§Ã£o</th>
+                  <th>Data Expiração</th>
                   <th>Criado por</th>
-                  <th>AÃ§Ãµes</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -45,7 +45,7 @@
                     {% if banner.data_expiracao %}
                       <span class="text-muted">{{ banner.data_expiracao.strftime('%d/%m/%Y %H:%M') }}</span>
                     {% else %}
-                      <span class="text-muted">Sem expiraÃ§Ã£o</span>
+                      <span class="text-muted">Sem expiração</span>
                     {% endif %}
                   </td>
                   <td>

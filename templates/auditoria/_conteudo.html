@@ -13,16 +13,16 @@
                 <div class="card-body">
                     <form method="GET" class="row g-3">
                         <div class="col-md-3">
-                            <label class="form-label">UsuÃ¡rio</label>
+                            <label class="form-label">Usuário</label>
                             <input type="text" name="usuario" class="form-control" 
                                    value="{{ usuario_filtro or '' }}" placeholder="Filtrar por nome">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">AÃ§Ã£o</label>
+                            <label class="form-label">Ação</label>
                             <select name="acao" class="form-select">
                                 <option value="">Todas</option>
-                                <option value="EDITAR_LIGACAO" {{ 'selected' if acao_filtro == 'EDITAR_LIGACAO' else '' }}>Editar LigaÃ§Ã£o</option>
-                                <option value="EDITAR_OBSERVACAO" {{ 'selected' if acao_filtro == 'EDITAR_OBSERVACAO' else '' }}>Editar ObservaÃ§Ã£o</option>
+                                <option value="EDITAR_LIGACAO" {{ 'selected' if acao_filtro == 'EDITAR_LIGACAO' else '' }}>Editar Ligação</option>
+                                <option value="EDITAR_OBSERVACAO" {{ 'selected' if acao_filtro == 'EDITAR_OBSERVACAO' else '' }}>Editar Observação</option>
                                 <option value="CRIAR_CLIENTE" {{ 'selected' if acao_filtro == 'CRIAR_CLIENTE' else '' }}>Criar Cliente</option>
                             </select>
                         </div>
@@ -30,13 +30,13 @@
                             <label class="form-label">Tabela</label>
                             <select name="tabela" class="form-select">
                                 <option value="">Todas</option>
-                                <option value="ligacoes" {{ 'selected' if tabela_filtro == 'ligacoes' else '' }}>LigaÃ§Ãµes</option>
+                                <option value="ligacoes" {{ 'selected' if tabela_filtro == 'ligacoes' else '' }}>Ligações</option>
                                 <option value="clientes" {{ 'selected' if tabela_filtro == 'clientes' else '' }}>Clientes</option>
-                                <option value="usuarios" {{ 'selected' if tabela_filtro == 'usuarios' else '' }}>UsuÃ¡rios</option>
+                                <option value="usuarios" {{ 'selected' if tabela_filtro == 'usuarios' else '' }}>Usuários</option>
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Data InÃ­cio</label>
+                            <label class="form-label">Data Início</label>
                             <input type="date" name="data_inicio" class="form-control" 
                                    value="{{ data_inicio or '' }}">
                         </div>
@@ -64,8 +64,8 @@
                                 <thead class="table-dark">
                                     <tr>
                                         <th>Data/Hora</th>
-                                        <th>UsuÃ¡rio</th>
-                                        <th>AÃ§Ã£o</th>
+                                        <th>Usuário</th>
+                                        <th>Ação</th>
                                         <th>Tabela</th>
                                         <th>ID Registro</th>
                                         <th>Campo</th>
@@ -88,9 +88,9 @@
                                         </td>
                                         <td>
                                             {% if log.acao == 'EDITAR_LIGACAO' %}
-                                                <span class="badge bg-warning">Editar LigaÃ§Ã£o</span>
+                                                <span class="badge bg-warning">Editar Ligação</span>
                                             {% elif log.acao == 'EDITAR_OBSERVACAO' %}
-                                                <span class="badge bg-info">Editar ObservaÃ§Ã£o</span>
+                                                <span class="badge bg-info">Editar Observação</span>
                                             {% elif log.acao == 'CRIAR_CLIENTE' %}
                                                 <span class="badge bg-success">Criar Cliente</span>
                                             {% else %}
@@ -99,11 +99,11 @@
                                         </td>
                                         <td>
                                             {% if log.tabela == 'ligacoes' %}
-                                                <span class="badge bg-primary">LigaÃ§Ãµes</span>
+                                                <span class="badge bg-primary">Ligações</span>
                                             {% elif log.tabela == 'clientes' %}
                                                 <span class="badge bg-secondary">Clientes</span>
                                             {% elif log.tabela == 'usuarios' %}
-                                                <span class="badge bg-dark">UsuÃ¡rios</span>
+                                                <span class="badge bg-dark">Usuários</span>
                                             {% else %}
                                                 {{ log.tabela }}
                                             {% endif %}
@@ -137,9 +137,9 @@
                             </table>
                         </div>
 
-                        <!-- PaginaÃ§Ã£o -->
+                        <!-- Paginação -->
                         {% if total_paginas > 1 %}
-                            <nav aria-label="PaginaÃ§Ã£o">
+                            <nav aria-label="Paginação">
                                 <ul class="pagination justify-content-center">
                                     {% for p in range(1, total_paginas + 1) %}
                                         <li class="page-item {{ 'active' if p == pagina else '' }}">
@@ -157,7 +157,7 @@
                         <div class="alert alert-info mt-3">
                             <strong>Resumo:</strong><br>
                             Total de registros: <strong>{{ total_registros }}</strong> | 
-                            PÃ¡gina atual: <strong>{{ pagina }}</strong> de <strong>{{ total_paginas }}</strong>
+                            Página atual: <strong>{{ pagina }}</strong> de <strong>{{ total_paginas }}</strong>
                         </div>
                     {% else %}
                         <div class="text-center py-5">

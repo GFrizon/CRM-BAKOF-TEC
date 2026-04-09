@@ -1,11 +1,11 @@
-<!-- MODAL CRIAR USUÃRIO -->
+<!-- MODAL CRIAR USUÁRIO -->
 <div class="modal fade" id="modalCriar" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <form onsubmit="criarUsuario(event)">
         <div class="modal-header">
           <h5 class="modal-title">
-            <i class="bi bi-person-plus"></i> Criar Novo UsuÃ¡rio
+            <i class="bi bi-person-plus"></i> Criar Novo Usuário
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
@@ -23,11 +23,11 @@
           <div class="mb-3">
             <label class="form-label">Senha *</label>
             <input type="password" class="form-control" id="criarSenha" required minlength="6">
-            <small class="text-muted">MÃ­nimo 6 caracteres</small>
+            <small class="text-muted">Mínimo 6 caracteres</small>
           </div>
           
           <div class="mb-3">
-            <label class="form-label">Tipo de UsuÃ¡rio *</label>
+            <label class="form-label">Tipo de Usuário *</label>
             <select class="form-select" id="criarTipo" onchange="toggleMetaDiaria('criar')">
               <option value="consultor">Consultor</option>
               <option value="supervisor">Supervisor</option>
@@ -37,14 +37,14 @@
           </div>
           
           <div class="mb-3" id="criarMetaContainer">
-            <label class="form-label">Meta DiÃ¡ria de LigaÃ§Ãµes</label>
+            <label class="form-label">Meta Diária de Ligações</label>
             <input type="number" class="form-control" id="criarMeta" value="10" min="1">
           </div>
 
           <div class="mb-3" id="criarCodigoTg650Container" style="display:none;">
-            <label class="form-label">CÃ³digo Supervisor TG650</label>
+            <label class="form-label">Código Supervisor TG650</label>
             <input type="text" class="form-control" id="criarCodigoTg650" maxlength="20">
-            <small class="text-muted">CÃ³digo do supervisor na TG650 para sincronizar representantes</small>
+            <small class="text-muted">Código do supervisor na TG650 para sincronizar representantes</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -52,7 +52,7 @@
             Cancelar
           </button>
           <button type="submit" class="btn btn-success">
-            <i class="bi bi-save"></i> Criar UsuÃ¡rio
+            <i class="bi bi-save"></i> Criar Usuário
           </button>
         </div>
       </form>
@@ -60,14 +60,14 @@
   </div>
 </div>
 
-<!-- MODAL EDITAR USUÃRIO -->
+<!-- MODAL EDITAR USUÁRIO -->
 <div class="modal fade" id="modalEditar" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <form onsubmit="editarUsuario(event)">
         <div class="modal-header">
           <h5 class="modal-title">
-            <i class="bi bi-pencil"></i> Editar UsuÃ¡rio
+            <i class="bi bi-pencil"></i> Editar Usuário
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
@@ -85,7 +85,7 @@
           </div>
           
           <div class="mb-3">
-            <label class="form-label">Tipo de UsuÃ¡rio *</label>
+            <label class="form-label">Tipo de Usuário *</label>
             <select class="form-select" id="editarTipo" onchange="toggleMetaDiaria('editar')">
               <option value="consultor">Consultor</option>
               <option value="supervisor">Supervisor</option>
@@ -95,14 +95,14 @@
           </div>
           
           <div class="mb-3" id="editarMetaContainer">
-            <label class="form-label">Meta DiÃ¡ria de LigaÃ§Ãµes</label>
+            <label class="form-label">Meta Diária de Ligações</label>
             <input type="number" class="form-control" id="editarMeta" value="10" min="1">
           </div>
 
           <div class="mb-3" id="editarCodigoTg650Container" style="display:none;">
-            <label class="form-label">CÃ³digo Supervisor TG650</label>
+            <label class="form-label">Código Supervisor TG650</label>
             <input type="text" class="form-control" id="editarCodigoTg650" maxlength="20">
-            <small class="text-muted">CÃ³digo do supervisor na TG650 para sincronizar representantes</small>
+            <small class="text-muted">Código do supervisor na TG650 para sincronizar representantes</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -110,7 +110,7 @@
             Cancelar
           </button>
           <button type="submit" class="btn btn-primary">
-            <i class="bi bi-save"></i> Salvar AlteraÃ§Ãµes
+            <i class="bi bi-save"></i> Salvar Alterações
           </button>
         </div>
       </form>
@@ -140,7 +140,7 @@
           <div class="mb-3">
             <label class="form-label">Nova Senha *</label>
             <input type="password" class="form-control" id="redefinirNovaSenha" required minlength="6">
-            <small class="text-muted">MÃ­nimo 6 caracteres</small>
+            <small class="text-muted">Mínimo 6 caracteres</small>
           </div>
           
           <div class="mb-3">
