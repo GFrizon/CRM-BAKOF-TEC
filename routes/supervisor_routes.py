@@ -42,6 +42,36 @@ def _ultimos_meses(qtd=12):
 
 
 def register_supervisor_routes(app):
+    tipos_usuario_validos = ("consultor", "supervisor", "televendas", "supervisor_repr")
+
+    def _normalizar_payload_usuario(payload, incluir_senha=False):
+        data = {
+            "nome": s(payload.get("nome")),
+            "email": s(payload.get("email")),
+            "tipo": s(payload.get("tipo")),
+            "meta_diaria": int(payload.get("meta_diaria") or 10),
+            "codigo_supervisor_tg650": s(payload.get("codigo_supervisor_tg650")),
+        }
+        if incluir_senha:
+            data["senha"] = payload.get("senha") or ""
+        return data
+
+    def _complementar_mensagem_sync_tg650(mensagem_base, usuario_id, tipo, codigo_supervisor_tg650):
+        mensagem = mensagem_base
+        if tipo == "supervisor_repr" and codigo_supervisor_tg650:
+            try:
+                sync_result = _sincronizar_vinculos_tg650_supervisor_repr(usuario_id, codigo_supervisor_tg650)
+                if sync_result.get("ok"):
+                    mensagem += (
+                        f" TG650 sincronizada ({sync_result.get('novos', 0)} novos, "
+                        f"{sync_result.get('atualizados', 0)} atualizados)."
+                    )
+                else:
+                    mensagem += f" TG650 nao sincronizada: {sync_result.get('mensagem')}."
+            except Exception as sync_err:
+                mensagem += f" TG650 nao sincronizada: {str(sync_err)}."
+        return mensagem
+
     def _calcular_kpis_dashboard_supervisor(
         dashboard_tipo: str,
         operadores_ids_query,
@@ -553,21 +583,22 @@ def register_supervisor_routes(app):
 
         try:
             payload = request.get_json(silent=True) or {}
-            nome = s(payload.get("nome"))
-            email = s(payload.get("email"))
-            senha = payload.get("senha") or ""
-            tipo = s(payload.get("tipo"))
-            meta_diaria = int(payload.get("meta_diaria") or 10)
-            codigo_supervisor_tg650 = s(payload.get("codigo_supervisor_tg650"))
+            data = _normalizar_payload_usuario(payload, incluir_senha=True)
+            nome = data["nome"]
+            email = data["email"]
+            senha = data["senha"]
+            tipo = data["tipo"]
+            meta_diaria = data["meta_diaria"]
+            codigo_supervisor_tg650 = data["codigo_supervisor_tg650"]
 
             if not nome or not email or not senha:
-                return jsonify({"ok": False, "mensagem": "Nome, email e senha são obrigatórios"}), 400
+                return jsonify({"ok": False, "mensagem": "Nome, email e senha sao obrigatorios"}), 400
 
-            if tipo not in ("consultor", "supervisor", "televendas", "supervisor_repr"):
-                return jsonify({"ok": False, "mensagem": "Tipo inválido"}), 400
+            if tipo not in tipos_usuario_validos:
+                return jsonify({"ok": False, "mensagem": "Tipo invalido"}), 400
 
             if Usuario.query.filter_by(email=email).first():
-                return jsonify({"ok": False, "mensagem": "Email já cadastrado"}), 400
+                return jsonify({"ok": False, "mensagem": "Email ja cadastrado"}), 400
 
             novo_usuario = Usuario(
                 nome=nome,
@@ -582,23 +613,18 @@ def register_supervisor_routes(app):
             db.session.add(novo_usuario)
             db.session.commit()
 
-            mensagem = f"Usuário {nome} criado com sucesso!"
-            if tipo == "supervisor_repr" and codigo_supervisor_tg650:
-                try:
-                    sync_result = _sincronizar_vinculos_tg650_supervisor_repr(novo_usuario.id, codigo_supervisor_tg650)
-                    if sync_result.get("ok"):
-                        mensagem += f" TG650 sincronizada ({sync_result.get('novos', 0)} novos, {sync_result.get('atualizados', 0)} atualizados)."
-                    else:
-                        mensagem += f" TG650 não sincronizada: {sync_result.get('mensagem')}."
-                except Exception as sync_err:
-                    mensagem += f" TG650 não sincronizada: {str(sync_err)}."
+            mensagem = _complementar_mensagem_sync_tg650(
+                mensagem_base=f"Usuario {nome} criado com sucesso!",
+                usuario_id=novo_usuario.id,
+                tipo=tipo,
+                codigo_supervisor_tg650=codigo_supervisor_tg650,
+            )
 
             return jsonify({"ok": True, "mensagem": mensagem})
 
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
-
     @app.route("/supervisor/usuarios/<int:usuario_id>/editar", methods=["POST"])
     @login_required
     def editar_usuario(usuario_id):
@@ -608,24 +634,25 @@ def register_supervisor_routes(app):
         try:
             usuario = db.session.get(Usuario, usuario_id)
             if not usuario:
-                return jsonify({"ok": False, "mensagem": "Usuário não encontrado"}), 404
+                return jsonify({"ok": False, "mensagem": "Usuario nao encontrado"}), 404
 
             payload = request.get_json(silent=True) or {}
-            nome = s(payload.get("nome"))
-            email = s(payload.get("email"))
-            tipo = s(payload.get("tipo"))
-            meta_diaria = int(payload.get("meta_diaria") or 10)
-            codigo_supervisor_tg650 = s(payload.get("codigo_supervisor_tg650"))
+            data = _normalizar_payload_usuario(payload)
+            nome = data["nome"]
+            email = data["email"]
+            tipo = data["tipo"]
+            meta_diaria = data["meta_diaria"]
+            codigo_supervisor_tg650 = data["codigo_supervisor_tg650"]
 
             if not nome or not email:
-                return jsonify({"ok": False, "mensagem": "Nome e email são obrigatórios"}), 400
+                return jsonify({"ok": False, "mensagem": "Nome e email sao obrigatorios"}), 400
 
-            if tipo not in ("consultor", "supervisor", "televendas", "supervisor_repr"):
-                return jsonify({"ok": False, "mensagem": "Tipo inválido"}), 400
+            if tipo not in tipos_usuario_validos:
+                return jsonify({"ok": False, "mensagem": "Tipo invalido"}), 400
 
             email_existe = Usuario.query.filter(Usuario.email == email, Usuario.id != usuario_id).first()
             if email_existe:
-                return jsonify({"ok": False, "mensagem": "Email já cadastrado por outro usuário"}), 400
+                return jsonify({"ok": False, "mensagem": "Email ja cadastrado por outro usuario"}), 400
 
             usuario.nome = nome
             usuario.email = email
@@ -635,23 +662,18 @@ def register_supervisor_routes(app):
 
             db.session.commit()
 
-            mensagem = f"Usuário {nome} atualizado com sucesso!"
-            if tipo == "supervisor_repr" and codigo_supervisor_tg650:
-                try:
-                    sync_result = _sincronizar_vinculos_tg650_supervisor_repr(usuario.id, codigo_supervisor_tg650)
-                    if sync_result.get("ok"):
-                        mensagem += f" TG650 sincronizada ({sync_result.get('novos', 0)} novos, {sync_result.get('atualizados', 0)} atualizados)."
-                    else:
-                        mensagem += f" TG650 não sincronizada: {sync_result.get('mensagem')}."
-                except Exception as sync_err:
-                    mensagem += f" TG650 não sincronizada: {str(sync_err)}."
+            mensagem = _complementar_mensagem_sync_tg650(
+                mensagem_base=f"Usuario {nome} atualizado com sucesso!",
+                usuario_id=usuario.id,
+                tipo=tipo,
+                codigo_supervisor_tg650=codigo_supervisor_tg650,
+            )
 
             return jsonify({"ok": True, "mensagem": mensagem})
 
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
-
     @app.route("/supervisor/usuarios/<int:usuario_id>/toggle-status", methods=["POST"])
     @login_required
     def toggle_status_usuario(usuario_id):
@@ -661,21 +683,20 @@ def register_supervisor_routes(app):
         try:
             usuario = db.session.get(Usuario, usuario_id)
             if not usuario:
-                return jsonify({"ok": False, "mensagem": "Usuário não encontrado"}), 404
+                return jsonify({"ok": False, "mensagem": "Usuario nao encontrado"}), 404
 
             if usuario.id == current_user.id:
-                return jsonify({"ok": False, "mensagem": "Você não pode inativar sua própria conta"}), 400
+                return jsonify({"ok": False, "mensagem": "Voce nao pode inativar sua propria conta"}), 400
 
             usuario.ativo = not usuario.ativo
             db.session.commit()
 
             status_texto = "ativado" if usuario.ativo else "inativado"
-            return jsonify({"ok": True, "mensagem": f"Usuário {usuario.nome} {status_texto} com sucesso!"})
+            return jsonify({"ok": True, "mensagem": f"Usuario {usuario.nome} {status_texto} com sucesso!"})
 
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
-
     @app.route("/supervisor/usuarios/<int:usuario_id>/redefinir-senha", methods=["POST"])
     @login_required
     def redefinir_senha_usuario(usuario_id):
@@ -685,13 +706,13 @@ def register_supervisor_routes(app):
         try:
             usuario = db.session.get(Usuario, usuario_id)
             if not usuario:
-                return jsonify({"ok": False, "mensagem": "Usuário não encontrado"}), 404
+                return jsonify({"ok": False, "mensagem": "Usuario nao encontrado"}), 404
 
             payload = request.get_json(silent=True) or {}
             nova_senha = payload.get("nova_senha") or ""
 
             if not nova_senha or len(nova_senha) < 6:
-                return jsonify({"ok": False, "mensagem": "Senha deve ter no mínimo 6 caracteres"}), 400
+                return jsonify({"ok": False, "mensagem": "Senha deve ter no minimo 6 caracteres"}), 400
 
             usuario.senha_hash = generate_password_hash(nova_senha)
             db.session.commit()
@@ -701,7 +722,6 @@ def register_supervisor_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
-
     @app.route("/supervisor/banners")
     @login_required
     def gerenciar_banners():
