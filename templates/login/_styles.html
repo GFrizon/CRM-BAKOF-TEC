@@ -155,11 +155,22 @@
     .form-floating > label {
       color: rgba(255,255,255,0.55);
       font-size: 0.875rem;
+      background: transparent;
     }
 
     .form-floating > .form-control:focus ~ label,
     .form-floating > .form-control:not(:placeholder-shown) ~ label {
       color: rgba(255,255,255,0.75);
+      background: transparent;
+    }
+
+    /* Anular fundo branco do autofill do browser */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus {
+      -webkit-box-shadow: 0 0 0 1000px rgba(8,16,52,0.92) inset !important;
+      -webkit-text-fill-color: #fff !important;
+      caret-color: #fff;
     }
 
     .form-check-input {
