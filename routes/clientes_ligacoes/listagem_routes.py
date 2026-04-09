@@ -111,6 +111,7 @@ def register_clientes_ligacoes_listagem_routes(app):
             codigos_representantes_vinculados=codigos_representantes_vinculados,
             cache_store=_INATIVOS_COUNT_CACHE,
             cache_ttl_seconds=_INATIVOS_COUNT_CACHE_TTL_SECONDS,
+            dashboard_tipo=dashboard_tipo,
         )
 
     @app.route('/api/clientes/badges')
