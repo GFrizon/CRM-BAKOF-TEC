@@ -24,6 +24,35 @@
 
 {% include "meus_clientes/_busca_filtros.html" %}
 
+{% set retornos_atrasados = total_retornos_atrasados|default(0)|int %}
+{% set mostrar_alerta_retornos = (current_user.tipo != 'supervisor_repr') and (aba in ('pendentes', 'contatados', 'retornar')) and (retornos_atrasados > 0) %}
+{% if mostrar_alerta_retornos %}
+<div
+  id="alerta-retornos-atrasados"
+  class="alert alert-danger py-1 px-2 mb-2 d-none"
+  role="alert"
+  data-total-atrasados="{{ retornos_atrasados }}"
+  data-user-id="{{ current_user.id }}"
+  style="background: #fee2e2; border: 1px solid #ef4444; border-left: 4px solid #dc2626; font-size: 0.9rem;"
+>
+  <div class="d-flex flex-wrap align-items-center gap-1">
+    <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+    <span class="flex-grow-1 text-dark small">
+      Voce tem <strong>{{ retornos_atrasados }}</strong> cliente{{ 's' if retornos_atrasados != 1 else '' }} com retorno atrasado.
+    </span>
+    {% if aba != 'retornar' %}
+    <a
+      href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo) }}"
+      class="btn btn-sm btn-outline-danger py-0 px-2"
+    >
+      Ver lista
+    </a>
+    {% endif %}
+    <button type="button" class="btn btn-sm btn-danger py-0 px-2" id="btn-ok-alerta-retornos">OK</button>
+  </div>
+</div>
+{% endif %}
+
 <!-- ============================================================
      LISTA AGRUPADA (oracle por representante / inativos por UF)
      ============================================================ -->
@@ -36,26 +65,8 @@
 
 {% else %}
 <!-- ============================================================
-     TABELA PADRÃƒO (abas pendentes / contatados / retornar)
+     TABELA PADRAO (abas pendentes / contatados / retornar)
      ============================================================ -->
-     
-<!-- Notificação simples usando total_retornar -->
-{% if total_retornar and total_retornar > 0 and current_user.tipo != 'supervisor_repr' %}
-<div class="alert alert-warning alert-dismissible fade show mb-2" role="alert" style="background: linear-gradient(135deg, #fff8e1 0%, #fffef0 100%); border: 1px solid #ffc107; border-left: 3px solid #ffc107; border-radius: 6px; padding: 8px 12px; margin-bottom: 8px !important;">
-  <div class="d-flex align-items-center">
-    <i class="bi bi-bell-fill text-warning me-2" style="font-size: 0.9rem;"></i>
-    <span style="color: #856404; font-size: 0.9rem; font-weight: 500;">
-      Você tem <strong>{{ total_retornar }}</strong> retorno{{ 's' if total_retornar != 1 else '' }} agendado{{ 's' if total_retornar != 1 else '' }}
-    </span>
-    {% if aba != 'retornar' %}
-    <a href="{{ url_for('meus_clientes', aba='retornar') }}" class="btn btn-sm btn-outline-warning ms-2" style="border-color: #ffc107; color: #856404; padding: 2px 8px; font-size: 0.8rem;">
-      Ver
-    </a>
-    {% endif %}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="font-size: 0.7rem; padding: 0.25rem 0.5rem;"></button>
-  </div>
-</div>
-{% endif %}
 
   {% include "meus_clientes/_tabs_quick_actions_tabela_padrao.html" %}
 
@@ -70,5 +81,46 @@
 {% block scripts %}
 {{ super() }}
 {% include "meus_clientes/_scripts.html" %}
-{% endblock %}
+<script>
+  (function () {
+    const alerta = document.getElementById('alerta-retornos-atrasados');
+    const botaoOk = document.getElementById('btn-ok-alerta-retornos');
+    if (!alerta || !botaoOk) return;
 
+    const totalAtrasados = Number(alerta.dataset.totalAtrasados || 0);
+    const userId = alerta.dataset.userId || 'anon';
+    if (totalAtrasados <= 0) return;
+
+    const chave = `crm.alerta_retornos_atrasados.${userId}`;
+    const agora = Date.now();
+    const intervaloMs = 2 * 60 * 60 * 1000; // 2 horas
+
+    let estado = null;
+    try {
+      estado = JSON.parse(localStorage.getItem(chave) || 'null');
+    } catch (e) {
+      estado = null;
+    }
+
+    const mesmoNivelOuMelhor =
+      estado && Number(estado.ultimo_total || 0) >= totalAtrasados;
+    const aindaSilenciado = estado && Number(estado.proximo_alerta_em || 0) > agora;
+    const podeMostrar = !(mesmoNivelOuMelhor && aindaSilenciado);
+
+    if (podeMostrar) {
+      alerta.classList.remove('d-none');
+    }
+
+    botaoOk.addEventListener('click', function () {
+      localStorage.setItem(
+        chave,
+        JSON.stringify({
+          ultimo_total: totalAtrasados,
+          proximo_alerta_em: Date.now() + intervaloMs
+        })
+      );
+      alerta.classList.add('d-none');
+    });
+  })();
+</script>
+{% endblock %}

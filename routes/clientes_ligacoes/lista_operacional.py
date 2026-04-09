@@ -40,18 +40,32 @@ def ordenar_clientes_por_aba(aba, pendentes_view, contatados_view, precisa_retor
         )
 
     if aba == "retornar":
+        agora = datetime.now()
+
+        def _chave_retornar(item):
+            proxima = item.get("proxima_ligacao")
+            ultima = item.get("ultima_ligacao")
+            atrasado = bool(proxima and proxima <= agora)
+            sem_data_retorno = proxima is None
+            return (
+                1 if atrasado else 0,                         # atrasados primeiro
+                0 if not sem_data_retorno else 1,             # com data antes de sem data
+                proxima or datetime.max,                      # entre os com data, mais proximo primeiro
+                -(ultima.timestamp() if ultima else 0),       # sem data: ultima ligacao mais recente primeiro
+                -float(item.get("valor_total_365dias") or 0), # desempate
+                -float(item.get("valor_ultimo_pedido") or 0), # desempate
+            )
+
         return sorted(
             precisa_retornar_view,
-            key=lambda x: (
-                x["proxima_ligacao"] or datetime.max,
-                float(x.get("valor_total_365dias") or 0),
-                float(x.get("valor_ultimo_pedido") or 0),
-            ),
+            key=_chave_retornar,
         )
 
     clientes = sorted(
         contatados_view,
         key=lambda x: (
+            1 if x.get("ultima_ligacao") else 0,
+            x.get("ultima_ligacao") or datetime.min,
             float(x.get("valor_total_365dias") or 0),
             float(x.get("valor_ultimo_pedido") or 0),
         ),

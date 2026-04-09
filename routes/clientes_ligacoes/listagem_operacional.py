@@ -54,6 +54,9 @@ def render_fluxo_operacional(
     total_pendentes_badge = len(pendentes)
     total_contatados_badge = len(contatados)
     total_retornar_badge = len(precisa_retornar)
+    total_retornos_atrasados = sum(
+        1 for item in precisa_retornar if item.get("retorno_atrasado")
+    )
 
     # Busca textual so na listagem atual (nao afeta badges).
     pendentes_view, contatados_view, precisa_retornar_view = filtrar_listas_por_termo(
@@ -112,6 +115,7 @@ def render_fluxo_operacional(
             total_pendentes=total_pendentes_badge,
             total_contatados=total_contatados_badge,
             total_retornar=total_retornar_badge,
+            total_retornos_atrasados=total_retornos_atrasados,
             total_inativos=total_inativos_badge,
             total_oracle=total_oracle_badge,
             total_proximos=total_proximos_badge,
@@ -132,6 +136,7 @@ def render_fluxo_operacional(
         total_pendentes=total_pendentes_badge,
         total_contatados=total_contatados_badge,
         total_retornar=total_retornar_badge,
+        total_retornos_atrasados=total_retornos_atrasados,
         total_inativos=total_inativos_badge,
         total_oracle=total_oracle_badge,
         total_proximos=total_proximos_badge,
