@@ -1,55 +1,30 @@
-    <!-- EstatÃ­sticas -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.total }}</h4>
-                            <small>Total de Tarefas</small>
-                        </div>
-                        <i class="bi bi-list-task fs-2"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.por_status.pendente }}</h4>
-                            <small>Pendentes</small>
-                        </div>
-                        <i class="bi bi-clock fs-2"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.por_status.em_andamento }}</h4>
-                            <small>Em Andamento</small>
-                        </div>
-                        <i class="bi bi-arrow-repeat fs-2"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.atrasadas }}</h4>
-                            <small>Atrasadas</small>
-                        </div>
-                        <i class="bi bi-exclamation-triangle fs-2"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="bi bi-list-task"></i></div>
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total de Tarefas</div>
     </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon orange"><i class="bi bi-clock"></i></div>
+      <div class="stat-value">{{ stats.por_status.pendente }}</div>
+      <div class="stat-label">Pendentes</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon cyan"><i class="bi bi-arrow-repeat"></i></div>
+      <div class="stat-value">{{ stats.por_status.em_andamento }}</div>
+      <div class="stat-label">Em Andamento</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+      <div class="stat-value">{{ stats.atrasadas }}</div>
+      <div class="stat-label">Atrasadas</div>
+    </div>
+  </div>
+</div>

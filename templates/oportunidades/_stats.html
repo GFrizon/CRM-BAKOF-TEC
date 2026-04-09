@@ -1,55 +1,30 @@
-    <!-- Estatísticas -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.total }}</h4>
-                            <small>Total de Oportunidades</small>
-                        </div>
-                        <i class="bi bi-funnel fs-2"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.valor_total | formatar_dinheiro }}</h4>
-                            <small>Valor Total</small>
-                        </div>
-                        <i class="bi bi-currency-dollar fs-2"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.por_estagio.negociacao + stats.por_estagio.proposta }}</h4>
-                            <small>Em Negociação</small>
-                        </div>
-                        <i class="bi bi-handshake fs-2"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.por_estagio.fechamento_ganho }}</h4>
-                            <small>Ganhos</small>
-                        </div>
-                        <i class="bi bi-trophy fs-2"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+ï»¿<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="bi bi-funnel"></i></div>
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total de Oportunidades</div>
     </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon green"><i class="bi bi-currency-dollar"></i></div>
+      <div class="stat-value">{{ stats.valor_total | formatar_dinheiro }}</div>
+      <div class="stat-label">Valor Total</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon orange"><i class="bi bi-handshake"></i></div>
+      <div class="stat-value">{{ stats.por_estagio.negociacao + stats.por_estagio.proposta }}</div>
+      <div class="stat-label">Em Negociacao</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon yellow"><i class="bi bi-trophy"></i></div>
+      <div class="stat-value">{{ stats.por_estagio.fechamento_ganho }}</div>
+      <div class="stat-label">Ganhos</div>
+    </div>
+  </div>
+</div>
