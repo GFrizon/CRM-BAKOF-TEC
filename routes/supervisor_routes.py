@@ -176,6 +176,109 @@ def register_supervisor_routes(app):
             "total_carteira_risco": total_carteira_risco,
         }
 
+    def _carregar_dados_dashboard_supervisor(
+        dashboard_tipo: str,
+        hoje,
+        desde,
+    ) -> dict:
+        rows = (
+            db.session.query(Usuario.nome, func.count(Ligacao.id))
+            .join(Ligacao, Ligacao.consultor_id == Usuario.id, isouter=True)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+            .filter(or_(Ligacao.data_hora >= desde, Ligacao.id == None))
+            .group_by(Usuario.id, Usuario.nome)
+            .order_by(desc(func.count(Ligacao.id)))
+            .all()
+        )
+        ranking = [{"nome": n, "ligacoes": int(q or 0)} for n, q in rows]
+
+        ult7 = (
+            db.session.query(func.date(Ligacao.data_hora), func.count(Ligacao.id))
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
+            .filter(Ligacao.data_hora >= datetime.now() - timedelta(days=7))
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+            .group_by(func.date(Ligacao.data_hora))
+            .order_by(func.date(Ligacao.data_hora))
+            .all()
+        )
+        lig_por_dia = [
+            {"data": d.strftime("%d/%m/%Y"), "data_iso": d.strftime("%Y-%m-%d"), "total": int(t)}
+            for d, t in ult7
+        ]
+
+        res = (
+            db.session.query(Ligacao.resultado, func.count(Ligacao.id))
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
+            .filter(Ligacao.data_hora >= desde)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+            .group_by(Ligacao.resultado)
+            .all()
+        )
+        resultados_chart = {(r or "nao_comprou"): int(c) for r, c in res}
+        total_resultados_30d = sum(int(v or 0) for v in resultados_chart.values())
+        total_vendas_30d = int(resultados_chart.get("comprou", 0))
+        taxa_conversao_geral_30d = (
+            round(_percent(total_vendas_30d, total_resultados_30d), 1) if total_resultados_30d else 0.0
+        )
+
+        progresso = []
+        consultores = Usuario.query.filter_by(tipo=dashboard_tipo, ativo=True).order_by(Usuario.nome).all()
+        for u in consultores:
+            feitas = (
+                db.session.query(func.count(Ligacao.id))
+                .filter(Ligacao.consultor_id == u.id)
+                .filter(func.date(Ligacao.data_hora) == hoje)
+                .scalar()
+            ) or 0
+            meta = u.meta_diaria or 0
+            perc = round(_percent(feitas, meta), 1) if meta else 0.0
+            progresso.append({"id": u.id, "nome": u.nome, "meta": meta, "feitas": int(feitas), "percentual": perc})
+
+        conv_rows = (
+            db.session.query(
+                Usuario.id,
+                Usuario.nome,
+                func.count(Ligacao.id).label("ligacoes"),
+                func.sum(case((Ligacao.resultado == "comprou", 1), else_=0)).label("vendas"),
+                func.sum(case((Ligacao.resultado == "comprou", Ligacao.valor_venda), else_=0)).label("receita"),
+            )
+            .join(Ligacao, Ligacao.consultor_id == Usuario.id, isouter=True)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+            .filter(or_(Ligacao.data_hora >= desde, Ligacao.id == None))
+            .group_by(Usuario.id, Usuario.nome)
+            .order_by(desc("receita"))
+            .all()
+        )
+
+        conversao = []
+        for _, nome, ligs, vend, rec in conv_rows:
+            ligs = int(ligs or 0)
+            vend = int(vend or 0)
+            receita_val = float(rec or 0)
+            conv_pct = (vend / ligs * 100) if ligs else 0.0
+            conversao.append(
+                {
+                    "nome": nome,
+                    "ligacoes": ligs,
+                    "vendas": vend,
+                    "conversao": round(conv_pct, 1),
+                    "receita": receita_val,
+                    "receita_fmt": formatar_dinheiro(receita_val),
+                }
+            )
+
+        return {
+            "ranking": ranking,
+            "ligacoes_por_dia": lig_por_dia,
+            "resultados_chart": resultados_chart,
+            "total_vendas_30d": total_vendas_30d,
+            "taxa_conversao_geral_30d": taxa_conversao_geral_30d,
+            "progresso": progresso,
+            "consultores": consultores,
+            "conversao": conversao,
+            "meses_disponiveis": _ultimos_meses(12),
+        }
+
     def _sincronizar_vinculos_tg650_supervisor_repr(supervisor_id: int, codigo_supervisor_tg650: str):
         codigo_base = s(codigo_supervisor_tg650)
         if not codigo_base:
@@ -290,89 +393,20 @@ def register_supervisor_routes(app):
         total_inativos = kpis["total_inativos"]
         total_retorno_atrasado = kpis["total_retorno_atrasado"]
         total_carteira_risco = kpis["total_carteira_risco"]
-
-        rows = (
-            db.session.query(Usuario.nome, func.count(Ligacao.id))
-            .join(Ligacao, Ligacao.consultor_id == Usuario.id, isouter=True)
-            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
-            .filter(or_(Ligacao.data_hora >= desde, Ligacao.id == None))
-            .group_by(Usuario.id, Usuario.nome)
-            .order_by(desc(func.count(Ligacao.id)))
-            .all()
+        dados_dashboard = _carregar_dados_dashboard_supervisor(
+            dashboard_tipo=dashboard_tipo,
+            hoje=hoje,
+            desde=desde,
         )
-        ranking = [{"nome": n, "ligacoes": int(q or 0)} for n, q in rows]
-
-        ult7 = (
-            db.session.query(func.date(Ligacao.data_hora), func.count(Ligacao.id))
-            .join(Usuario, Usuario.id == Ligacao.consultor_id)
-            .filter(Ligacao.data_hora >= datetime.now() - timedelta(days=7))
-            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
-            .group_by(func.date(Ligacao.data_hora))
-            .order_by(func.date(Ligacao.data_hora))
-            .all()
-        )
-        lig_por_dia = [{"data": d.strftime("%d/%m/%Y"), "data_iso": d.strftime("%Y-%m-%d"), "total": int(t)} for d, t in ult7]
-
-        res = (
-            db.session.query(Ligacao.resultado, func.count(Ligacao.id))
-            .join(Usuario, Usuario.id == Ligacao.consultor_id)
-            .filter(Ligacao.data_hora >= desde)
-            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
-            .group_by(Ligacao.resultado)
-            .all()
-        )
-        resultados_chart = {(r or "nao_comprou"): int(c) for r, c in res}
-        total_resultados_30d = sum(int(v or 0) for v in resultados_chart.values())
-        total_vendas_30d = int(resultados_chart.get("comprou", 0))
-        taxa_conversao_geral_30d = round(_percent(total_vendas_30d, total_resultados_30d), 1) if total_resultados_30d else 0.0
-
-        progresso = []
-        consultores = Usuario.query.filter_by(tipo=dashboard_tipo, ativo=True).order_by(Usuario.nome).all()
-        for u in consultores:
-            feitas = (
-                db.session.query(func.count(Ligacao.id))
-                .filter(Ligacao.consultor_id == u.id)
-                .filter(func.date(Ligacao.data_hora) == hoje)
-                .scalar()
-            ) or 0
-            meta = u.meta_diaria or 0
-            perc = round(_percent(feitas, meta), 1) if meta else 0.0
-            progresso.append({"id": u.id, "nome": u.nome, "meta": meta, "feitas": int(feitas), "percentual": perc})
-
-        conv_rows = (
-            db.session.query(
-                Usuario.id,
-                Usuario.nome,
-                func.count(Ligacao.id).label("ligacoes"),
-                func.sum(case((Ligacao.resultado == "comprou", 1), else_=0)).label("vendas"),
-                func.sum(case((Ligacao.resultado == "comprou", Ligacao.valor_venda), else_=0)).label("receita"),
-            )
-            .join(Ligacao, Ligacao.consultor_id == Usuario.id, isouter=True)
-            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
-            .filter(or_(Ligacao.data_hora >= desde, Ligacao.id == None))
-            .group_by(Usuario.id, Usuario.nome)
-            .order_by(desc("receita"))
-            .all()
-        )
-
-        conversao = []
-        for _, nome, ligs, vend, rec in conv_rows:
-            ligs = int(ligs or 0)
-            vend = int(vend or 0)
-            receita_val = float(rec or 0)
-            conv_pct = (vend / ligs * 100) if ligs else 0.0
-            conversao.append(
-                {
-                    "nome": nome,
-                    "ligacoes": ligs,
-                    "vendas": vend,
-                    "conversao": round(conv_pct, 1),
-                    "receita": receita_val,
-                    "receita_fmt": formatar_dinheiro(receita_val),
-                }
-            )
-
-        meses_disponiveis = _ultimos_meses(12)
+        ranking = dados_dashboard["ranking"]
+        lig_por_dia = dados_dashboard["ligacoes_por_dia"]
+        resultados_chart = dados_dashboard["resultados_chart"]
+        total_vendas_30d = dados_dashboard["total_vendas_30d"]
+        taxa_conversao_geral_30d = dados_dashboard["taxa_conversao_geral_30d"]
+        progresso = dados_dashboard["progresso"]
+        consultores = dados_dashboard["consultores"]
+        conversao = dados_dashboard["conversao"]
+        meses_disponiveis = dados_dashboard["meses_disponiveis"]
 
         return render_template(
             "supervisor.html",
