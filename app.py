@@ -74,7 +74,6 @@ if __name__ == "__main__":
 
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "5000"))
-    debug = os.getenv("FLASK_DEBUG", "0") == "1"
 
     app.logger.info("Servidor de produção iniciado, Controle de Ligações em http://%s:%s", host, port)
     serve(app, host=host, port=port, threads=32)

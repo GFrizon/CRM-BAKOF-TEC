@@ -1,8 +1,12 @@
+import logging
+
 from sqlalchemy import text
 
 from core.config import MAIL_PASSWORD, MAIL_RECIPIENTS
 from core.extensions import db
 from core.models import Banner
+
+logger = logging.getLogger(__name__)
 
 
 def _column_exists(table_name, column_name):
@@ -27,10 +31,10 @@ def _run_ddl(sql, ok_msg=None):
         db.session.execute(text(sql))
         db.session.commit()
         if ok_msg:
-            print(ok_msg)
+            logger.info(ok_msg)
     except Exception as e:
         db.session.rollback()
-        print(f"[WARN] Erro ao executar DDL: {sql} - {e}")
+        logger.warning("Erro ao executar DDL: %s - %s", sql, e)
 
 
 def _parse_mysql_enum_values(column_type):
@@ -77,7 +81,7 @@ def _ensure_usuarios_tipo_enum():
                 merged_values.append(value)
 
         if merged_values == current_values:
-            print("[OK] Campo usuarios.tipo ja contem os valores necessarios no ENUM")
+            logger.info("Campo usuarios.tipo ja contem os valores necessarios no ENUM")
             return
 
         enum_sql = ",".join(f"'{value}'" for value in merged_values)
@@ -89,10 +93,10 @@ def _ensure_usuarios_tipo_enum():
             )
         )
         db.session.commit()
-        print("[OK] Campo usuarios.tipo atualizado com ENUM compativel")
+        logger.info("Campo usuarios.tipo atualizado com ENUM compativel")
     except Exception as e:
         db.session.rollback()
-        print(f"[WARN] Erro ao atualizar enum usuarios.tipo (pode ja estar atualizado): {e}")
+        logger.warning("Erro ao atualizar enum usuarios.tipo (pode ja estar atualizado): %s", e)
 
 
 def bootstrap_app_database():
@@ -166,10 +170,10 @@ def bootstrap_app_database():
             _run_ddl(campo_sql, ok_msg=f"[OK] Campo Oracle adicionado: {column_name}")
 
     if not MAIL_PASSWORD:
-        print("AVISO: MAIL_PASSWORD nao configurado! Email nao funcionara.")
-        print("   Configure a variavel MAIL_PASSWORD no .env")
+        logger.warning("MAIL_PASSWORD nao configurado. Email nao funcionara.")
+        logger.warning("Configure a variavel MAIL_PASSWORD no .env")
 
     if not MAIL_RECIPIENTS:
-        print("AVISO: Nenhum destinatario configurado para relatorios.")
+        logger.warning("Nenhum destinatario configurado para relatorios.")
     else:
-        print(f"Email configurado. Destinatarios: {', '.join(MAIL_RECIPIENTS)}")
+        logger.info("Email configurado. Destinatarios: %s", ", ".join(MAIL_RECIPIENTS))
