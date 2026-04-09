@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import case, desc, func
+from sqlalchemy import case, desc, func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.security import generate_password_hash
 
@@ -42,6 +42,140 @@ def _ultimos_meses(qtd=12):
 
 
 def register_supervisor_routes(app):
+    def _calcular_kpis_dashboard_supervisor(
+        dashboard_tipo: str,
+        operadores_ids_query,
+        filtrar_carteira_por_vinculo: bool,
+        hoje,
+    ) -> dict:
+        total_consultores = Usuario.query.filter_by(tipo=dashboard_tipo, ativo=True).count()
+        # Regra solicitada: card "Total de Clientes" sempre global
+        # (mesmo valor em Consultores e Televendas).
+        total_clientes = Cliente.query.filter(Cliente.ativo == True).count()
+        total_ligacoes = (
+            db.session.query(func.count(Ligacao.id))
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+            .scalar()
+        ) or 0
+        ligacoes_hoje = (
+            db.session.query(func.count(Ligacao.id))
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
+            .filter(
+                Usuario.tipo == dashboard_tipo,
+                Usuario.ativo == True,
+                func.date(Ligacao.data_hora) == hoje,
+            )
+            .scalar()
+        ) or 0
+
+        agora = datetime.now()
+        limite_90 = agora - timedelta(days=90)
+        limite_150 = agora - timedelta(days=150)
+        limite_151 = agora - timedelta(days=151)
+        limite_180 = agora - timedelta(days=180)
+        limite_181 = agora - timedelta(days=181)
+        limite_730 = agora - timedelta(days=730)
+
+        try:
+            # Mesma fonte da aba Oracle para manter o número idêntico ao da lista.
+            clientes_oracle = carregar_clientes_oracle_deduplicados(app.logger, periodo_oracle=None)
+            total_sem_pedido_90_150 = len(clientes_oracle or [])
+        except Exception:
+            # Fallback local caso Oracle indisponível.
+            total_sem_pedido_90_150_query = (
+                Cliente.query
+                .filter(
+                    Cliente.ativo == True,
+                    Cliente.cd_cliente_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.between(limite_150, limite_90),
+                )
+            )
+            total_sem_pedido_90_150 = total_sem_pedido_90_150_query.count()
+
+        total_proximos_inativacao_query = (
+            Cliente.query
+            .filter(
+                Cliente.ativo == True,
+                Cliente.cd_cliente_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
+            )
+        )
+        total_proximos_inativacao = total_proximos_inativacao_query.count()
+
+        total_inativos_query = (
+            Cliente.query
+            .filter(
+                Cliente.ativo == True,
+                Cliente.cd_cliente_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.between(limite_730, limite_181),
+            )
+        )
+        if filtrar_carteira_por_vinculo:
+            total_inativos_query = total_inativos_query.filter(
+                Cliente.consultor_id.in_(operadores_ids_query)
+            )
+        total_inativos = total_inativos_query.count()
+        if dashboard_tipo == "televendas":
+            # Alinha com a mesma fonte usada na aba de Inativos.
+            total_inativos = int(_total_inativos_badge(None) or 0)
+
+        # Retornos vencidos: clientes com proxima_ligacao no passado (equipe não ligou).
+        total_retorno_atrasado_query = (
+            Cliente.query
+            .filter(
+                Cliente.ativo == True,
+                Cliente.proxima_ligacao.isnot(None),
+                Cliente.proxima_ligacao < agora,
+            )
+        )
+        if filtrar_carteira_por_vinculo:
+            total_retorno_atrasado_query = total_retorno_atrasado_query.filter(
+                Cliente.consultor_id.in_(operadores_ids_query)
+            )
+        total_retorno_atrasado = total_retorno_atrasado_query.count()
+
+        # Carteira em risco: proximos inativação (151-180d) sem qualquer ligação nos últimos 30d.
+        limite_30d = agora - timedelta(days=30)
+        ids_com_contato_recente = (
+            db.session.query(Ligacao.cliente_id)
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
+            .filter(Ligacao.data_hora >= limite_30d)
+            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+            .distinct()
+            .subquery()
+        )
+        total_carteira_risco_query = (
+            Cliente.query
+            .filter(
+                Cliente.ativo == True,
+                Cliente.cd_cliente_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.isnot(None),
+                Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
+                Cliente.id.notin_(ids_com_contato_recente),
+            )
+        )
+        if filtrar_carteira_por_vinculo:
+            total_carteira_risco_query = total_carteira_risco_query.filter(
+                Cliente.consultor_id.in_(operadores_ids_query)
+            )
+        total_carteira_risco = total_carteira_risco_query.count()
+
+        return {
+            "total_consultores": total_consultores,
+            "total_clientes": total_clientes,
+            "total_ligacoes": total_ligacoes,
+            "ligacoes_hoje": ligacoes_hoje,
+            "total_sem_pedido_90_150": total_sem_pedido_90_150,
+            "total_proximos_inativacao": total_proximos_inativacao,
+            "total_inativos": total_inativos,
+            "total_retorno_atrasado": total_retorno_atrasado,
+            "total_carteira_risco": total_carteira_risco,
+        }
+
     def _sincronizar_vinculos_tg650_supervisor_repr(supervisor_id: int, codigo_supervisor_tg650: str):
         codigo_base = s(codigo_supervisor_tg650)
         if not codigo_base:
@@ -141,119 +275,21 @@ def register_supervisor_routes(app):
             .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
         )
         filtrar_carteira_por_vinculo = (dashboard_tipo == "consultor")
-        total_consultores = Usuario.query.filter_by(tipo=dashboard_tipo, ativo=True).count()
-        # Regra solicitada: card "Total de Clientes" sempre global
-        # (mesmo valor em Consultores e Televendas).
-        total_clientes = Cliente.query.filter(Cliente.ativo == True).count()
-        total_ligacoes = (
-            db.session.query(func.count(Ligacao.id))
-            .join(Usuario, Usuario.id == Ligacao.consultor_id)
-            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
-            .scalar()
-        ) or 0
-        ligacoes_hoje = (
-            db.session.query(func.count(Ligacao.id))
-            .join(Usuario, Usuario.id == Ligacao.consultor_id)
-            .filter(
-                Usuario.tipo == dashboard_tipo,
-                Usuario.ativo == True,
-                func.date(Ligacao.data_hora) == hoje,
-            )
-            .scalar()
-        ) or 0
-
-        agora = datetime.now()
-        limite_90 = agora - timedelta(days=90)
-        limite_150 = agora - timedelta(days=150)
-        limite_151 = agora - timedelta(days=151)
-        limite_180 = agora - timedelta(days=180)
-        limite_181 = agora - timedelta(days=181)
-        limite_730 = agora - timedelta(days=730)
-
-        try:
-            # Mesma fonte da aba Oracle para manter o número idêntico ao da lista.
-            clientes_oracle = carregar_clientes_oracle_deduplicados(app.logger, periodo_oracle=None)
-            total_sem_pedido_90_150 = len(clientes_oracle or [])
-        except Exception:
-            # Fallback local caso Oracle indisponível.
-            total_sem_pedido_90_150_query = (
-                Cliente.query
-                .filter(
-                    Cliente.ativo == True,
-                    Cliente.cd_cliente_oracle.isnot(None),
-                    Cliente.ultimo_pedido_oracle.isnot(None),
-                    Cliente.ultimo_pedido_oracle.between(limite_150, limite_90),
-                )
-            )
-            total_sem_pedido_90_150 = total_sem_pedido_90_150_query.count()
-        total_proximos_inativacao_query = (
-            Cliente.query
-            .filter(
-                Cliente.ativo == True,
-                Cliente.cd_cliente_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
-            )
+        kpis = _calcular_kpis_dashboard_supervisor(
+            dashboard_tipo=dashboard_tipo,
+            operadores_ids_query=operadores_ids_query,
+            filtrar_carteira_por_vinculo=filtrar_carteira_por_vinculo,
+            hoje=hoje,
         )
-        total_proximos_inativacao = total_proximos_inativacao_query.count()
-        total_inativos_query = (
-            Cliente.query
-            .filter(
-                Cliente.ativo == True,
-                Cliente.cd_cliente_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.between(limite_730, limite_181),
-            )
-        )
-        if filtrar_carteira_por_vinculo:
-            total_inativos_query = total_inativos_query.filter(
-                Cliente.consultor_id.in_(operadores_ids_query)
-            )
-        total_inativos = total_inativos_query.count()
-        if dashboard_tipo == "televendas":
-            # Alinha com a mesma fonte usada na aba de Inativos.
-            total_inativos = int(_total_inativos_badge(None) or 0)
-
-        # Retornos vencidos: clientes com proxima_ligacao no passado (equipe não ligou).
-        total_retorno_atrasado_query = (
-            Cliente.query
-            .filter(
-                Cliente.ativo == True,
-                Cliente.proxima_ligacao.isnot(None),
-                Cliente.proxima_ligacao < agora,
-            )
-        )
-        if filtrar_carteira_por_vinculo:
-            total_retorno_atrasado_query = total_retorno_atrasado_query.filter(
-                Cliente.consultor_id.in_(operadores_ids_query)
-            )
-        total_retorno_atrasado = total_retorno_atrasado_query.count()
-
-        # Carteira em risco: proximos inativação (151-180d) sem qualquer ligação nos últimos 30d.
-        limite_30d = agora - timedelta(days=30)
-        ids_com_contato_recente = (
-            db.session.query(Ligacao.cliente_id)
-            .join(Usuario, Usuario.id == Ligacao.consultor_id)
-            .filter(Ligacao.data_hora >= limite_30d)
-            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
-            .distinct()
-            .subquery()
-        )
-        total_carteira_risco_query = (
-            Cliente.query
-            .filter(
-                Cliente.ativo == True,
-                Cliente.cd_cliente_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.isnot(None),
-                Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
-                Cliente.id.notin_(ids_com_contato_recente),
-            )
-        )
-        if filtrar_carteira_por_vinculo:
-            total_carteira_risco_query = total_carteira_risco_query.filter(
-                Cliente.consultor_id.in_(operadores_ids_query)
-            )
-        total_carteira_risco = total_carteira_risco_query.count()
+        total_consultores = kpis["total_consultores"]
+        total_clientes = kpis["total_clientes"]
+        total_ligacoes = kpis["total_ligacoes"]
+        ligacoes_hoje = kpis["ligacoes_hoje"]
+        total_sem_pedido_90_150 = kpis["total_sem_pedido_90_150"]
+        total_proximos_inativacao = kpis["total_proximos_inativacao"]
+        total_inativos = kpis["total_inativos"]
+        total_retorno_atrasado = kpis["total_retorno_atrasado"]
+        total_carteira_risco = kpis["total_carteira_risco"]
 
         rows = (
             db.session.query(Usuario.nome, func.count(Ligacao.id))
