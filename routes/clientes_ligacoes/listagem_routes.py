@@ -1,12 +1,12 @@
 from flask import jsonify, request
 from flask_login import current_user
-from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
 from core.extensions import db
-from core.models import Cliente, Ligacao, Usuario
+from core.models import Cliente
 from routes.clientes_ligacoes.badges import calcular_total_inativos_badge_com_cache
 from routes.clientes_ligacoes.listagem_access import preparar_contexto_inicial_listagem
+from routes.clientes_ligacoes.listagem_base_filters import aplicar_filtro_base_clientes
 from routes.clientes_ligacoes.listagem_inativos import render_aba_inativos
 from routes.clientes_ligacoes.listagem_operacional import render_fluxo_operacional
 from routes.clientes_ligacoes.listagem_operacional_classificacao import classificar_listas_operacionais
@@ -20,26 +20,12 @@ _INATIVOS_COUNT_CACHE_TTL_SECONDS = 600
 def register_clientes_ligacoes_listagem_routes(app):
     def _calcular_badges_operacionais(aba, apenas_meus, codigos_representantes_vinculados, dashboard_tipo=None):
         q = Cliente.query.options(joinedload(Cliente.ligacoes)).filter(Cliente.ativo == True)
-        if current_user.tipo == "supervisor" and dashboard_tipo in ("consultor", "televendas"):
-            operadores_ids_query = (
-                db.session.query(Usuario.id)
-                .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
-            )
-            q = q.filter(Cliente.consultor_id.in_(operadores_ids_query))
-        if current_user.tipo == "televendas":
-            clientes_ligados_por_tv = (
-                db.session.query(Ligacao.cliente_id)
-                .filter(Ligacao.consultor_id == current_user.id)
-                .distinct()
-            )
-            q = q.filter(
-                or_(
-                    Cliente.consultor_id == current_user.id,
-                    Cliente.id.in_(clientes_ligados_por_tv),
-                )
-            )
-        elif apenas_meus:
-            q = q.filter(Cliente.consultor_id == current_user.id)
+        q = aplicar_filtro_base_clientes(
+            query=q,
+            current_user=current_user,
+            apenas_meus=apenas_meus,
+            dashboard_tipo=dashboard_tipo,
+        )
 
         clientes_todos = q.order_by(Cliente.nome.asc()).all()
         pendentes, contatados, precisa_retornar = classificar_listas_operacionais(

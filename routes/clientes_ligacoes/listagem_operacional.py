@@ -1,13 +1,12 @@
 from datetime import datetime
 
 from flask import render_template
-from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
-from core.extensions import db
-from core.models import Cliente, Ligacao, Usuario
+from core.models import Cliente, Usuario
 from routes.clientes_ligacoes.agrupamento_view import montar_representantes_agrupados
 from routes.clientes_ligacoes.badges import calcular_total_inativos_badge_com_cache
+from routes.clientes_ligacoes.listagem_base_filters import aplicar_filtro_base_clientes
 from routes.clientes_ligacoes.dashboard_operacional import (
     montar_meses_disponiveis,
     montar_stats_consultor_televendas,
@@ -35,27 +34,12 @@ def render_fluxo_operacional(
     mes_filtro, ano_filtro = parse_filtro_mes_ano(request.args, current_user.tipo)
 
     q = Cliente.query.options(joinedload(Cliente.ligacoes)).filter(Cliente.ativo == True)
-    if current_user.tipo == "supervisor" and dashboard_tipo in ("consultor", "televendas"):
-        operadores_ids_query = (
-            db.session.query(Usuario.id)
-            .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
-        )
-        q = q.filter(Cliente.consultor_id.in_(operadores_ids_query))
-
-    if current_user.tipo == "televendas":
-        clientes_ligados_por_tv = (
-            db.session.query(Ligacao.cliente_id)
-            .filter(Ligacao.consultor_id == current_user.id)
-            .distinct()
-        )
-        q = q.filter(
-            or_(
-                Cliente.consultor_id == current_user.id,
-                Cliente.id.in_(clientes_ligados_por_tv),
-            )
-        )
-    elif apenas_meus:
-        q = q.filter(Cliente.consultor_id == current_user.id)
+    q = aplicar_filtro_base_clientes(
+        query=q,
+        current_user=current_user,
+        apenas_meus=apenas_meus,
+        dashboard_tipo=dashboard_tipo,
+    )
 
     termo = request.args.get("q", "").strip()
     clientes_todos = q.order_by(Cliente.nome.asc()).all()
