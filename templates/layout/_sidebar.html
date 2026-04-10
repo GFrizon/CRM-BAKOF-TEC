@@ -29,6 +29,10 @@
            href="{{ url_for('meus_clientes', visao='clientes', aba='pendentes') }}">
           <i class="bi bi-people-fill"></i> Clientes
         </a>
+        <a class="sidebar-link {% if request.endpoint == 'cranio_page' %}active{% endif %}"
+           href="{{ url_for('cranio_page') }}">
+          <i class="bi bi-robot"></i> Crânio
+        </a>
         <a class="sidebar-link {% if request.endpoint == 'minha_conta' %}active{% endif %}"
            href="{{ url_for('minha_conta') }}">
           <i class="bi bi-person-circle"></i> Minha Conta
@@ -49,6 +53,10 @@
         <a class="sidebar-link {% if request.endpoint == 'meus_clientes' %}active{% endif %}"
            href="{{ url_for('meus_clientes') }}">
           <i class="bi bi-people-fill"></i> Clientes
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'cranio_page' %}active{% endif %}"
+           href="{{ url_for('cranio_page') }}">
+          <i class="bi bi-robot"></i> Crânio
         </a>
 
         <span class="sidebar-section-label">Gerenciamento</span>
@@ -79,6 +87,10 @@
         <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'clientes' %}active{% endif %}"
            href="{{ url_for('meus_clientes', visao='clientes', aba=aba_padrao) }}">
           <i class="bi bi-people-fill"></i> Clientes
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'cranio_page' %}active{% endif %}"
+           href="{{ url_for('cranio_page') }}">
+          <i class="bi bi-robot"></i> Crânio
         </a>
         <a class="sidebar-link {% if request.endpoint == 'minha_conta' %}active{% endif %}"
            href="{{ url_for('minha_conta') }}">

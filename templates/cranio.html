@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+{% block title %}Crânio{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="panel-card">
+    <div class="panel-header">
+      <i class="bi bi-robot me-2"></i>Crânio
+    </div>
+    <div class="panel-body">
+      <p class="text-muted mb-3">Assistente interno para produtividade (sem consumo de API).</p>
+      <div id="cranioChat" class="border rounded p-3 mb-3" style="min-height:220px; max-height:420px; overflow:auto; background:#fff;">
+        <div class="text-muted small">Exemplos: "resumo de hoje", "retornos atrasados", "proximos para ligar", "buscar cliente fermaq".</div>
+      </div>
+      <form id="cranioForm" class="d-flex gap-2">
+        <input id="cranioPergunta" class="form-control" placeholder="Pergunte ao Crânio..." autocomplete="off">
+        <button class="btn btn-primary" type="submit"><i class="bi bi-send"></i></button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const form = document.getElementById('cranioForm');
+  const input = document.getElementById('cranioPergunta');
+  const chat = document.getElementById('cranioChat');
+  if (!form || !input || !chat) return;
+
+  const add = (quem, texto) => {
+    const row = document.createElement('div');
+    row.className = 'mb-2';
+    row.innerHTML = `<strong>${quem}:</strong> <span style="white-space:pre-wrap;">${String(texto || '')}</span>`;
+    chat.appendChild(row);
+    chat.scrollTop = chat.scrollHeight;
+  };
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pergunta = (input.value || '').trim();
+    if (!pergunta) return;
+    add('Você', pergunta);
+    input.value = '';
+    try {
+      const r = await fetch('/api/cranio/perguntar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pergunta })
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.erro || 'Falha ao responder');
+      add('Crânio', data.resposta || '-');
+    } catch (err) {
+      add('Crânio', `Erro: ${err.message || 'falha'}`);
+    }
+  });
+})();
+</script>
+{% endblock %}
+

@@ -14,6 +14,7 @@ from routes.account_client_routes import register_account_client_routes
 from routes.admin_routes import register_admin_routes
 from routes.auth_routes import register_auth_routes
 from routes.clientes_ligacoes_routes import register_clientes_ligacoes_routes
+from routes.cranio_routes import register_cranio_routes
 from routes.error_handlers import register_error_handlers
 from routes.oracle_routes import register_oracle_routes
 from routes.supervisor_routes import register_supervisor_routes
@@ -55,6 +56,7 @@ register_auth_routes(app)
 register_account_client_routes(app)
 register_admin_routes(app)
 register_clientes_ligacoes_routes(app)
+register_cranio_routes(app)
 register_oracle_routes(app)
 register_supervisor_routes(app)
 
