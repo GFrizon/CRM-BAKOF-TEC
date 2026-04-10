@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from datetime import datetime, timedelta
 
 from sqlalchemy import case, desc, extract, func
@@ -12,7 +12,7 @@ from routes.clientes_ligacoes.consultor_mapping import (
 )
 from routes.clientes_ligacoes.listagem_permissions import consultor_categoria_permitido_para_usuario
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
-from services.inativos_movimento_service import carregar_movimentos_inativos_mes
+from oracle_service import get_cliente_oracle_por_cnpj, get_pedidos_cliente_periodo_oracle
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ def parse_mes_ano(args):
 
 def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_operador="consultor"):
     if mes < 1 or mes > 12:
-        return {"ok": False, "erro": "Mês inválido"}, 400
+        return {"ok": False, "erro": "MÃªs invÃ¡lido"}, 400
 
     inicio = datetime(ano, mes, 1)
     fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
@@ -135,7 +135,7 @@ def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_ope
         .subquery()
     )
 
-    # Totais gerais (mesma referência dos cards do dashboard supervisor)
+    # Totais gerais (mesma referÃªncia dos cards do dashboard supervisor)
     total_90_150_geral_oracle = len(carregar_clientes_oracle_deduplicados(logger, periodo_oracle=None) or [])
     total_proximos_geral_oracle = int(
         (
@@ -167,12 +167,67 @@ def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_ope
         .all()
     )
 
+    receita_oracle_por_operador = {}
+    try:
+        compras_clientes = (
+            db.session.query(
+                Ligacao.consultor_id.label("operador_id"),
+                Cliente.cd_cliente_oracle.label("cd_cliente_oracle"),
+                Cliente.cnpj.label("cliente_cnpj"),
+            )
+            .join(Cliente, Cliente.id == Ligacao.cliente_id)
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
+            .filter(
+                Ligacao.resultado == "comprou",
+                Ligacao.data_hora >= inicio,
+                Ligacao.data_hora < fim,
+                Usuario.tipo == tipo_operador,
+            )
+            .distinct()
+            .all()
+        )
+
+        cache_cd_por_cnpj = {}
+        cache_total_oracle_cliente = {}
+        for operador_id, cd_cliente_oracle, cliente_cnpj in compras_clientes:
+            cd = str(cd_cliente_oracle or "").strip()
+            if not cd:
+                cnpj = str(cliente_cnpj or "").strip()
+                if cnpj:
+                    if cnpj not in cache_cd_por_cnpj:
+                        try:
+                            cli_oracle = get_cliente_oracle_por_cnpj(cnpj) or {}
+                            cache_cd_por_cnpj[cnpj] = str(cli_oracle.get("cd_cliente") or "").strip()
+                        except Exception:
+                            cache_cd_por_cnpj[cnpj] = ""
+                    cd = cache_cd_por_cnpj.get(cnpj, "")
+            if not cd:
+                continue
+            if cd not in cache_total_oracle_cliente:
+                pedidos = get_pedidos_cliente_periodo_oracle(
+                    cd,
+                    data_inicio=inicio,
+                    data_fim=fim,
+                ) or []
+                cache_total_oracle_cliente[cd] = sum(
+                    float(p.get("total_pedido") or 0.0) for p in pedidos
+                )
+
+            receita_oracle_por_operador[int(operador_id)] = (
+                float(receita_oracle_por_operador.get(int(operador_id), 0.0))
+                + float(cache_total_oracle_cliente.get(cd, 0.0))
+            )
+    except Exception as e:
+        logger.warning(f"Falha ao calcular receita comprovada Oracle no fechamento: {e}")
+        receita_oracle_por_operador = {}
+
     resultado = []
     contagem_90_150_oracle = _contagem_90_150_por_usuario_mesma_regra_lista_oracle(tipo_operador=tipo_operador)
     total_ligacoes_geral = 0
     total_vendas_geral = 0
     total_retornar_geral = 0
     total_receita_geral = 0.0
+    total_receita_comprovada_oracle_geral = 0.0
     total_90_150_geral = 0
     total_proximos_geral = 0
 
@@ -181,6 +236,7 @@ def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_ope
         vendas = int(vendas or 0)
         retornar = int(retornar or 0)
         receita = float(receita or 0)
+        receita_comprovada_oracle = float(receita_oracle_por_operador.get(int(uid), 0.0))
         total_90_150 = int(contagem_90_150_oracle.get(int(uid), 0))
         total_proximos = int(total_proximos or 0)
         conv = _percent(vendas, total) if total else 0.0
@@ -189,6 +245,7 @@ def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_ope
         total_vendas_geral += vendas
         total_retornar_geral += retornar
         total_receita_geral += receita
+        total_receita_comprovada_oracle_geral += receita_comprovada_oracle
         total_90_150_geral += total_90_150
         total_proximos_geral += total_proximos
 
@@ -207,32 +264,10 @@ def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_ope
                 "total_proximos_inativacao": total_proximos,
                 "receita": receita,
                 "receita_fmt": formatar_dinheiro(receita),
+                "receita_comprovada_oracle": receita_comprovada_oracle,
+                "receita_comprovada_oracle_fmt": formatar_dinheiro(receita_comprovada_oracle),
             }
         )
-
-    # Reconciliacao: parte da carteira pode nao estar vinculada a consultor ativo.
-    diff_90_150 = max(0, int(total_90_150_geral_oracle) - int(total_90_150_geral))
-    diff_proximos = max(0, int(total_proximos_geral_oracle) - int(total_proximos_geral))
-    if diff_90_150 > 0 or diff_proximos > 0:
-        resultado.append(
-            {
-                "id": None,
-                "nome": "Não vinculado (fora dos operadores ativos)",
-                "total_ligacoes": 0,
-                "vendas": 0,
-                "total_retornar": 0,
-                "conversao": 0.0,
-                "meta_conversao": float(meta_conversao),
-                "atingiu_meta_conversao": False,
-                "gap_meta_conversao": round(0.0 - float(meta_conversao), 1),
-                "total_90_150": diff_90_150,
-                "total_proximos_inativacao": diff_proximos,
-                "receita": 0.0,
-                "receita_fmt": formatar_dinheiro(0),
-            }
-        )
-        total_90_150_geral += diff_90_150
-        total_proximos_geral += diff_proximos
 
     conversao_geral = _percent(total_vendas_geral, total_ligacoes_geral) if total_ligacoes_geral else 0.0
     totais = {
@@ -240,6 +275,7 @@ def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_ope
         "total_ligacoes": int(total_ligacoes_geral),
         "total_vendas": int(total_vendas_geral),
         "total_retornar": int(total_retornar_geral),
+        # Totais da tabela seguem apenas operadores exibidos.
         "total_90_150": int(total_90_150_geral),
         "total_proximos_inativacao": int(total_proximos_geral),
         "total_90_150_geral_oracle": int(total_90_150_geral_oracle),
@@ -248,6 +284,8 @@ def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_ope
         "meta_conversao": float(meta_conversao),
         "receita": float(total_receita_geral),
         "receita_fmt": formatar_dinheiro(total_receita_geral),
+        "receita_comprovada_oracle": float(total_receita_comprovada_oracle_geral),
+        "receita_comprovada_oracle_fmt": formatar_dinheiro(total_receita_comprovada_oracle_geral),
     }
 
     return {"ok": True, "mes": mes, "ano": ano, "consultores": resultado, "totais": totais}, 200
@@ -312,12 +350,37 @@ def consultar_detalhe_conversao_operador_mes(operador_id, mes, ano, tipo_operado
 
     inicio = datetime(ano, mes, 1)
     fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
+    agora_ref = datetime.now()
+
+    def _classificar_carteira_cliente(origem, cd_oracle, ultimo_pedido_oracle, proxima_ligacao):
+        origem_txt = str(origem or "").strip().lower()
+
+        if ultimo_pedido_oracle:
+            dias_sem = (agora_ref - ultimo_pedido_oracle).days
+            if 90 <= dias_sem <= 150:
+                return "Sem Pedido 90-150d"
+            if 151 <= dias_sem <= 180:
+                return "Prox. Inativacao"
+            if 181 <= dias_sem <= 730:
+                return "Clientes Inativos"
+
+        if proxima_ligacao:
+            return "Retornar"
+
+        if origem_txt in ("manual", "importado_csv"):
+            return "Clientes Especiais"
+
+        return ""
 
     rows = (
         db.session.query(
             Cliente.id.label("cliente_id"),
             Cliente.nome.label("cliente_nome"),
             Cliente.cd_cliente_oracle.label("cd_cliente_oracle"),
+            Cliente.cnpj.label("cliente_cnpj"),
+            Cliente.origem.label("cliente_origem"),
+            Cliente.ultimo_pedido_oracle.label("ultimo_pedido_oracle"),
+            Cliente.proxima_ligacao.label("proxima_ligacao"),
             func.count(Ligacao.id).label("qtd_compras"),
             func.max(Ligacao.data_hora).label("ultima_compra_em"),
             func.sum(Ligacao.valor_venda).label("receita"),
@@ -329,30 +392,59 @@ def consultar_detalhe_conversao_operador_mes(operador_id, mes, ano, tipo_operado
             Ligacao.data_hora >= inicio,
             Ligacao.data_hora < fim,
         )
-        .group_by(Cliente.id, Cliente.nome, Cliente.cd_cliente_oracle)
+        .group_by(
+            Cliente.id,
+            Cliente.nome,
+            Cliente.cd_cliente_oracle,
+            Cliente.cnpj,
+            Cliente.origem,
+            Cliente.ultimo_pedido_oracle,
+            Cliente.proxima_ligacao,
+        )
         .order_by(func.max(Ligacao.data_hora).desc())
         .all()
     )
 
-    movimentos_mes = carregar_movimentos_inativos_mes(ano, mes)
-    saidas_por_cd = {}
-    for mov in movimentos_mes:
-        data_ref = str(mov.get("data_ref") or "")
-        for item in (mov.get("sairam") or []):
-            cd = str((item or {}).get("cd_cliente") or "").strip()
-            if not cd:
-                continue
-            if cd not in saidas_por_cd:
-                saidas_por_cd[cd] = data_ref
-
     itens = []
-    cruzaram_saida = 0
+    confirmados_oracle = 0
+    cache_cd_por_cnpj = {}
+    cache_pedidos_por_cd = {}
     for row in rows:
         cd = str(row.cd_cliente_oracle or "").strip()
-        cruzou = bool(cd and cd in saidas_por_cd)
-        if cruzou:
-            cruzaram_saida += 1
+        if not cd:
+            cnpj = str(row.cliente_cnpj or "").strip()
+            if cnpj:
+                if cnpj not in cache_cd_por_cnpj:
+                    try:
+                        cli_oracle = get_cliente_oracle_por_cnpj(cnpj) or {}
+                        cache_cd_por_cnpj[cnpj] = str(cli_oracle.get("cd_cliente") or "").strip()
+                    except Exception:
+                        cache_cd_por_cnpj[cnpj] = ""
+                cd = cache_cd_por_cnpj.get(cnpj, "")
+        pedidos_oracle = []
+        if cd:
+            if cd in cache_pedidos_por_cd:
+                pedidos_oracle = cache_pedidos_por_cd[cd]
+            else:
+                try:
+                    pedidos_oracle = get_pedidos_cliente_periodo_oracle(
+                        cd,
+                        data_inicio=inicio,
+                        data_fim=fim,
+                    ) or []
+                except Exception:
+                    pedidos_oracle = []
+                cache_pedidos_por_cd[cd] = pedidos_oracle
+        pedido_ref = pedidos_oracle[0] if pedidos_oracle else {}
+        confirmado = bool(pedido_ref)
+        if confirmado:
+            confirmados_oracle += 1
         receita = float(row.receita or 0)
+        pedido_total = float(pedido_ref.get("total_pedido") or 0) if pedido_ref else 0.0
+        # Se a ligacao foi marcada como comprou sem valor local, usamos o valor confirmado do Oracle.
+        receita_exibicao = receita
+        if confirmado and receita_exibicao <= 0 and pedido_total > 0:
+            receita_exibicao = pedido_total
         itens.append(
             {
                 "cliente_id": int(row.cliente_id),
@@ -364,10 +456,25 @@ def consultar_detalhe_conversao_operador_mes(operador_id, mes, ano, tipo_operado
                     if row.ultima_compra_em
                     else "-"
                 ),
-                "receita": receita,
-                "receita_fmt": formatar_dinheiro(receita),
-                "cruzou_saida": cruzou,
-                "saida_data_ref": saidas_por_cd.get(cd),
+                "receita": receita_exibicao,
+                "receita_fmt": formatar_dinheiro(receita_exibicao),
+                "receita_local": receita,
+                "receita_local_fmt": formatar_dinheiro(receita),
+                "pedido_oracle_confirmado": confirmado,
+                "pedido_oracle_codigo": str(pedido_ref.get("cd_pedido") or "").strip() if pedido_ref else "",
+                "pedido_oracle_data": (
+                    pedido_ref.get("dt_pedido").strftime("%d/%m/%Y")
+                    if pedido_ref and pedido_ref.get("dt_pedido")
+                    else ""
+                ),
+                "pedido_oracle_valor": pedido_total,
+                "pedido_oracle_valor_fmt": (formatar_dinheiro(pedido_total) if pedido_ref else ""),
+                "carteira_origem": _classificar_carteira_cliente(
+                    row.cliente_origem,
+                    cd,
+                    row.ultimo_pedido_oracle,
+                    row.proxima_ligacao,
+                ),
             }
         )
 
@@ -384,8 +491,9 @@ def consultar_detalhe_conversao_operador_mes(operador_id, mes, ano, tipo_operado
         "itens": itens,
         "resumo": {
             "compradores": int(total_compradores),
-            "cruzaram_saida": int(cruzaram_saida),
-            "nao_cruzaram": int(max(0, total_compradores - cruzaram_saida)),
+            "confirmados_oracle": int(confirmados_oracle),
+            "nao_confirmados_oracle": int(max(0, total_compradores - confirmados_oracle)),
         },
     }
     return payload, 200
+

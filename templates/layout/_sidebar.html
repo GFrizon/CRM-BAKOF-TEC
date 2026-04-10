@@ -35,10 +35,16 @@
         </a>
 
       {% elif current_user.tipo == 'supervisor' %}
+        {% set supervisor_em_televendas = (request.endpoint == 'dashboard_supervisor_televendas') %}
+        {% set endpoint_dashboard_supervisor = 'dashboard_supervisor_televendas' if supervisor_em_televendas else 'dashboard_supervisor' %}
         <span class="sidebar-section-label">Dashboard</span>
-        <a class="sidebar-link {% if request.endpoint == 'dashboard_supervisor' %}active{% endif %}"
-           href="{{ url_for('dashboard_supervisor') }}">
+        <a class="sidebar-link {% if request.endpoint in ('dashboard_supervisor', 'dashboard_supervisor_televendas') and request.args.get('secao') != 'fechamento' %}active{% endif %}"
+           href="{{ url_for(endpoint_dashboard_supervisor) }}">
           <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a class="sidebar-link {% if request.endpoint in ('dashboard_supervisor', 'dashboard_supervisor_televendas') and request.args.get('secao') == 'fechamento' %}active{% endif %}"
+           href="{{ url_for(endpoint_dashboard_supervisor, secao='fechamento') }}#resultadosFiltrados">
+          <i class="bi bi-calendar-check"></i> Fechamento
         </a>
         <a class="sidebar-link {% if request.endpoint == 'meus_clientes' %}active{% endif %}"
            href="{{ url_for('meus_clientes') }}">

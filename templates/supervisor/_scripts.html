@@ -3,16 +3,56 @@
 let _reqFiltroMesToken = 0;
 let _reqLigacoesMesToken = 0;
 let _reqDetalheConversaoToken = 0;
+let _reqInsightsObsToken = 0;
 let _chartLigacoesDias = null;
 let _chartResultados = null;
 const DASHBOARD_TIPO = '{{ dashboard_tipo }}';
+let _resumoFechamentoTexto = '';
 
 document.addEventListener('DOMContentLoaded', () => {
   if (window.__supervisorDashboardInit) return;
   window.__supervisorDashboardInit = true;
   aplicarFiltroMes();
   carregarLigacoesMes();
+  try {
+    const url = new URL(window.location.href);
+    const secao = (url.searchParams.get('secao') || '').toLowerCase();
+    if (secao === 'fechamento') {
+      setTimeout(() => {
+        const el = document.getElementById('resultadosFiltrados');
+        if (el) {
+          el.style.display = 'block';
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 180);
+    }
+  } catch (_) {}
 });
+
+function gerarPdfFechamento() {
+  try {
+    const filtro = document.getElementById('filtroMes');
+    let mes = '';
+    let ano = '';
+    if (filtro && filtro.value) {
+      const partes = String(filtro.value).split('-');
+      mes = partes[0] || '';
+      ano = partes[1] || '';
+    }
+    if (!mes || !ano) {
+      const hoje = new Date();
+      mes = String(hoje.getMonth() + 1);
+      ano = String(hoje.getFullYear());
+    }
+    const url = new URL('/supervisor/fechamento/pdf', window.location.origin);
+    url.searchParams.set('mes', mes);
+    url.searchParams.set('ano', ano);
+    url.searchParams.set('tipo', DASHBOARD_TIPO || 'consultor');
+    window.open(url.toString(), '_blank');
+  } catch (_) {
+    alert('Não foi possível gerar o PDF agora.');
+  }
+}
 
 window.addEventListener('pageshow', () => {
   if (_chartLigacoesDias) _chartLigacoesDias.resize();
@@ -25,11 +65,13 @@ async function fecharNovidades() {
   document.getElementById('modalNovidades').style.display = 'none';
 }
 
-// APLICAR FILTRO POR MÊS
+// APLICAR FILTRO POR MES
 async function aplicarFiltroMes() {
   const select = document.getElementById('filtroMes');
+  if (!select) return;
   const valor = select.value; // formato: "mes-ano"
   const [mes, ano] = valor.split('-');
+  carregarInsightsObservacoes(mes, ano);
   
   const textoSelecionado = select.options[select.selectedIndex].text;
   document.getElementById('periodoSelecionado').textContent = textoSelecionado;
@@ -38,7 +80,7 @@ async function aplicarFiltroMes() {
   document.getElementById('resultadosFiltrados').style.display = 'block';
   document.getElementById('tbodyResultados').innerHTML = `
     <tr>
-      <td colspan="9" class="text-center py-4">
+      <td colspan="10" class="text-center py-4">
         <div class="spinner-border text-primary" role="status"></div>
         <p class="mt-2 text-muted">Carregando dados...</p>
       </td>
@@ -60,11 +102,12 @@ async function aplicarFiltroMes() {
     const tbody = document.getElementById('tbodyResultados');
     
     if (!data.consultores || data.consultores.length === 0) {
+      _resumoFechamentoTexto = '';
       tbody.innerHTML = `
         <tr>
-          <td colspan="9" class="text-center text-muted py-4">
+          <td colspan="10" class="text-center text-muted py-4">
             <i class="bi bi-inbox display-4 d-block mb-2"></i>
-            Nenhum dado encontrado para este período
+            Nenhum dado encontrado para este periodo
           </td>
         </tr>
       `;
@@ -74,14 +117,22 @@ async function aplicarFiltroMes() {
     let html = '';
     data.consultores.forEach(c => {
       const atingiuMeta = Number(c.conversao || 0) >= Number(c.meta_conversao || 0);
+      const podeAbrirDetalhe = Boolean(c.id && Number(c.vendas || 0) > 0);
+      const nomeEscapado = String(c.nome || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const attrsLinha = podeAbrirDetalhe
+        ? ` role="button" tabindex="0" class="table-active" style="cursor:pointer;" title="Clique para ver detalhes das vendas" onclick="abrirDetalheConversao(${c.id}, '${nomeEscapado}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDetalheConversao(${c.id}, '${nomeEscapado}');}"`
+        : '';
       
       html += `
-        <tr>
-          <td><strong>${c.nome}</strong></td>
+        <tr${attrsLinha}>
+          <td>
+            <strong>${c.nome}</strong>
+            ${podeAbrirDetalhe ? '<span class="text-primary ms-1" title="Ver detalhes"><i class="bi bi-box-arrow-up-right"></i></span>' : ''}
+          </td>
           <td class="text-center fw-semibold">${c.total_ligacoes}</td>
           <td class="text-center fw-semibold">
-            ${(c.id && Number(c.vendas || 0) > 0)
-              ? `<button type="button" class="btn btn-sm btn-link p-0 fw-semibold text-decoration-none" onclick="abrirDetalheConversao(${c.id}, '${String(c.nome || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${c.vendas}</button>`
+            ${podeAbrirDetalhe
+              ? `<button type="button" class="btn btn-sm btn-link p-0 fw-semibold text-decoration-none" onclick="event.stopPropagation();abrirDetalheConversao(${c.id}, '${nomeEscapado}')">${c.vendas}</button>`
               : `${c.vendas}`}
           </td>
           <td class="text-center fw-semibold">${c.total_retornar}</td>
@@ -90,6 +141,7 @@ async function aplicarFiltroMes() {
           <td class="text-center fw-semibold">${c.total_90_150}</td>
           <td class="text-center fw-semibold">${c.total_proximos_inativacao}</td>
           <td class="text-end"><strong class="text-success">${c.receita_fmt}</strong></td>
+          <td class="text-end"><strong class="text-primary">${c.receita_comprovada_oracle_fmt || 'R$ 0,00'}</strong></td>
         </tr>
       `;
     });
@@ -98,7 +150,7 @@ async function aplicarFiltroMes() {
     const t = data.totais || {};
     document.getElementById('tfootResultados').innerHTML = `
       <tr class="table-light">
-        <th>Total resultado do período</th>
+        <th>Total resultado do periodo</th>
         <th class="text-center">${t.total_ligacoes || 0}</th>
         <th class="text-center">${t.total_vendas || 0}</th>
         <th class="text-center">${t.total_retornar || 0}</th>
@@ -107,14 +159,29 @@ async function aplicarFiltroMes() {
         <th class="text-center">${t.total_90_150 || 0}</th>
         <th class="text-center">${t.total_proximos_inativacao || 0}</th>
         <th class="text-end">${t.receita_fmt || 'R$ 0,00'}</th>
+        <th class="text-end">${t.receita_comprovada_oracle_fmt || 'R$ 0,00'}</th>
       </tr>
     `;
+    _resumoFechamentoTexto = [
+      `Periodo: ${textoSelecionado}`,
+      `Operadores: ${data.consultores.length}`,
+      `Ligacoes: ${t.total_ligacoes || 0}`,
+      `Vendas: ${t.total_vendas || 0}`,
+      `Retornar: ${t.total_retornar || 0}`,
+      `Conversao: ${t.conversao || 0}%`,
+      `Meta: ${t.meta_conversao || 0}%`,
+      `90-150: ${t.total_90_150 || 0}`,
+      `Prox. Inativacao: ${t.total_proximos_inativacao || 0}`,
+      `Receita: ${t.receita_fmt || 'R$ 0,00'}`,
+      `Receita Comprovada Oracle: ${t.receita_comprovada_oracle_fmt || 'R$ 0,00'}`,
+    ].join(' | ');
     
   } catch (erro) {
     console.error('Erro:', erro);
+    _resumoFechamentoTexto = '';
     document.getElementById('tbodyResultados').innerHTML = `
       <tr>
-        <td colspan="9" class="text-center text-danger py-4">
+        <td colspan="10" class="text-center text-danger py-4">
           <i class="bi bi-exclamation-triangle display-4 d-block mb-2"></i>
           Erro ao carregar dados: ${erro.message}
         </td>
@@ -136,13 +203,91 @@ function escapeHtml(valor) {
 function badgeResultado(resultado) {
   const mapa = {
     comprou: '<span class="badge bg-success"><i class="bi bi-cart-check"></i> Comprou</span>',
-    nao_comprou: '<span class="badge bg-secondary">Não comprou</span>',
+    nao_comprou: '<span class="badge bg-secondary">Nao comprou</span>',
     retornar: '<span class="badge bg-warning"><i class="bi bi-arrow-clockwise"></i> Retornar</span>',
     sem_interesse: '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> Sem interesse</span>',
     relacionamento: '<span class="badge bg-info"><i class="bi bi-heart"></i> Relacionamento</span>',
     cliente_inativo: '<span class="badge bg-dark"><i class="bi bi-person-x"></i> Cliente inativo</span>'
   };
   return mapa[resultado] || mapa.nao_comprou;
+}
+
+async function carregarInsightsObservacoes(mes, ano) {
+  const elResumo = document.getElementById('insightsObsResumo');
+  const elCats = document.getElementById('insightsObsCategorias');
+  const elPal = document.getElementById('insightsObsPalavras');
+  const elOps = document.getElementById('insightsObsOperadores');
+  if (!elResumo || !elCats || !elPal || !elOps) return;
+
+  elResumo.textContent = 'Analisando...';
+  elCats.innerHTML = '<span class="text-muted">Carregando...</span>';
+  elPal.innerHTML = '<span class="text-muted">Carregando...</span>';
+  elOps.innerHTML = '<span class="text-muted">Carregando...</span>';
+
+  const token = ++_reqInsightsObsToken;
+  try {
+    const params = new URLSearchParams({
+      mes: String(mes || ''),
+      ano: String(ano || ''),
+      tipo: DASHBOARD_TIPO || 'consultor',
+    });
+    const r = await fetch(`/api/supervisor/observacoes-insights?${params.toString()}`);
+    const data = await r.json();
+    if (token !== _reqInsightsObsToken) return;
+    if (!data.ok) throw new Error(data.erro || 'Erro ao analisar observacoes');
+
+    const totalObs = Number(data.total_observacoes || 0);
+    elResumo.textContent = `${totalObs} observacoes analisadas`;
+
+    const cats = data.top_categorias_sem_outros || data.top_categorias || [];
+    const base = totalObs > 0 ? totalObs : 1;
+    elCats.innerHTML = cats.length
+      ? cats.map((c) => {
+          const qtd = Number(c.qtd || 0);
+          const pct = Math.max(0, Math.min(100, Math.round((qtd / base) * 100)));
+          return `
+            <div class="mb-2">
+              <div class="d-flex justify-content-between">
+                <strong>${escapeHtml(c.categoria)}</strong>
+                <span class="text-muted">${qtd}</span>
+              </div>
+              <div class="progress" style="height:6px;">
+                <div class="progress-bar" role="progressbar" style="width:${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '<span class="text-muted">Sem dados no periodo.</span>';
+
+    const palavras = data.top_palavras || [];
+    elPal.innerHTML = palavras.length
+      ? palavras.slice(0, 8).map((p) => `<span class="badge text-bg-light border me-1 mb-1">${escapeHtml(p.palavra)} (${p.qtd})</span>`).join('')
+      : '<span class="text-muted">Sem palavras relevantes.</span>';
+
+    const ops = (data.operadores || []).slice(0, 6);
+    elOps.innerHTML = ops.length
+      ? ops.map((o) => `<div class="mb-1"><strong>${escapeHtml(o.operador)}</strong>: ${o.total_observacoes} <span class="text-muted">(${escapeHtml(o.principal)})</span></div>`).join('')
+      : '<span class="text-muted">Sem observacoes por operador.</span>';
+  } catch (erro) {
+    elResumo.textContent = 'Falha ao analisar';
+    elCats.innerHTML = `<span class="text-danger">${escapeHtml(erro.message || 'Erro')}</span>`;
+    elPal.innerHTML = '<span class="text-muted">-</span>';
+    elOps.innerHTML = '<span class="text-muted">-</span>';
+  }
+}
+
+function badgeCarteira(carteira) {
+  const c = String(carteira || '').trim();
+  if (!c) return '';
+  const mapa = {
+    'Clientes Especiais': 'text-secondary border-secondary-subtle bg-light',
+    'Sem Pedido 90-150d': 'text-warning-emphasis border-warning-subtle bg-warning-subtle',
+    'Prox. Inativacao': 'text-warning-emphasis border-warning-subtle bg-warning-subtle',
+    'Clientes Inativos': 'text-secondary border-secondary-subtle bg-light',
+    'Retornar': 'text-info-emphasis border-info-subtle bg-info-subtle',
+  };
+  const cls = mapa[c] || 'text-secondary border-secondary-subtle bg-light';
+  return `<span class="badge rounded-pill ms-2 ${cls}" style="font-size:.66rem;font-weight:600;padding:.18rem .45rem;border:1px solid;">${escapeHtml(c)}</span>`;
 }
 
 async function abrirDetalheConversao(operadorId, operadorNome) {
@@ -158,7 +303,7 @@ async function abrirDetalheConversao(operadorId, operadorNome) {
 
   titulo.textContent = `Conversoes de ${operadorNome || 'Operador'} - ${mes}/${ano}`;
   resumo.innerHTML = '<span class="text-muted">Carregando...</span>';
-  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
 
   const modalEl = document.getElementById('modalDetalheConversao');
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -178,34 +323,238 @@ async function abrirDetalheConversao(operadorId, operadorNome) {
     if (!data.ok) throw new Error(data.erro || 'Erro ao carregar detalhe');
 
     const rs = data.resumo || {};
-    resumo.innerHTML = `<strong>Compradores:</strong> ${rs.compradores || 0} <span class="mx-2">|</span> <strong>Cruzou saida:</strong> ${rs.cruzaram_saida || 0} <span class="mx-2">|</span> <strong>Nao cruzou:</strong> ${rs.nao_cruzaram || 0}`;
+    resumo.innerHTML = `<strong>Compradores:</strong> ${rs.compradores || 0} <span class="mx-2">|</span> <strong>Confirmados Oracle:</strong> ${rs.confirmados_oracle || 0} <span class="mx-2">|</span> <strong>Nao confirmados:</strong> ${rs.nao_confirmados_oracle || 0}`;
 
     const itens = data.itens || [];
     if (!itens.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhum cliente com compra no periodo.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Nenhum cliente com compra no periodo.</td></tr>';
       return;
     }
 
     tbody.innerHTML = itens.map((it) => `
       <tr>
-        <td>${escapeHtml(it.cliente_nome)} <span class="text-muted">(${escapeHtml(it.cd_cliente_oracle || '-')})</span></td>
+        <td>${escapeHtml(it.cliente_nome)} <span class="text-muted">(${escapeHtml(it.cd_cliente_oracle || '-')})</span>${badgeCarteira(it.carteira_origem)}</td>
         <td class="text-center">${it.qtd_compras || 0}</td>
         <td class="text-center">${escapeHtml(it.ultima_compra_em || '-')}</td>
         <td class="text-end">${escapeHtml(it.receita_fmt || 'R$ 0,00')}</td>
-        <td class="text-center">${it.cruzou_saida ? '<span class="text-success fw-semibold">✓</span>' : '<span class="text-danger fw-semibold">✕</span>'}</td>
+        <td class="text-center">
+          ${it.pedido_oracle_confirmado
+            ? `<span class="text-success fw-semibold">&#10003;</span> <span class="text-muted">#${escapeHtml(it.pedido_oracle_codigo || '')}</span>`
+            : '<span class="text-danger fw-semibold">&#10005;</span>'}
+        </td>
+        <td class="text-center">
+          ${(it.cd_cliente_oracle || it.cliente_id)
+            ? `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="abrirDetalhesOracleSupervisor('${String(it.cd_cliente_oracle || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', ${Number(it.cliente_id || 0)})"><i class="bi bi-eye"></i></button>`
+            : '<span class="text-muted">-</span>'}
+        </td>
       </tr>
     `).join('');
   } catch (erro) {
     resumo.innerHTML = `<span class="text-danger">${escapeHtml(erro.message || 'Erro')}</span>`;
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Erro ao carregar.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Erro ao carregar.</td></tr>';
   }
 }
 
+async function copiarResumoFechamento() {
+  const texto = _resumoFechamentoTexto || 'Sem resumo carregado.';
+  try {
+    await navigator.clipboard.writeText(texto);
+    alert('Resumo copiado.');
+  } catch (_) {
+    alert('Nao foi possivel copiar automaticamente.\\n\\n' + texto);
+  }
+}
+
+function abrirDetalhesOracleSupervisor(cdClienteOracle, clienteId) {
+  const cd = String(cdClienteOracle || '').trim();
+  const idCliente = Number(clienteId || 0);
+  if (!cd && !idCliente) return;
+  const parseMesAnoAtual = () => {
+    const select = document.getElementById('filtroMes');
+    const valor = String(select?.value || '').trim();
+    const [mesTxt, anoTxt] = valor.split('-');
+    const mes = Number(mesTxt);
+    const ano = Number(anoTxt);
+    if (!mes || !ano || mes < 1 || mes > 12) return null;
+    const inicio = new Date(ano, mes - 1, 1);
+    const fim = new Date(ano, mes, 1);
+    const fmtIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { inicioIso: fmtIso(inicio), fimIso: fmtIso(fim) };
+  };
+  const formatarDataPedido = (valor) => {
+    if (!valor) return '-';
+    const dt = new Date(valor);
+    if (!Number.isNaN(dt.getTime())) return dt.toLocaleDateString('pt-BR');
+    const txt = String(valor);
+    const m = txt.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    return txt;
+  };
+  const periodo = parseMesAnoAtual();
+
+  const modalEl = document.getElementById('modalDetalhesOracleSupervisor');
+  const content = document.getElementById('detalhesOracleSupervisorContent');
+  if (!modalEl || !content) return;
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+  content.innerHTML = `
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Carregando detalhes do Oracle...</p>
+    </div>
+  `;
+
+  const params = new URLSearchParams();
+  if (periodo) {
+    params.set('data_inicio', periodo.inicioIso);
+    params.set('data_fim', periodo.fimIso);
+  } else {
+    params.set('janela_dias', '365');
+  }
+  const url = cd
+    ? `/detalhes-cliente-oracle-cd/${encodeURIComponent(cd)}?${params.toString()}`
+    : `/detalhes-cliente-oracle/${idCliente}?${params.toString()}`;
+  fetch(url)
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data || !data.success) {
+        content.innerHTML = `<div class="alert alert-danger mb-0">Nao foi possivel carregar os detalhes.</div>`;
+        return;
+      }
+      const cliente = data.cliente || {};
+      const pedidos = (data.pedidos_oracle || []).slice().sort((a, b) => {
+        const da = new Date(a?.dt_pedido || 0).getTime();
+        const db = new Date(b?.dt_pedido || 0).getTime();
+        return db - da;
+      });
+      const itensOracle = data.itens_oracle || [];
+      const pedidosPeriodoSet = new Set(
+        pedidos
+          .map((p) => String(p.cd_pedido || '').trim())
+          .filter((v) => v)
+      );
+      const itensPeriodo = itensOracle.filter((it) => pedidosPeriodoSet.has(String(it.cd_pedido || '').trim()));
+
+      const linhas = pedidos.slice(0, 20).map((p) => `
+        <tr>
+          <td>${escapeHtml(formatarDataPedido(p.dt_pedido))}</td>
+          <td>${escapeHtml(p.cd_pedido || '-')}</td>
+          <td class="text-end">${escapeHtml((p.total_pedido !== null && p.total_pedido !== undefined) ? Number(p.total_pedido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-')}</td>
+          <td>${escapeHtml(p.situacao || '-')}</td>
+        </tr>
+      `).join('');
+      const periodoInicio = data.periodo_inicio ? formatarDataPedido(data.periodo_inicio) : '';
+      let periodoFim = '';
+      if (data.periodo_fim) {
+        const dtFim = new Date(data.periodo_fim);
+        if (!Number.isNaN(dtFim.getTime())) {
+          dtFim.setDate(dtFim.getDate() - 1);
+          periodoFim = dtFim.toLocaleDateString('pt-BR');
+        } else {
+          periodoFim = formatarDataPedido(data.periodo_fim);
+        }
+      }
+      const periodoLabel = (periodoInicio && periodoFim)
+        ? `${periodoInicio} a ${periodoFim}`
+        : 'janela padrao';
+
+      const itensPorPedido = {};
+      for (const it of itensPeriodo) {
+        const chavePedido = String(it.cd_pedido || '').trim();
+        if (!chavePedido) continue;
+        if (!itensPorPedido[chavePedido]) itensPorPedido[chavePedido] = [];
+        itensPorPedido[chavePedido].push(it);
+      }
+      const blocosItensPorPedido = pedidos.slice(0, 20).map((pedido) => {
+        const chavePedido = String(pedido.cd_pedido || '').trim();
+        const itens = (itensPorPedido[chavePedido] || []).slice();
+        if (!itens.length) return '';
+        const linhasItensPedido = itens.map((it) => {
+          const qtd = Number(it.quantidade || 0);
+          const unit = Number(it.precounitario || 0);
+          const desc = (it.pe_desconto !== null && it.pe_desconto !== undefined && String(it.pe_desconto) !== '')
+            ? Number(it.pe_desconto)
+            : null;
+          const fatorDesc = (desc !== null && !Number.isNaN(desc)) ? (1 - (desc / 100)) : 1;
+          const totalItem = (qtd > 0 && unit > 0) ? (qtd * unit * fatorDesc) : null;
+          return `
+            <tr>
+              <td>${escapeHtml(it.nome_produto || it.idproduto || '-')}</td>
+              <td class="text-center">${Number.isFinite(qtd) ? qtd : '-'}</td>
+              <td class="text-end">${Number.isFinite(unit) ? unit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</td>
+              <td class="text-center">${(desc !== null && !Number.isNaN(desc)) ? `${desc.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%` : '-'}</td>
+              <td class="text-end">${(totalItem !== null && Number.isFinite(totalItem)) ? totalItem.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</td>
+            </tr>
+          `;
+        }).join('');
+        return `
+          <div class="border rounded-2 p-2 mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Pedido #${escapeHtml(chavePedido)}</strong>
+              <span class="text-muted small">${escapeHtml(formatarDataPedido(pedido.dt_pedido))}</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th class="text-center">Qtd</th>
+                    <th class="text-end">Unitario</th>
+                    <th class="text-center">Desconto</th>
+                    <th class="text-end">Total item</th>
+                  </tr>
+                </thead>
+                <tbody>${linhasItensPedido}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      content.innerHTML = `
+        <div class="mb-2">
+          <strong>${escapeHtml(cliente.nome || '-')}</strong>
+          <span class="text-muted">(${escapeHtml(cliente.cd_cliente_oracle || cd)})</span>
+        </div>
+        <div class="text-muted small mb-2">Periodo aplicado: ${escapeHtml(periodoLabel)}</div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Pedido</th>
+                <th class="text-end">Valor</th>
+                <th>Situacao</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${linhas || '<tr><td colspan="4" class="text-center text-muted py-3">Sem pedidos no periodo.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+        <hr class="my-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Itens dos pedidos no periodo</strong>
+          <span class="text-muted small">${itensPeriodo.length} item(ns)</span>
+        </div>
+        ${blocosItensPorPedido || '<div class="text-center text-muted py-3 border rounded-2">Sem itens detalhados no periodo.</div>'}
+      `;
+    })
+    .catch(() => {
+      content.innerHTML = `<div class="alert alert-danger mb-0">Erro ao consultar Oracle.</div>`;
+    });
+}
+
 async function carregarLigacoesMes() {
-  const consultorId = document.getElementById('filtroConsultorMes').value;
-  const [mes, ano] = document.getElementById('filtroMesDetalhes').value.split('-');
+  const selectConsultor = document.getElementById('filtroConsultorMes');
+  const selectMes = document.getElementById('filtroMesDetalhes');
   const tbody = document.getElementById('tbodyLigacoesMes');
   const resumo = document.getElementById('resumoLigacoesMes');
+  if (!selectConsultor || !selectMes || !tbody || !resumo) return;
+
+  const consultorId = selectConsultor.value;
+  const [mes, ano] = selectMes.value.split('-');
 
   tbody.innerHTML = `
     <tr>
@@ -225,15 +574,15 @@ async function carregarLigacoesMes() {
     const r = await fetch(`/api/supervisor/ligacoes-por-mes?${params.toString()}`);
     const data = await r.json();
     if (token !== _reqLigacoesMesToken) return;
-    if (!data.ok) throw new Error(data.erro || 'Erro ao carregar ligações');
+    if (!data.ok) throw new Error(data.erro || 'Erro ao carregar ligacoes');
 
     const est = data.estatisticas || {};
     resumo.innerHTML = `
       <div class="alert alert-info py-2 mb-2">
         <strong>${escapeHtml(data.consultor_nome)}</strong>:
-        ${est.total_ligacoes || 0} ligações •
-        ${est.vendas || 0} vendas •
-        ${est.conversao || 0}% conversão •
+        ${est.total_ligacoes || 0} ligacoes |
+        ${est.vendas || 0} vendas |
+        ${est.conversao || 0}% conversao |
         ${escapeHtml(est.receita_fmt || 'R$ 0,00')}
       </div>
     `;
@@ -242,7 +591,7 @@ async function carregarLigacoesMes() {
       tbody.innerHTML = `
         <tr>
           <td colspan="7" class="text-center text-muted py-4">
-            Nenhuma ligação encontrada para esse filtro
+            Nenhuma ligacao encontrada para esse filtro
           </td>
         </tr>
       `;
@@ -278,11 +627,11 @@ async function carregarLigacoesMes() {
 if (typeof Chart === 'undefined') {
   console.error('Chart.js nao carregou no painel do supervisor.');
 } else {
-// Configuração dos gráficos
+// Configuracao dos graficos
 Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 Chart.defaults.font.size = 13;
 
-// Gráfico de Ligações por Dia
+// Grafico de Ligacoes por Dia
 const ctxDias = document.getElementById('chartLigacoesDias');
 if (ctxDias) {
   const ligacoesDias = {{ ligacoes_por_dia|tojson|safe }};
@@ -295,7 +644,7 @@ if (ctxDias) {
     data: {
       labels: ligacoesDias.map(d => d.data).reverse(),
       datasets: [{
-        label: 'Ligações',
+        label: 'Ligacoes',
         data: ligacoesDias.map(d => d.total).reverse(),
         borderColor: '#2563eb',
         backgroundColor: 'rgba(37, 99, 235, 0.1)',
@@ -336,7 +685,7 @@ if (ctxDias) {
   });
 }
 
-// Gráfico de Resultados
+// Grafico de Resultados
 const ctxResultados = document.getElementById('chartResultados');
 if (ctxResultados) {
   const resultados = {{ resultados_chart|tojson|safe }};
@@ -347,7 +696,7 @@ if (ctxResultados) {
   _chartResultados = new Chart(ctxResultados, {
     type: 'doughnut',
     data: {
-      labels: ['Comprou', 'Não Comprou', 'Retornar', 'Sem Interesse', 'Relacionamento', 'Cliente Inativo'],
+      labels: ['Comprou', 'Nao Comprou', 'Retornar', 'Sem Interesse', 'Relacionamento', 'Cliente Inativo'],
       datasets: [{
         data: [
           resultados.comprou || 0,
@@ -401,3 +750,4 @@ if (ctxResultados) {
 }
 }
 </script>
+

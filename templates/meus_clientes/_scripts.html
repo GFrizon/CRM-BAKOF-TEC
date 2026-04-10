@@ -1153,11 +1153,29 @@ function limparFiltroMesConsultor() {
 
 function _iniciarDebounceFiltros() {
   const timers = new WeakMap();
+  const buscaInput = document.getElementById('buscaRapida');
+  const buscaStatus = document.getElementById('buscaStatus');
+  const valorInicialBusca = buscaInput ? (buscaInput.value || '') : '';
+
+  const setBuscaStatus = (msg, isWarning = false) => {
+    if (!buscaStatus) return;
+    buscaStatus.textContent = msg || '';
+    buscaStatus.classList.toggle('text-danger', !!isWarning);
+    buscaStatus.classList.toggle('text-muted', !isWarning);
+  };
+
   const scheduleSubmit = (form, ms) => {
     if (!form) return;
     const prev = timers.get(form);
     if (prev) clearTimeout(prev);
     const timer = setTimeout(() => {
+      if (buscaInput && buscaStatus) {
+        const atual = (buscaInput.value || '').trim();
+        const inicial = (valorInicialBusca || '').trim();
+        if (atual !== inicial) {
+          setBuscaStatus('Buscando...');
+        }
+      }
       document.body.classList.add('tab-switching');
       _mostrarSkeletonTrocaAba();
       form.submit();
@@ -1174,6 +1192,33 @@ function _iniciarDebounceFiltros() {
       scheduleSubmit(control.form, ms);
     });
   });
+
+  document.querySelectorAll('.js-auto-submit-search').forEach((input) => {
+    if (input.dataset.debounceBound === '1') return;
+    input.dataset.debounceBound = '1';
+    const ms = Math.max(180, parseInt(input.dataset.debounceMs || '380', 10) || 380);
+    input.addEventListener('input', () => {
+      scheduleSubmit(input.form, ms);
+    });
+  });
+}
+
+function _atualizarStatusBuscaTela() {
+  const buscaInput = document.getElementById('buscaRapida');
+  const buscaStatus = document.getElementById('buscaStatus');
+  if (!buscaInput || !buscaStatus) return;
+  const termo = (buscaInput.value || '').trim();
+  if (!termo) {
+    buscaStatus.textContent = 'Digite para buscar automaticamente.';
+    buscaStatus.classList.remove('text-danger');
+    buscaStatus.classList.add('text-muted');
+    return;
+  }
+  const visiveis = _contarClientesExibidos();
+  buscaStatus.textContent = `Busca por "${termo}": ${visiveis} resultado(s).`;
+  const semResultado = visiveis === 0;
+  buscaStatus.classList.toggle('text-danger', semResultado);
+  buscaStatus.classList.toggle('text-muted', !semResultado);
 }
 
 // CARREGAR DADOS DO MÊS SELECIONADO
@@ -1185,6 +1230,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   iniciarAutoSyncIndicadoresInativos();
   iniciarMonitorSyncOracle();
   atualizarInfoQuickActions();
+  _atualizarStatusBuscaTela();
   atualizarBadgesAbasAssincrono();
 
   const mesFiltro = '{{ mes_filtro }}';
@@ -1203,7 +1249,7 @@ document.addEventListener('DOMContentLoaded', async function() {
               <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Total ligações</div><div class="stat-value">${stats.total_ligacoes}</div></div></div></div>
               <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Positivo</div><div class="stat-value" style="color:#2563eb;">${stats.positivos || 0}</div><small class="text-muted">${stats.taxa_positiva || 0}%</small></div></div></div>
               <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Converteu</div><div class="stat-value" style="color:#16a34a;">${stats.vendas}</div></div></div></div>
-              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Convers?o</div><div class="stat-value">${stats.taxa_conversao}%</div></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Conversão</div><div class="stat-value">${stats.taxa_conversao}%</div></div></div></div>
               <div class="col-md-4"><div class="card stat-card"><div class="card-body"><div class="text-muted">Receita</div><div class="stat-value" style="font-size:1.1rem;">${stats.receita_fmt}</div></div></div></div>
             </div>
             ${data.ligacoes.length > 0 ? `
@@ -1367,14 +1413,28 @@ function _linhaVisivel(row) {
   return row.style.display !== 'none' && row.offsetParent !== null;
 }
 
+function _contarClientesExibidos() {
+  if (_filtroCriticosAtivo) {
+    const rowsCriticos = _linhasClientesTabela();
+    return rowsCriticos.filter(_linhaVisivel).length;
+  }
+  const cards = Array.from(document.querySelectorAll('.rep-card'));
+  const cardsVisiveis = cards.filter((card) => card.style.display !== 'none' && card.offsetParent !== null);
+  if (cardsVisiveis.length > 0) {
+    return cardsVisiveis.reduce((acc, card) => acc + (parseInt(card.dataset.totalClientes || '0', 10) || 0), 0);
+  }
+  const rows = _linhasClientesTabela();
+  return rows.filter(_linhaVisivel).length;
+}
+
 function atualizarInfoQuickActions() {
   const info = document.getElementById('quickActionInfo');
   if (!info) return;
-  const rows = _linhasClientesTabela();
-  const visiveis = rows.filter(_linhaVisivel).length;
+  const visiveis = _contarClientesExibidos();
   info.textContent = _filtroCriticosAtivo
     ? `Filtro criticos ativo: ${visiveis} cliente(s)`
     : `Mostrando ${visiveis} cliente(s)`;
+  _atualizarStatusBuscaTela();
 }
 
 function ligarProximoCliente() {
@@ -2126,12 +2186,12 @@ function sincronizarClientesManuais() {
       let msg = `SINCRONIZAÇÃO concluída!\n\n` +
             `Total: ${data.total_base || 0}\n` +
             `Atualizados: ${data.atualizados || 0}\n` +
-            `N?o encontrados: ${data.nao_encontrados || 0}\n` +
+            `Não encontrados: ${data.nao_encontrados || 0}\n` +
             `Sem CNPJ: ${data.sem_cnpj || 0}`;
       
-      // Mostrar lista de n?o encontrados para debug
+      // Mostrar lista de não encontrados para debug
       if (data.nao_encontrados_lista && data.nao_encontrados_lista.length > 0) {
-        msg += `\n\nN?o encontrados (primeiros 10):\n${data.nao_encontrados_lista.join('\n')}`;
+        msg += `\n\nNão encontrados (primeiros 10):\n${data.nao_encontrados_lista.join('\n')}`;
       }
       
       alert(msg);

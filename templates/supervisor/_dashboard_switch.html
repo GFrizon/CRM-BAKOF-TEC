@@ -1,8 +1,36 @@
-<div class="d-flex justify-content-end gap-2 mb-3">
-  <a class="btn btn-sm {{ 'btn-primary' if dashboard_tipo == 'consultor' else 'btn-outline-primary' }}" href="{{ url_for('dashboard_supervisor') }}">
-    <i class="bi bi-people-fill"></i> Consultores
-  </a>
-  <a class="btn btn-sm {{ 'btn-primary' if dashboard_tipo == 'televendas' else 'btn-outline-primary' }}" href="{{ url_for('dashboard_supervisor_televendas') }}">
-    <i class="bi bi-headset"></i> Televendas
-  </a>
+{% set secao_atual = request.args.get('secao') or 'dashboard' %}
+{% set mes_atual = request.args.get('mes') %}
+{% set ano_atual = request.args.get('ano') %}
+<div class="panel-card mb-3" style="overflow:visible;">
+  <div class="panel-body py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="text-muted small fw-semibold d-flex align-items-center gap-2">
+      {% if secao_atual == 'fechamento' %}
+      <i class="bi bi-clipboard-data"></i>
+      <span>Setor de fechamento</span>
+      {% else %}
+      <i class="bi bi-sliders2"></i>
+      <span>Visão do dashboard</span>
+      {% endif %}
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <div class="btn-group btn-group-sm" role="group" aria-label="Troca de visão do dashboard">
+        <a
+          class="btn {{ 'btn-primary' if dashboard_tipo == 'consultor' else 'btn-outline-primary' }}"
+          href="{{ url_for('dashboard_supervisor', secao=secao_atual, mes=mes_atual, ano=ano_atual) }}"
+        >
+          <i class="bi bi-people-fill"></i> Consultores
+        </a>
+        <a
+          class="btn {{ 'btn-primary' if dashboard_tipo == 'televendas' else 'btn-outline-primary' }}"
+          href="{{ url_for('dashboard_supervisor_televendas', secao=secao_atual, mes=mes_atual, ano=ano_atual) }}"
+        >
+          <i class="bi bi-headset"></i> Televendas
+        </a>
+      </div>
+      <button type="button" class="btn btn-danger btn-sm" onclick="gerarPdfFechamento()">
+        <i class="bi bi-file-earmark-pdf-fill"></i> Gerar PDF
+      </button>
+    </div>
+  </div>
 </div>

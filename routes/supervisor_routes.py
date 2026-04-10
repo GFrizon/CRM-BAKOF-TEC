@@ -1,6 +1,11 @@
 from datetime import datetime, timedelta
+from io import BytesIO
+import os
+import re
+import unicodedata
+from collections import Counter, defaultdict
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask import flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import case, desc, func, or_
 from sqlalchemy.orm import joinedload
@@ -10,6 +15,10 @@ from core.extensions import db
 from core.helpers import _percent, formatar_dinheiro, s
 from core.models import Banner, Cliente, Ligacao, Usuario, SupervisorRepresentanteVinculo, SyncResumoDiario
 from routes.clientes_ligacoes.badges import _total_inativos_badge
+from routes.clientes_ligacoes.analytics_api import (
+    _contagem_90_150_por_usuario_mesma_regra_lista_oracle,
+    consultar_resultados_consultores_mes,
+)
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
 from services.banner_service import get_banners_ativos
 from services.inativos_movimento_service import carregar_movimento_inativos
@@ -80,8 +89,7 @@ def register_supervisor_routes(app):
         hoje,
     ) -> dict:
         total_consultores = Usuario.query.filter_by(tipo=dashboard_tipo, ativo=True).count()
-        # Regra solicitada: card "Total de Clientes" sempre global
-        # (mesmo valor em Consultores e Televendas).
+        # Regra: card "Total de Clientes" sempre global.
         total_clientes = Cliente.query.filter(Cliente.ativo == True).count()
         total_ligacoes = (
             db.session.query(func.count(Ligacao.id))
@@ -109,11 +117,18 @@ def register_supervisor_routes(app):
         limite_730 = agora - timedelta(days=730)
 
         try:
-            # Mesma fonte da aba Oracle para manter o número idêntico ao da lista.
-            clientes_oracle = carregar_clientes_oracle_deduplicados(app.logger, periodo_oracle=None)
-            total_sem_pedido_90_150 = len(clientes_oracle or [])
+            # Padroniza com a mesma regra do fechamento.
+            if dashboard_tipo == "televendas":
+                total_sem_pedido_90_150 = 0
+            elif filtrar_carteira_por_vinculo:
+                contagem_por_operador = _contagem_90_150_por_usuario_mesma_regra_lista_oracle(
+                    tipo_operador=dashboard_tipo or "consultor"
+                ) or {}
+                total_sem_pedido_90_150 = int(sum(contagem_por_operador.values()))
+            else:
+                clientes_oracle = carregar_clientes_oracle_deduplicados(app.logger, periodo_oracle=None) or []
+                total_sem_pedido_90_150 = len(clientes_oracle)
         except Exception:
-            # Fallback local caso Oracle indisponível.
             total_sem_pedido_90_150_query = (
                 Cliente.query
                 .filter(
@@ -123,6 +138,10 @@ def register_supervisor_routes(app):
                     Cliente.ultimo_pedido_oracle.between(limite_150, limite_90),
                 )
             )
+            if filtrar_carteira_por_vinculo:
+                total_sem_pedido_90_150_query = total_sem_pedido_90_150_query.filter(
+                    Cliente.consultor_id.in_(operadores_ids_query)
+                )
             total_sem_pedido_90_150 = total_sem_pedido_90_150_query.count()
 
         total_proximos_inativacao_query = (
@@ -134,6 +153,10 @@ def register_supervisor_routes(app):
                 Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
             )
         )
+        if filtrar_carteira_por_vinculo:
+            total_proximos_inativacao_query = total_proximos_inativacao_query.filter(
+                Cliente.consultor_id.in_(operadores_ids_query)
+            )
         total_proximos_inativacao = total_proximos_inativacao_query.count()
 
         total_inativos_query = (
@@ -145,16 +168,11 @@ def register_supervisor_routes(app):
                 Cliente.ultimo_pedido_oracle.between(limite_730, limite_181),
             )
         )
-        if filtrar_carteira_por_vinculo:
-            total_inativos_query = total_inativos_query.filter(
-                Cliente.consultor_id.in_(operadores_ids_query)
-            )
+        # Excecao da regra: inativos permanece global.
         total_inativos = total_inativos_query.count()
         if dashboard_tipo == "televendas":
-            # Alinha com a mesma fonte usada na aba de Inativos.
             total_inativos = int(_total_inativos_badge(None) or 0)
 
-        # Retornos vencidos: clientes com proxima_ligacao no passado (equipe não ligou).
         total_retorno_atrasado_query = (
             Cliente.query
             .filter(
@@ -169,7 +187,6 @@ def register_supervisor_routes(app):
             )
         total_retorno_atrasado = total_retorno_atrasado_query.count()
 
-        # Carteira em risco: proximos inativação (151-180d) sem qualquer ligação nos últimos 30d.
         limite_30d = agora - timedelta(days=30)
         ids_com_contato_recente = (
             db.session.query(Ligacao.cliente_id)
@@ -206,7 +223,6 @@ def register_supervisor_routes(app):
             "total_retorno_atrasado": total_retorno_atrasado,
             "total_carteira_risco": total_carteira_risco,
         }
-
     def _carregar_dados_dashboard_supervisor(
         dashboard_tipo: str,
         hoje,
@@ -323,7 +339,9 @@ def register_supervisor_routes(app):
             db.session.query(Usuario.id)
             .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
         )
-        filtrar_carteira_por_vinculo = (dashboard_tipo == "consultor")
+        # Regra operacional: tudo por vinculados do tipo ativo,
+        # exceto inativos (global).
+        filtrar_carteira_por_vinculo = True
         kpis = _calcular_kpis_dashboard_supervisor(
             dashboard_tipo=dashboard_tipo,
             operadores_ids_query=operadores_ids_query,
@@ -428,6 +446,108 @@ def register_supervisor_routes(app):
             },
         }
         return payload, 200
+
+    def _analisar_observacoes_mes_supervisor(
+        *,
+        mes: int,
+        ano: int,
+        tipo_operador: str,
+    ):
+        inicio = datetime(ano, mes, 1)
+        fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
+
+        linhas = (
+            db.session.query(Usuario.nome, Ligacao.observacao)
+            .join(Usuario, Usuario.id == Ligacao.consultor_id)
+            .filter(Ligacao.data_hora >= inicio, Ligacao.data_hora < fim)
+            .filter(Usuario.tipo == tipo_operador, Usuario.ativo == True)
+            .filter(Ligacao.observacao.isnot(None))
+            .all()
+        )
+
+        def _norm(txt: str) -> str:
+            base = str(txt or "").strip().lower()
+            base = unicodedata.normalize("NFD", base)
+            base = "".join(ch for ch in base if unicodedata.category(ch) != "Mn")
+            return base
+
+        categorias_regras = {
+            "Preço": ("preco", "caro", "desconto", "valor", "custo", "orcamento"),
+            "Estoque/Prazo": ("estoque", "falta", "prazo", "entrega", "demora", "aguardando"),
+            "Concorrência": ("concorrente", "concorrencia", "outra marca", "outra loja"),
+            "Timing/Retorno": ("retornar", "retorno", "depois", "proximo mes", "sem tempo"),
+            "Contato": ("nao atende", "nao atendeu", "telefone", "whatsapp", "wats", "enviado", "catalogo"),
+            "Crédito": ("credito", "limite", "inadimpl", "boleto", "pagamento"),
+        }
+        stopwords = {
+            "de", "da", "do", "e", "a", "o", "em", "no", "na", "para", "com", "sem", "por",
+            "um", "uma", "que", "mais", "ja", "foi", "ser", "ao", "as", "os", "dos", "das",
+            "cliente", "contato", "ligacao", "hoje", "amanha", "ontem",
+            "nao", "sim", "rep", "nosso", "nossa", "dele", "dela", "ele", "ela",
+            "watts", "wats", "zap", "enviado", "catalogo", "coloquei", "falei",
+        }
+
+        total_obs = 0
+        categorias_count = Counter()
+        palavras_count = Counter()
+        amostras_categoria = defaultdict(list)
+        por_operador = defaultdict(lambda: Counter())
+
+        for operador, obs in linhas:
+            txt = str(obs or "").strip()
+            if not txt:
+                continue
+            total_obs += 1
+            texto = _norm(txt)
+            cats = []
+            for nome_cat, termos in categorias_regras.items():
+                if any(termo in texto for termo in termos):
+                    cats.append(nome_cat)
+            if not cats:
+                cats = ["Outros"]
+
+            for c in cats:
+                categorias_count[c] += 1
+                por_operador[operador or "-"][c] += 1
+                if len(amostras_categoria[c]) < 3:
+                    amostras_categoria[c].append(txt[:180])
+
+            tokens = re.findall(r"[a-zA-Z0-9]{3,}", texto)
+            for t in tokens:
+                if t in stopwords:
+                    continue
+                palavras_count[t] += 1
+
+        top_categorias = [
+            {"categoria": cat, "qtd": int(qtd), "amostras": amostras_categoria.get(cat, [])}
+            for cat, qtd in categorias_count.most_common(6)
+        ]
+        top_categorias_sem_outros = [
+            c for c in top_categorias if c.get("categoria") != "Outros"
+        ] or top_categorias
+        top_palavras = [
+            {"palavra": p, "qtd": int(q)}
+            for p, q in palavras_count.most_common(12)
+        ]
+        operadores = []
+        for nome, cnt in sorted(por_operador.items(), key=lambda kv: sum(kv[1].values()), reverse=True):
+            total = int(sum(cnt.values()))
+            principal = cnt.most_common(1)[0][0] if total else "Outros"
+            operadores.append(
+                {"operador": nome, "total_observacoes": total, "principal": principal}
+            )
+
+        return {
+            "ok": True,
+            "mes": mes,
+            "ano": ano,
+            "tipo": tipo_operador,
+            "total_observacoes": int(total_obs),
+            "top_categorias": top_categorias,
+            "top_categorias_sem_outros": top_categorias_sem_outros,
+            "top_palavras": top_palavras,
+            "operadores": operadores,
+        }, 200
 
     def _sincronizar_vinculos_tg650_supervisor_repr(supervisor_id: int, codigo_supervisor_tg650: str):
         codigo_base = s(codigo_supervisor_tg650)
@@ -557,6 +677,65 @@ def register_supervisor_routes(app):
             return jsonify({"ok": False, "erro": "Parametros invalidos"}), 400
         except Exception as e:
             return jsonify({"ok": False, "erro": str(e)}), 500
+
+    @app.route("/api/supervisor/observacoes-insights")
+    @login_required
+    def api_supervisor_observacoes_insights():
+        if current_user.tipo != "supervisor":
+            return jsonify({"ok": False, "erro": "Acesso negado"}), 403
+        try:
+            mes = int(request.args.get("mes", datetime.now().month))
+            ano = int(request.args.get("ano", datetime.now().year))
+            if mes < 1 or mes > 12:
+                return jsonify({"ok": False, "erro": "Mes invalido"}), 400
+            tipo_operador = (request.args.get("tipo") or "consultor").strip().lower()
+            if tipo_operador not in ("consultor", "televendas"):
+                return jsonify({"ok": False, "erro": "Tipo de dashboard invalido"}), 400
+            payload, status = _analisar_observacoes_mes_supervisor(
+                mes=mes,
+                ano=ano,
+                tipo_operador=tipo_operador,
+            )
+            return jsonify(payload), status
+        except ValueError:
+            return jsonify({"ok": False, "erro": "Parametros invalidos"}), 400
+        except Exception as e:
+            return jsonify({"ok": False, "erro": str(e)}), 500
+
+    @app.route("/supervisor/fechamento/pdf")
+    @login_required
+    def supervisor_fechamento_pdf():
+        if current_user.tipo != "supervisor":
+            return redirect(url_for("meus_clientes"))
+        try:
+            mes = int(request.args.get("mes", datetime.now().month))
+            ano = int(request.args.get("ano", datetime.now().year))
+            tipo = (request.args.get("tipo") or "consultor").strip().lower()
+            if tipo not in ("consultor", "televendas"):
+                tipo = "consultor"
+            meta_conversao = float(request.args.get("meta_conversao", 10) or 10)
+            payload, status = consultar_resultados_consultores_mes(
+                mes,
+                ano,
+                meta_conversao=meta_conversao,
+                tipo_operador=tipo,
+            )
+            if status != 200 or not payload.get("ok"):
+                raise RuntimeError(payload.get("erro") or "Falha ao carregar dados de fechamento")
+
+            dashboard_titulo = "Televendas" if tipo == "televendas" else "Consultores"
+            pdf_bytes = _gerar_pdf_fechamento(payload, dashboard_titulo)
+            filename = f"fechamento_{tipo}_{ano}_{str(mes).zfill(2)}.pdf"
+            return send_file(
+                BytesIO(pdf_bytes),
+                mimetype="application/pdf",
+                as_attachment=True,
+                download_name=filename,
+            )
+        except Exception as e:
+            flash(f"Não foi possível gerar PDF: {str(e)}", "danger")
+            endpoint = "dashboard_supervisor_televendas" if (request.args.get("tipo") or "") == "televendas" else "dashboard_supervisor"
+            return redirect(url_for(endpoint, secao="fechamento"))
 
     @app.route("/supervisor/usuarios")
     @login_required
@@ -975,4 +1154,170 @@ def register_supervisor_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro ao sincronizar: {str(e)}"}), 500
+
+    def _gerar_pdf_fechamento(payload: dict, dashboard_titulo: str) -> bytes:
+        try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4, landscape
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib.units import mm
+            from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        except Exception as e:
+            raise RuntimeError(
+                "Biblioteca de PDF não instalada. Instale com: pip install reportlab"
+            ) from e
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(A4),
+            leftMargin=12 * mm,
+            rightMargin=12 * mm,
+            topMargin=10 * mm,
+            bottomMargin=10 * mm,
+        )
+        styles = getSampleStyleSheet()
+        normal = styles["Normal"]
+
+        mes = int(payload.get("mes") or datetime.now().month)
+        ano = int(payload.get("ano") or datetime.now().year)
+        meses_nomes = {
+            1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+            5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+            9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro",
+        }
+        periodo_txt = f"{meses_nomes.get(mes, str(mes))}/{ano}"
+        consultores = payload.get("consultores") or []
+        totais = payload.get("totais") or {}
+
+        logo_path = os.path.join(app.root_path, "static", "img", "bakof-logo.png")
+        logo_cell = ""
+        if os.path.exists(logo_path):
+            try:
+                logo_cell = Image(logo_path, width=34 * mm, height=10 * mm)
+            except Exception:
+                logo_cell = ""
+
+        titulo_html = (
+            f"<b>Bakof CRM - Fechamento Mensal</b><br/>"
+            f"<font size='10'>Setor: {dashboard_titulo} | Período: {periodo_txt}<br/>"
+            f"Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')} - "
+            f"Operadores no relatório: {len(consultores)}</font>"
+        )
+        cabecalho = Table(
+            [[logo_cell, Paragraph(titulo_html, normal)]],
+            colWidths=[38 * mm, 220 * mm],
+        )
+        cabecalho.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eef4ff")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                ]
+            )
+        )
+
+        story = [cabecalho, Spacer(1, 8)]
+
+        resumo = [
+            ["Ligações", str(int(totais.get("total_ligacoes") or 0))],
+            ["Vendas", str(int(totais.get("total_vendas") or 0))],
+            ["Retornar", str(int(totais.get("total_retornar") or 0))],
+            ["Conversão", f"{totais.get('conversao') or 0}%"],
+            ["Meta", f"{totais.get('meta_conversao') or 0}%"],
+            ["Receita", str(totais.get("receita_fmt") or "R$ 0,00")],
+            ["Receita Comprovada (Oracle)", str(totais.get("receita_comprovada_oracle_fmt") or "R$ 0,00")],
+        ]
+        tb_resumo = Table(resumo, colWidths=[65 * mm, 70 * mm])
+        tb_resumo.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e2e8f0")),
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        story.extend([tb_resumo, Spacer(1, 10)])
+
+        cabecalho = [
+            "Operador",
+            "Ligações",
+            "Vendas",
+            "Retornar",
+            "Conv.%",
+            "Meta%",
+            "90-150",
+            "Próx.",
+            "Receita",
+            "Rec. Oracle",
+        ]
+        linhas = [cabecalho]
+        for c in consultores:
+            linhas.append(
+                [
+                    str(c.get("nome") or "-"),
+                    str(int(c.get("total_ligacoes") or 0)),
+                    str(int(c.get("vendas") or 0)),
+                    str(int(c.get("total_retornar") or 0)),
+                    f"{c.get('conversao') or 0}%",
+                    f"{c.get('meta_conversao') or 0}%",
+                    str(int(c.get("total_90_150") or 0)),
+                    str(int(c.get("total_proximos_inativacao") or 0)),
+                    str(c.get("receita_fmt") or "R$ 0,00"),
+                    str(c.get("receita_comprovada_oracle_fmt") or "R$ 0,00"),
+                ]
+            )
+
+        linhas.append(
+            [
+                "Total resultado do período",
+                str(int(totais.get("total_ligacoes") or 0)),
+                str(int(totais.get("total_vendas") or 0)),
+                str(int(totais.get("total_retornar") or 0)),
+                f"{totais.get('conversao') or 0}%",
+                f"{totais.get('meta_conversao') or 0}%",
+                str(int(totais.get("total_90_150") or 0)),
+                str(int(totais.get("total_proximos_inativacao") or 0)),
+                str(totais.get("receita_fmt") or "R$ 0,00"),
+                str(totais.get("receita_comprovada_oracle_fmt") or "R$ 0,00"),
+            ]
+        )
+
+        col_widths = [62 * mm, 18 * mm, 16 * mm, 18 * mm, 16 * mm, 16 * mm, 16 * mm, 16 * mm, 28 * mm, 32 * mm]
+        tabela = Table(linhas, colWidths=col_widths, repeatRows=1)
+        last_row = len(linhas) - 1
+        tabela.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1d4ed8")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                    ("ALIGN", (0, 1), (0, -1), "LEFT"),
+                    ("ALIGN", (8, 1), (9, -1), "RIGHT"),
+                    ("BACKGROUND", (0, 1), (-1, -2), colors.HexColor("#f8fafc")),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -2), [colors.HexColor("#ffffff"), colors.HexColor("#f8fafc")]),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
+                    ("FONTNAME", (0, last_row), (-1, last_row), "Helvetica-Bold"),
+                    ("BACKGROUND", (0, last_row), (-1, last_row), colors.HexColor("#e2e8f0")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+        story.append(tabela)
+
+        doc.build(story)
+        return buffer.getvalue()
 

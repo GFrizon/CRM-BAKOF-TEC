@@ -1,13 +1,13 @@
 {% extends "layout.html" %}
 {% block title %}Dashboard Supervisor{% endblock %}
 {% block content %}
+{% set secao_atual = (request.args.get('secao') or 'dashboard') %}
 
 {% include "supervisor/_dashboard_switch.html" %}
 
 {% include "supervisor/_modal_novidades.html" %}
 
-{% include "supervisor/_botao_resumo.html" %}
-
+{% if secao_atual != 'fechamento' %}
 {% include "supervisor/_cards_topo.html" %}
 
 {% include "supervisor/_kpis_operacionais.html" %}
@@ -16,15 +16,16 @@
 {% include "supervisor/_meta_diaria.html" %}
 
 {% include "supervisor/_graficos.html" %}
+{% endif %}
 
+{% if secao_atual == 'fechamento' %}
 {% include "supervisor/_filtro_periodo.html" %}
 
 {% include "supervisor/_resultados_filtrados.html" %}
-
-
-{% include "supervisor/_ranking_conversao.html" %}
+{% include "supervisor/_insights_observacoes.html" %}
 
 {% include "supervisor/_ligacoes_mes.html" %}
+{% endif %}
 
 {% endblock %}
 

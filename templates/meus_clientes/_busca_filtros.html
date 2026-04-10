@@ -2,25 +2,28 @@
      BUSCA + FILTROS
      ============================================================ -->
 <form method="get" action="{{ url_for('meus_clientes') }}" class="search-bar">
-  <div class="row g-3 align-items-center">
+  <div class="row g-2 align-items-center">
     <input type="hidden" name="aba" value="{{ aba }}">
     <input type="hidden" name="visao" value="{{ visao|default(request.args.get('visao', 'clientes')) }}">
     {% if dashboard_tipo %}
     <input type="hidden" name="dashboard_tipo" value="{{ dashboard_tipo }}">
     {% endif %}
-    <div class="col-md-6">
+
+    <div class="col-md-7 col-lg-6">
       <div class="input-group">
         <span class="input-group-text"><i class="bi bi-search"></i></span>
-        <input type="text" class="form-control" name="q"
+        <input type="text" class="form-control js-auto-submit-search" name="q"
                placeholder="Buscar por nome, CNPJ, telefone ou representante..."
                value="{{ request.args.get('q','') }}"
                id="buscaRapida"
+               data-debounce-ms="380"
                autocomplete="off">
       </div>
+      <small id="buscaStatus" class="text-muted d-block mt-1 mb-0"></small>
     </div>
 
     {% if aba == 'contatados' %}
-    <div class="col-md-3">
+    <div class="col-md-3 col-lg-3">
       <select class="form-select js-debounce-submit-control" name="filtro" data-debounce-ms="240">
         <option value="">Todos</option>
         <option value="antigos"  {% if request.args.get('filtro') == 'antigos'  %}selected{% endif %}>+30 dias sem contato</option>
@@ -30,7 +33,7 @@
     {% endif %}
 
     {% if aba not in ('oracle', 'inativos', 'proximos_inativacao') and not usar_vista_agrupada|default(false) %}
-    <div class="col-md-3">
+    <div class="col-md-3 col-lg-2">
       <select id="filtroOrigem" class="form-select" onchange="filtrarPorOrigem()">
         <option value="">Origem: todas</option>
         <option value="manual">Origem: manual</option>
@@ -39,11 +42,10 @@
     </div>
     {% endif %}
 
-    <div class="col-12 text-end">
+    <div class="col-md-auto ms-md-auto text-md-end">
       <button type="submit" class="btn btn-primary btn-sm">
         <i class="bi bi-funnel me-1"></i> Aplicar filtros
       </button>
     </div>
   </div>
 </form>
-

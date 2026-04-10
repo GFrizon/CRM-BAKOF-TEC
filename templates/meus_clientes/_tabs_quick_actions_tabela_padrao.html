@@ -6,15 +6,16 @@
     <div class="modern-tabs nav">
       {% set visao_televendas = (current_user.tipo == 'televendas') or (current_user.tipo == 'supervisor' and dashboard_tipo == 'televendas') %}
       {% set visao_consultores = (current_user.tipo == 'consultor') or (current_user.tipo == 'supervisor' and dashboard_tipo == 'consultor') %}
+      {% set q_atual = request.args.get('q', '') %}
 
       {% if visao_televendas %}
-      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual) }}">
         <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
-      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual) }}">
         <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
       </a>
-      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual) }}">
         <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
         {% if total_retornar and total_retornar > 0 %}
         <i class="bi bi-dot tab-alert"></i>
@@ -22,7 +23,7 @@
       </a>
       {% else %}
       {% if current_user.tipo != 'supervisor_repr' %}
-      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
+      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual) }}">
         {% if visao_consultores %}
         <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
         {% else %}
@@ -30,21 +31,21 @@
         {% endif %}
       </a>
       {% endif %}
-      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
+      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual) }}">
         <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-150d</span><span class="tab-count">{{ total_oracle }}</span>
       </a>
       {% if current_user.tipo == 'supervisor' and not visao_consultores %}
-      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual) }}">
         <i class="bi bi-person-slash"></i><span class="tab-label">Clientes Inativos</span><span class="tab-count">{{ total_inativos }}</span>
       </a>
       {% endif %}
-      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
+      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual) }}">
         <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Próximos Inativação</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
       </a>
-      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
+      <a class="nav-link tab-contatados {{ 'active' if aba == 'contatados' }}" data-aba="contatados" href="{{ url_for('meus_clientes', aba='contatados', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual) }}">
         <i class="bi bi-check2-circle"></i><span class="tab-label">Contatados</span><span class="tab-count">{{ total_contatados }}</span>
       </a>
-      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes') }}">
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual) }}">
         <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
         {% if total_retornar and total_retornar > 0 %}
         <i class="bi bi-dot tab-alert"></i>

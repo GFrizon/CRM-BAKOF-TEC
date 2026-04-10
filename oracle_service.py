@@ -311,8 +311,7 @@ class OracleService:
             join dexpara DPA on DPA.cd_operacao_resultado_de = PED.cd_tipo_operaca
             where DPA.cd_operacao_resultado_para not in ('20','21')
               and PED.controle not in ('85','96','99','86')
-              and upper(trim(nvl(to_char(PED.situacao), ''))) = 'F'
-              and nvl(PED.gerou_faturamen, 0) = 1
+              and upper(trim(nvl(to_char(PED.situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')
         ),
         clientes_alvo as (
             select *
@@ -474,6 +473,7 @@ class OracleService:
 
         query = f"""
         select 
+            cd_pedido,
             dt_pedido,
             total_pedido,
             situacao,
@@ -492,6 +492,57 @@ class OracleService:
             return results
         except Exception as e:
             logger.error(f"Erro ao buscar pedidos do cliente {cd_cliente}: {str(e)}")
+            raise
+
+    def get_resumo_pedidos_cliente_periodo(
+        self,
+        cd_cliente: str,
+        data_inicio: datetime,
+        data_fim: datetime,
+        modo_especial: bool = False,
+    ) -> List[Dict]:
+        """
+        Busca pedidos de um cliente em um periodo fechado (inicio <= dt_pedido < fim).
+        """
+        filtro_faturamento = (
+            "and nvl(gerou_faturamen, 0) = 1 "
+            "and upper(trim(nvl(to_char(situacao), ''))) not in ('C', 'CANCELADO', 'D', 'DEVOLVIDO')"
+        )
+
+        query = f"""
+        select
+            cd_pedido,
+            dt_pedido,
+            total_pedido,
+            situacao,
+            desc_cond_pagto,
+            cd_unid_de_neg
+        from fapedido
+        where cd_cliente = :cd_cliente
+          and dt_pedido >= :data_inicio
+          and dt_pedido < :data_fim
+          {filtro_faturamento}
+        order by dt_pedido desc, cd_pedido desc nulls last
+        """
+        params = {
+            "cd_cliente": cd_cliente,
+            "data_inicio": data_inicio,
+            "data_fim": data_fim,
+        }
+        try:
+            results = self.execute_query(query, params)
+            logger.info(
+                "Buscados %s pedidos para cliente %s no periodo %s -> %s",
+                len(results),
+                cd_cliente,
+                data_inicio.strftime("%Y-%m-%d"),
+                data_fim.strftime("%Y-%m-%d"),
+            )
+            return results
+        except Exception as e:
+            logger.error(
+                f"Erro ao buscar pedidos do cliente {cd_cliente} no periodo: {str(e)}"
+            )
             raise
     
     def get_itens_pedido_oracle(self, cd_cliente: str, janela_dias: int = 365, modo_especial: bool = False) -> List[Dict]:
@@ -999,6 +1050,16 @@ def get_clientes_oracle():
 def get_pedidos_cliente_oracle(cd_cliente: str, janela_dias: int = 365, modo_especial: bool = False):
     """Busca pedidos de um cliente específico no Oracle"""
     return oracle_service.get_resumo_pedidos_cliente(cd_cliente, janela_dias=janela_dias, modo_especial=modo_especial)
+
+def get_pedidos_cliente_periodo_oracle(cd_cliente: str, data_inicio: datetime, data_fim: datetime, modo_especial: bool = False):
+    """Busca pedidos de um cliente em periodo fechado no Oracle."""
+    return oracle_service.get_resumo_pedidos_cliente_periodo(
+        cd_cliente,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        modo_especial=modo_especial,
+    )
+
 
 def get_itens_cliente_oracle(cd_cliente: str, janela_dias: int = 365, modo_especial: bool = False):
     """Busca itens de pedidos de um cliente específico no Oracle"""

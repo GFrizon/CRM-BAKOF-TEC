@@ -105,22 +105,38 @@ def register_oracle_routes(app):
         primeiro = nome_norm.split()[0]
         return mapa_primeiro_nome.get(primeiro)
 
-    def _montar_resposta_detalhes_oracle(cliente, cd_cliente_oracle: str, janela_dias: int = 365):
+    def _montar_resposta_detalhes_oracle(
+        cliente,
+        cd_cliente_oracle: str,
+        janela_dias: int = 365,
+        data_inicio: datetime = None,
+        data_fim: datetime = None,
+    ):
         from oracle_service import (
             get_cliente_oracle_por_codigo,
             get_centralizadora_cliente_oracle,
             get_itens_cliente_oracle,
             get_pedidos_cliente_oracle,
+            get_pedidos_cliente_periodo_oracle,
         )
 
         origem_cliente = str(getattr(cliente, "origem", "") or "").strip().lower() if cliente else ""
         eh_especial = origem_cliente in ("manual", "importado_csv")
 
-        pedidos_oracle = get_pedidos_cliente_oracle(
-            cd_cliente_oracle,
-            janela_dias=janela_dias,
-            modo_especial=eh_especial,
-        )
+        usar_periodo_fechado = bool(data_inicio and data_fim and data_inicio < data_fim)
+        if usar_periodo_fechado:
+            pedidos_oracle = get_pedidos_cliente_periodo_oracle(
+                cd_cliente_oracle,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                modo_especial=eh_especial,
+            )
+        else:
+            pedidos_oracle = get_pedidos_cliente_oracle(
+                cd_cliente_oracle,
+                janela_dias=janela_dias,
+                modo_especial=eh_especial,
+            )
         itens_oracle = get_itens_cliente_oracle(
             cd_cliente_oracle,
             janela_dias=janela_dias,
@@ -210,6 +226,8 @@ def register_oracle_routes(app):
             "pedidos_oracle": pedidos_oracle,
             "itens_oracle": itens_oracle,
             "janela_dias": janela_dias,
+            "periodo_inicio": data_inicio.strftime("%Y-%m-%d") if data_inicio else None,
+            "periodo_fim": data_fim.strftime("%Y-%m-%d") if data_fim else None,
             "total_pedidos": len(pedidos_oracle),
             "total_itens": len(itens_oracle)
         })
@@ -321,12 +339,25 @@ def register_oracle_routes(app):
     def detalhes_cliente_oracle(cliente_id: int):
         """Busca detalhes completos do cliente Oracle"""
         try:
+            def _parse_data_iso(valor: str):
+                txt = str(valor or '').strip()
+                if not txt:
+                    return None
+                try:
+                    return datetime.strptime(txt[:10], '%Y-%m-%d')
+                except Exception:
+                    return None
+
             janela_dias = request.args.get('janela_dias', type=int) or 365
             cd_cliente_override = str(request.args.get('cd_cliente_oracle') or '').strip()
             if janela_dias < 30:
                 janela_dias = 30
             if janela_dias > 730:
                 janela_dias = 730
+            data_inicio = _parse_data_iso(request.args.get('data_inicio'))
+            data_fim = _parse_data_iso(request.args.get('data_fim'))
+            if data_inicio and data_fim and data_inicio >= data_fim:
+                return jsonify({"success": False, "message": "Periodo invalido"}), 400
 
             cliente = db.session.get(Cliente, cliente_id)
             if not cliente:
@@ -339,7 +370,23 @@ def register_oracle_routes(app):
             if current_user.tipo == 'supervisor_repr':
                 pass  # Permitir visualização
 
-            if not cliente.cd_cliente_oracle:
+            cd_cliente_resolvido = (
+                cd_cliente_override
+                if cd_cliente_override
+                else str(cliente.cd_cliente_oracle or '').strip()
+            )
+
+            if not cd_cliente_resolvido:
+                try:
+                    from oracle_service import get_cliente_oracle_por_cnpj
+                    row_oracle = get_cliente_oracle_por_cnpj(str(cliente.cnpj or '').strip())
+                    cd_fallback = str((row_oracle or {}).get('cd_cliente') or '').strip()
+                    if cd_fallback:
+                        cd_cliente_resolvido = cd_fallback
+                except Exception:
+                    cd_cliente_resolvido = ''
+
+            if not cd_cliente_resolvido:
                 return jsonify({
                     "success": True,
                     "cliente": {
@@ -358,16 +405,12 @@ def register_oracle_routes(app):
                     "mensagem": "Cliente não possui dados Oracle"
                 })
 
-            cd_cliente_resolvido = (
-                cd_cliente_override
-                if cd_cliente_override
-                else str(cliente.cd_cliente_oracle).strip()
-            )
-
             return _montar_resposta_detalhes_oracle(
                 cliente,
                 cd_cliente_resolvido,
-                janela_dias=janela_dias
+                janela_dias=janela_dias,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
             )
 
         except Exception as e:
@@ -381,11 +424,24 @@ def register_oracle_routes(app):
     def detalhes_cliente_oracle_por_codigo(cd_cliente: str):
         """Busca detalhes Oracle por código do cliente (fallback quando não há ID local)."""
         try:
+            def _parse_data_iso(valor: str):
+                txt = str(valor or '').strip()
+                if not txt:
+                    return None
+                try:
+                    return datetime.strptime(txt[:10], '%Y-%m-%d')
+                except Exception:
+                    return None
+
             janela_dias = request.args.get('janela_dias', type=int) or 365
             if janela_dias < 30:
                 janela_dias = 30
             if janela_dias > 730:
                 janela_dias = 730
+            data_inicio = _parse_data_iso(request.args.get('data_inicio'))
+            data_fim = _parse_data_iso(request.args.get('data_fim'))
+            if data_inicio and data_fim and data_inicio >= data_fim:
+                return jsonify({"success": False, "message": "Periodo invalido"}), 400
 
             cd_cliente_limpo = str(cd_cliente or '').strip()
             if not cd_cliente_limpo:
@@ -406,7 +462,9 @@ def register_oracle_routes(app):
             return _montar_resposta_detalhes_oracle(
                 cliente,
                 cd_cliente_limpo,
-                janela_dias=janela_dias
+                janela_dias=janela_dias,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
             )
 
         except Exception as e:

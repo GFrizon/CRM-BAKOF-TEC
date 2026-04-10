@@ -1,16 +1,17 @@
 from datetime import datetime, timedelta
 
+from routes.clientes_ligacoes.listagem_filters import corresponde_termo_busca
+
 
 def filtrar_listas_por_termo(termo, pendentes, contatados, precisa_retornar):
     if not termo:
         return pendentes, contatados, precisa_retornar
 
-    termo_lower = termo.lower()
-
     def _match_termo(item):
-        return any(
-            termo_lower in str(item.get(chave) or "").lower()
-            for chave in ("nome", "cnpj", "telefone", "representante_nome", "representante_oracle")
+        return corresponde_termo_busca(
+            termo,
+            item,
+            ("nome", "cnpj", "telefone", "telefone2", "representante_nome", "representante_oracle", "contato"),
         )
 
     pendentes_view = [c for c in pendentes if _match_termo(c)]

@@ -54,7 +54,7 @@
     </span>
     {% if aba != 'retornar' %}
     <a
-      href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes') }}"
+      href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes', q=request.args.get('q', '')) }}"
       class="btn btn-sm btn-outline-danger py-0 px-2"
     >
       Ver lista

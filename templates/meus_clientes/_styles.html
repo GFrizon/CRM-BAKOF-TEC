@@ -73,9 +73,12 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 16px 20px;
-  margin-bottom: 20px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
   box-shadow: var(--shadow-sm);
+}
+.search-bar .row {
+  --bs-gutter-y: .45rem;
 }
 .search-bar .input-group-text {
   background: var(--brand-50);
@@ -97,6 +100,11 @@
 .search-bar .form-select:focus {
   border-color: var(--brand-500);
   box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+}
+#buscaStatus {
+  font-size: .76rem;
+  line-height: 1.1;
+  min-height: 14px;
 }
 
 /* ============================================================
@@ -822,7 +830,7 @@ code {
   opacity: .4;
   vertical-align: middle;
 }
-.th-sort.asc  .sort-icon::after { content: "?"; opacity:1; }
-.th-sort.desc .sort-icon::after { content: "?"; opacity:1; }
-.th-sort:not(.asc):not(.desc) .sort-icon::after { content: "?"; }
+.th-sort.asc  .sort-icon::after { content: "▲"; opacity:1; }
+.th-sort.desc .sort-icon::after { content: "▼"; opacity:1; }
+.th-sort:not(.asc):not(.desc) .sort-icon::after { content: "↕"; }
 </style>

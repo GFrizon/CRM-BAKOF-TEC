@@ -67,6 +67,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                 current_user=current_user,
                 codigos_representantes_vinculados=codigos_representantes_vinculados,
                 apenas_meus=apenas_meus,
+                total_oracle_badge=total_oracle_badge,
                 total_inativos_badge=total_inativos_badge,
                 total_proximos_badge=total_proximos_badge,
                 dashboard_tipo=dashboard_tipo,

@@ -2,8 +2,11 @@
 <div class="row g-4 mb-4" id="resultadosFiltrados" style="display: none;">
   <div class="col-12">
     <div class="card">
-      <div class="card-header bg-primary text-white">
-        <i class="bi bi-calendar3"></i> Resultados do Período - <span id="periodoSelecionado"></span>
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <div><i class="bi bi-calendar3"></i> Resultados do Período - <span id="periodoSelecionado"></span></div>
+        <button type="button" class="btn btn-sm btn-light" onclick="copiarResumoFechamento()">
+          <i class="bi bi-clipboard me-1"></i>Copiar resumo
+        </button>
       </div>
       <div class="card-body">
         <div class="table-responsive">
@@ -12,18 +15,19 @@
               <tr>
                 <th>Operador</th>
                 <th class="text-center">Total Ligações</th>
-                <th class="text-center">Vendas</th>
+                <th class="text-center" title="Quando houver vendas, clique na linha para ver detalhes">Vendas</th>
                 <th class="text-center">Retornar</th>
                 <th class="text-center">Conversão</th>
                 <th class="text-center">Meta Conv.</th>
                 <th class="text-center">90-150</th>
                 <th class="text-center">Próx. Inativação</th>
                 <th class="text-end">Receita</th>
+                <th class="text-end">Receita Comprovada (Oracle)</th>
               </tr>
             </thead>
             <tbody id="tbodyResultados">
               <tr>
-                <td colspan="9" class="text-center">
+                <td colspan="10" class="text-center">
                   <div class="spinner-border text-primary" role="status"></div>
                 </td>
               </tr>
@@ -53,14 +57,29 @@
                 <th class="text-center">Qtd Compras</th>
                 <th class="text-center">Última Compra</th>
                 <th class="text-end">Receita</th>
-                <th class="text-center">Cruzamento Saída</th>
+                <th class="text-center">Pedido Oracle</th>
+                <th class="text-center">Detalhes</th>
               </tr>
             </thead>
             <tbody id="tbodyDetalheConversao">
-              <tr><td colspan="5" class="text-center text-muted py-4">Sem dados.</td></tr>
+              <tr><td colspan="6" class="text-center text-muted py-4">Sem dados.</td></tr>
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalDetalhesOracleSupervisor" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Detalhes Oracle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body" id="detalhesOracleSupervisorContent">
+        <div class="text-center text-muted py-3">Carregando...</div>
       </div>
     </div>
   </div>

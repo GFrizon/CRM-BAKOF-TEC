@@ -1,6 +1,6 @@
 {% if representantes %}
     {% for representante_nome, dados in representantes %}
-    <div class="rep-card" data-group-key="{{ representante_nome|e }}">
+    <div class="rep-card" data-group-key="{{ representante_nome|e }}" data-total-clientes="{{ dados.total_clientes|int }}">
 
       <!-- Cabeçalho clicável -->
       <div

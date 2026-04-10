@@ -99,13 +99,38 @@ def sincronizacao_automatica_diaria():
             get_valor_total_365dias,
         )
         from services.inativos_movimento_service import salvar_movimento_inativos
+        from services.carteiras_movimento_service import salvar_movimento_carteira
         
         with app.app_context():
             data_sync = datetime.now()
             data_ref = data_sync.date()
+            limite_90 = data_sync - timedelta(days=90)
+            limite_150 = data_sync - timedelta(days=150)
+            limite_151 = data_sync - timedelta(days=151)
+            limite_180 = data_sync - timedelta(days=180)
             limite_max = data_sync - timedelta(days=181)
             limite_min = data_sync - timedelta(days=730)
 
+            faixa_90_150_antes_sync = {
+                str(c.cd_cliente_oracle).strip()
+                for c in Cliente.query.filter(
+                    Cliente.ativo == True,
+                    Cliente.cd_cliente_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.between(limite_150, limite_90),
+                ).all()
+                if c.cd_cliente_oracle
+            }
+            faixa_proximos_antes_sync = {
+                str(c.cd_cliente_oracle).strip()
+                for c in Cliente.query.filter(
+                    Cliente.ativo == True,
+                    Cliente.cd_cliente_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
+                ).all()
+                if c.cd_cliente_oracle
+            }
             inativos_antes_sync = {
                 str(c.cd_cliente_oracle).strip()
                 for c in Cliente.query.filter(
@@ -478,6 +503,26 @@ def sincronizacao_automatica_diaria():
             logger.info(f"   Clientes Oracle esperados: {len(clientes_oracle)}")
             logger.info(f"   Diferença: {clientes_oracle_final - len(clientes_oracle)}")
 
+            faixa_90_150_depois_sync = {
+                str(c.cd_cliente_oracle).strip()
+                for c in Cliente.query.filter(
+                    Cliente.ativo == True,
+                    Cliente.cd_cliente_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.between(limite_150, limite_90),
+                ).all()
+                if c.cd_cliente_oracle
+            }
+            faixa_proximos_depois_sync = {
+                str(c.cd_cliente_oracle).strip()
+                for c in Cliente.query.filter(
+                    Cliente.ativo == True,
+                    Cliente.cd_cliente_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.isnot(None),
+                    Cliente.ultimo_pedido_oracle.between(limite_180, limite_151),
+                ).all()
+                if c.cd_cliente_oracle
+            }
             inativos_depois_sync = {
                 str(c.cd_cliente_oracle).strip()
                 for c in Cliente.query.filter(
@@ -488,6 +533,10 @@ def sincronizacao_automatica_diaria():
                 ).all()
                 if c.cd_cliente_oracle
             }
+            codigos_90_150_entraram = sorted(faixa_90_150_depois_sync - faixa_90_150_antes_sync)
+            codigos_90_150_sairam = sorted(faixa_90_150_antes_sync - faixa_90_150_depois_sync)
+            codigos_proximos_entraram = sorted(faixa_proximos_depois_sync - faixa_proximos_antes_sync)
+            codigos_proximos_sairam = sorted(faixa_proximos_antes_sync - faixa_proximos_depois_sync)
             codigos_entraram = sorted(inativos_depois_sync - inativos_antes_sync)
             codigos_sairam = sorted(inativos_antes_sync - inativos_depois_sync)
             inativos_entraram = len(codigos_entraram)
@@ -503,8 +552,15 @@ def sincronizacao_automatica_diaria():
             resumo.atualizado_em = data_sync
             db.session.commit()
 
-            # Persistir detalhes diarios (clientes que entraram/sairam da base inativos)
-            codigos_movimento = set(codigos_entraram) | set(codigos_sairam)
+            # Persistir detalhes diarios (clientes que entraram/sairam das carteiras)
+            codigos_movimento = (
+                set(codigos_entraram)
+                | set(codigos_sairam)
+                | set(codigos_90_150_entraram)
+                | set(codigos_90_150_sairam)
+                | set(codigos_proximos_entraram)
+                | set(codigos_proximos_sairam)
+            )
             detalhes_por_codigo = {}
             if codigos_movimento:
                 rows_mov = (
@@ -589,6 +645,22 @@ def sincronizacao_automatica_diaria():
                 entraram=[_detalhe(cd) for cd in codigos_entraram],
                 sairam=[_detalhe(cd) for cd in codigos_sairam],
                 total_inativos=len(inativos_depois_sync),
+            )
+            salvar_movimento_carteira(
+                carteira="oracle_90_150",
+                data_ref=data_ref,
+                atualizado_em=data_sync,
+                entraram=[_detalhe(cd) for cd in codigos_90_150_entraram],
+                sairam=[_detalhe(cd) for cd in codigos_90_150_sairam],
+                total=len(faixa_90_150_depois_sync),
+            )
+            salvar_movimento_carteira(
+                carteira="proximos_inativacao",
+                data_ref=data_ref,
+                atualizado_em=data_sync,
+                entraram=[_detalhe(cd) for cd in codigos_proximos_entraram],
+                sairam=[_detalhe(cd) for cd in codigos_proximos_sairam],
+                total=len(faixa_proximos_depois_sync),
             )
 
             logger.info(

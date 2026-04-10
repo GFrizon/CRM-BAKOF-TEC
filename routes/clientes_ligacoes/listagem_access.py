@@ -2,11 +2,11 @@ from flask import flash, redirect, url_for
 
 from routes.clientes_ligacoes.badges import (
     _total_oracle_badge_consultor_lista_oracle,
-    _total_oracle_badge_supervisor_lista_oracle,
     _total_oracle_badge,
     _total_oracle_badge_supervisor_repr,
     _total_proximos_badge,
 )
+from routes.clientes_ligacoes.analytics_api import _contagem_90_150_por_usuario_mesma_regra_lista_oracle
 from routes.clientes_ligacoes.supervisor_repr import (
     contar_proximos_inativacao_supervisor_repr,
     obter_codigos_representantes_vinculados,
@@ -50,8 +50,16 @@ def preparar_contexto_inicial_listagem(request, current_user):
         if dashboard_tipo == "televendas":
             total_oracle_badge = 0
         else:
-            # Mantem badge alinhado com a mesma base/regra da aba Oracle.
-            total_oracle_badge = _total_oracle_badge_supervisor_lista_oracle()
+            # Mantem badge alinhado com o fechamento (somente operadores ativos vinculados).
+            total_oracle_badge = int(
+                sum(
+                    (
+                        _contagem_90_150_por_usuario_mesma_regra_lista_oracle(
+                            tipo_operador="consultor"
+                        ) or {}
+                    ).values()
+                )
+            )
     else:
         total_oracle_badge = _total_oracle_badge()
     if current_user.tipo == "supervisor" and dashboard_tipo == "televendas":
