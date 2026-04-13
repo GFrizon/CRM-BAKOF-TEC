@@ -3,7 +3,7 @@
   <div class="col-12">
     <div class="card">
       <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center gap-2 flex-wrap">
-        <div><i class="bi bi-calendar3"></i> Resultados do Período - <span id="periodoSelecionado"></span></div>
+        <div><i class="bi bi-calendar3"></i> Resultados do Periodo - <span id="periodoSelecionado"></span></div>
         <button type="button" class="btn btn-sm btn-light" onclick="copiarResumoFechamento()">
           <i class="bi bi-clipboard me-1"></i>Copiar resumo
         </button>
@@ -14,13 +14,13 @@
             <thead>
               <tr>
                 <th>Operador</th>
-                <th class="text-center">Total Ligações</th>
+                <th class="text-center">Total {{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }}</th>
                 <th class="text-center" title="Quando houver vendas, clique na linha para ver detalhes">Vendas</th>
                 <th class="text-center">Retornar</th>
-                <th class="text-center">Conversão</th>
+                <th class="text-center">Conversao</th>
                 <th class="text-center">Meta Conv.</th>
                 <th class="text-center">90-150</th>
-                <th class="text-center">Próx. Inativação</th>
+                <th class="text-center">Prox. Inativacao</th>
                 <th class="text-end">Receita</th>
                 <th class="text-end">Receita Comprovada (Oracle)</th>
               </tr>
@@ -44,7 +44,7 @@
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="detalheConversaoTitulo">Detalhe de Conversão</h5>
+        <h5 class="modal-title" id="detalheConversaoTitulo">Detalhe de Conversao</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
       <div class="modal-body">
@@ -55,7 +55,7 @@
               <tr>
                 <th>Cliente</th>
                 <th class="text-center">Qtd Compras</th>
-                <th class="text-center">Última Compra</th>
+                <th class="text-center">Ultima Compra</th>
                 <th class="text-end">Receita</th>
                 <th class="text-center">Pedido Oracle</th>
                 <th class="text-center">Detalhes</th>

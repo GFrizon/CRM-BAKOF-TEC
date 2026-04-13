@@ -50,7 +50,7 @@ function gerarPdfFechamento() {
     url.searchParams.set('tipo', DASHBOARD_TIPO || 'consultor');
     window.open(url.toString(), '_blank');
   } catch (_) {
-    alert('Não foi possível gerar o PDF agora.');
+    alert('Nao foi possivel gerar o PDF agora.');
   }
 }
 
@@ -165,7 +165,7 @@ async function aplicarFiltroMes() {
     _resumoFechamentoTexto = [
       `Periodo: ${textoSelecionado}`,
       `Operadores: ${data.consultores.length}`,
-      `Ligacoes: ${t.total_ligacoes || 0}`,
+      `{{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }}: ${t.total_ligacoes || 0}`,
       `Vendas: ${t.total_vendas || 0}`,
       `Retornar: ${t.total_retornar || 0}`,
       `Conversao: ${t.conversao || 0}%`,
@@ -574,13 +574,13 @@ async function carregarLigacoesMes() {
     const r = await fetch(`/api/supervisor/ligacoes-por-mes?${params.toString()}`);
     const data = await r.json();
     if (token !== _reqLigacoesMesToken) return;
-    if (!data.ok) throw new Error(data.erro || 'Erro ao carregar ligacoes');
+    if (!data.ok) throw new Error(data.erro || "Erro ao carregar {{ 'interacoes' if dashboard_tipo == 'consultor' else 'ligacoes' }}");
 
     const est = data.estatisticas || {};
     resumo.innerHTML = `
       <div class="alert alert-info py-2 mb-2">
         <strong>${escapeHtml(data.consultor_nome)}</strong>:
-        ${est.total_ligacoes || 0} ligacoes |
+        ${est.total_ligacoes || 0} {{ 'interacoes' if dashboard_tipo == 'consultor' else 'ligacoes' }} |
         ${est.vendas || 0} vendas |
         ${est.conversao || 0}% conversao |
         ${escapeHtml(est.receita_fmt || 'R$ 0,00')}
@@ -591,7 +591,7 @@ async function carregarLigacoesMes() {
       tbody.innerHTML = `
         <tr>
           <td colspan="7" class="text-center text-muted py-4">
-            Nenhuma ligacao encontrada para esse filtro
+            Nenhuma {{ 'interacao' if dashboard_tipo == 'consultor' else 'ligacao' }} encontrada para esse filtro
           </td>
         </tr>
       `;
@@ -644,7 +644,7 @@ if (ctxDias) {
     data: {
       labels: ligacoesDias.map(d => d.data).reverse(),
       datasets: [{
-        label: 'Ligacoes',
+        label: "{{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }}",
         data: ligacoesDias.map(d => d.total).reverse(),
         borderColor: '#2563eb',
         backgroundColor: 'rgba(37, 99, 235, 0.1)',

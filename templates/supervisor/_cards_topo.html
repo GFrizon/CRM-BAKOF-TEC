@@ -26,7 +26,7 @@
         <i class="bi bi-telephone-fill"></i>
       </div>
       <div class="stat-value">{{ total_ligacoes }}</div>
-      <div class="stat-label">Total de Ligações</div>
+      <div class="stat-label">Total de {{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }}</div>
     </div>
   </div>
 
@@ -36,7 +36,7 @@
         <i class="bi bi-calendar-check"></i>
       </div>
       <div class="stat-value">{{ ligacoes_hoje }}</div>
-      <div class="stat-label">Ligações Hoje</div>
+      <div class="stat-label">{{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }} Hoje</div>
       {% if ligacoes_hoje > 0 %}
       <div class="stat-change positive">
         <i class="bi bi-graph-up-arrow"></i> Ativo hoje

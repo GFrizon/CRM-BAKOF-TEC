@@ -8,6 +8,8 @@ let modalEditarObs = null;
 let modalEditarLigacao = null;
 let _rowLigacaoAtiva = null;
 const IS_SUPERVISOR = {{ 'true' if is_supervisor else 'false' }};
+const TERMO_INTERACAO = "{{ 'interacao' if current_user.tipo == 'consultor' else 'ligacao' }}";
+const TERMO_INTERACOES = "{{ 'interacoes' if current_user.tipo == 'consultor' else 'ligacoes' }}";
 
 function _criarModalSeExistir(elementId) {
   const el = document.getElementById(elementId);
@@ -639,9 +641,26 @@ function _atualizarAbaAtualPeloDOM() {
   if (ativa && ativa.dataset.aba) ABA_ATUAL = ativa.dataset.aba;
 }
 
+function _sincronizarClasseAbaAtiva() {
+  const aba = String(ABA_ATUAL || '').trim();
+  if (!aba) return;
+  const links = Array.from(document.querySelectorAll('.modern-tabs .nav-link[data-aba]'));
+  if (!links.length) return;
+  links.forEach((link) => {
+    const ativa = String(link.dataset.aba || '').trim() === aba;
+    link.classList.toggle('active', ativa);
+    if (ativa) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  });
+}
+
 function _rebindPosTrocaParcial() {
   inicializarModaisPagina();
   _atualizarAbaAtualPeloDOM();
+  _sincronizarClasseAbaAtiva();
   _habilitarTransicaoAbas();
   _iniciarDebounceFiltros();
   _restaurarGruposAbertos();
@@ -820,8 +839,7 @@ function atualizarIndicadorRetornoNaLinha(row, proximaLigacaoIso) {
 
   let indicador = host.querySelector('.js-retorno-indicator');
   const valor = String(proximaLigacaoIso || '').trim();
-  const totalLigacoes = parseInt(row.dataset.totalLigacoes || '0', 10) || 0;
-  const mostrar = Boolean(valor) || totalLigacoes > 0;
+  const mostrar = Boolean(valor);
   if (!mostrar) {
     if (indicador) indicador.remove();
     return;
@@ -835,7 +853,7 @@ function atualizarIndicadorRetornoNaLinha(row, proximaLigacaoIso) {
     host.appendChild(indicador);
   }
 
-  indicador.title = valor ? 'Retorno agendado' : 'Cliente contatado';
+  indicador.title = 'Retorno agendado';
 }
 
 function normalizarNumeroWhatsApp(telefone) {
@@ -1227,6 +1245,7 @@ function _atualizarStatusBuscaTela() {
 // CARREGAR DADOS DO MÊS SELECIONADO
 document.addEventListener('DOMContentLoaded', async function() {
   _atualizarAbaAtualPeloDOM();
+  _sincronizarClasseAbaAtiva();
   _habilitarTransicaoAbas();
   _iniciarDebounceFiltros();
   _restaurarGruposAbertos();
@@ -1249,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           const stats = data.estatisticas;
           resultadosDiv.innerHTML = `
             <div class="row g-3">
-              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Total ligações</div><div class="stat-value">${stats.total_ligacoes}</div></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Total ${TERMO_INTERACOES}</div><div class="stat-value">${stats.total_ligacoes}</div></div></div></div>
               <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Positivo</div><div class="stat-value" style="color:#2563eb;">${stats.positivos || 0}</div><small class="text-muted">${stats.taxa_positiva || 0}%</small></div></div></div>
               <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Converteu</div><div class="stat-value" style="color:#16a34a;">${stats.vendas}</div></div></div></div>
               <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Conversão</div><div class="stat-value">${stats.taxa_conversao}%</div></div></div></div>
@@ -1258,7 +1277,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             ${data.ligacoes.length > 0 ? `
               <div class="mt-3">
                 <div style="font-size:.85rem;font-weight:700;color:var(--text-1);margin-bottom:10px;">
-                  <i class="bi bi-telephone me-1"></i>ligações do Período
+                  <i class="bi bi-telephone me-1"></i>${TERMO_INTERACOES} do Periodo
                 </div>
                 <div class="rep-table-wrap"><table class="table rep-table">
                   <thead><tr><th>Data</th><th>Cliente</th><th>Resultado</th><th>Valor</th></tr></thead>
@@ -1272,7 +1291,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                       </tr>`).join('')}
                   </tbody>
                 </table></div>
-              </div>` : '<div class="alert alert-warning mt-3">Nenhuma ligação encontrada no Período.</div>'}
+              </div>` : `<div class="alert alert-warning mt-3">Nenhuma ${TERMO_INTERACAO} encontrada no Periodo.</div>`}
           `;
         } else {
           resultadosDiv.innerHTML = `<div class="alert alert-danger">Erro: ${data.erro}</div>`;

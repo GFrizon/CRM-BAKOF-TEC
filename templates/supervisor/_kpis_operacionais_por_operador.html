@@ -2,48 +2,48 @@
 {% set m90 = movimento_carteiras_hoje.oracle_90_150 or {} %}
 {% set mpx = movimento_carteiras_hoje.proximos_inativacao or {} %}
 
-<div class="card mb-3" style="border:1px solid #dbe4f3;">
-  <div class="card-body py-2 px-3">
-    <div class="d-flex flex-wrap align-items-center gap-2" style="font-size:.86rem;">
-      <span class="fw-semibold text-muted">Movimento Sem Pedido 90-150d (hoje)</span>
-      <span class="badge" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;">Entraram: {{ (m90.entraram or [])|length }}</span>
-      <span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;">Sairam: {{ (m90.sairam or [])|length }}</span>
-      <button class="btn btn-sm btn-outline-secondary py-0 px-2 js-collapse-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#mov90DetalheSup" aria-expanded="false" aria-controls="mov90DetalheSup" data-text-collapsed="Ver lista" data-text-expanded="Fechar lista">
-        Ver lista
-      </button>
-      {% if m90.atualizado_em %}
-      <small class="text-muted">Atualizado em {{ m90.atualizado_em.strftime('%d/%m/%Y %H:%M') }}</small>
-      {% endif %}
-    </div>
-    <div class="collapse mt-2" id="mov90DetalheSup">
+<div class="movement-card mb-3">
+  <div class="movement-card-header">
+    <i class="bi bi-database"></i>
+    <span class="movement-card-title">Movimento Sem Pedido 90-150d (hoje)</span>
+    <span class="badge-entrada">+{{ (m90.entraram or [])|length }} entraram</span>
+    <span class="badge-saida">-{{ (m90.sairam or [])|length }} saíram</span>
+    <button class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1 js-collapse-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#mov90DetalheSup" aria-expanded="false" aria-controls="mov90DetalheSup" data-text-collapsed="Ver lista" data-text-expanded="Fechar lista">
+      Ver lista
+    </button>
+    {% if m90.atualizado_em %}
+    <small class="text-muted ms-auto">Atualizado {{ m90.atualizado_em.strftime('%d/%m %H:%M') }}</small>
+    {% endif %}
+  </div>
+  <div class="collapse" id="mov90DetalheSup">
+    <div class="movement-card-body">
       <div class="row g-2">
         <div class="col-md-6">
-          <div class="fw-semibold text-success mb-1">Entraram ({{ (m90.entraram or [])|length }})</div>
-          <div class="border rounded p-2" style="max-height:190px; overflow:auto; font-size:.82rem;">
+          <div class="movement-list-title text-success"><i class="bi bi-arrow-down-circle-fill"></i> Entraram ({{ (m90.entraram or [])|length }})</div>
+          <div class="movement-list">
             {% for c in m90.entraram or [] %}
-            <div class="border-bottom py-1 d-flex justify-content-between gap-2">
-              <span>{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
-              <span class="text-muted small">{% if c.ultimo_contato_por %}contatado por <strong>{{ c.ultimo_contato_por }}</strong>{% endif %}</span>
+            <div class="movement-item">
+              <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
+              {% if c.ultimo_contato_por %}<span class="movement-item-meta">por <strong>{{ c.ultimo_contato_por }}</strong></span>{% endif %}
             </div>
             {% else %}
-            <div class="text-muted">Sem entradas hoje.</div>
+            <div class="movement-empty">Sem entradas hoje.</div>
             {% endfor %}
           </div>
         </div>
         <div class="col-md-6">
-          <div class="fw-semibold text-danger mb-1">Sairam ({{ (m90.sairam or [])|length }})</div>
-          <div class="border rounded p-2" style="max-height:190px; overflow:auto; font-size:.82rem;">
+          <div class="movement-list-title text-danger"><i class="bi bi-arrow-up-circle-fill"></i> Saíram ({{ (m90.sairam or [])|length }})</div>
+          <div class="movement-list">
             {% for c in m90.sairam or [] %}
-            <div class="border-bottom py-1 d-flex justify-content-between gap-2">
-              <span>{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
-              <span class="text-muted small text-end">
-                {% if c.motivo_movimento %}<strong>Motivo:</strong> {{ c.motivo_movimento }}{% endif %}
-                {% if c.motivo_detalhe %}<br><span>{{ c.motivo_detalhe }}</span>{% endif %}
-                {% if c.ultimo_contato_por %}<br>contatado por <strong>{{ c.ultimo_contato_por }}</strong>{% endif %}
+            <div class="movement-item">
+              <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
+              <span class="movement-item-meta">
+                {% if c.motivo_movimento %}{{ c.motivo_movimento }}{% endif %}
+                {% if c.ultimo_contato_por %} · por <strong>{{ c.ultimo_contato_por }}</strong>{% endif %}
               </span>
             </div>
             {% else %}
-            <div class="text-muted">Sem saídas hoje.</div>
+            <div class="movement-empty">Sem saídas hoje.</div>
             {% endfor %}
           </div>
         </div>
@@ -52,48 +52,48 @@
   </div>
 </div>
 
-<div class="card mb-4" style="border:1px solid #dbe4f3;">
-  <div class="card-body py-2 px-3">
-    <div class="d-flex flex-wrap align-items-center gap-2" style="font-size:.86rem;">
-      <span class="fw-semibold text-muted">Movimento Proximos Inativacao (hoje)</span>
-      <span class="badge" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;">Entraram: {{ (mpx.entraram or [])|length }}</span>
-      <span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;">Sairam: {{ (mpx.sairam or [])|length }}</span>
-      <button class="btn btn-sm btn-outline-secondary py-0 px-2 js-collapse-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#movProxDetalheSup" aria-expanded="false" aria-controls="movProxDetalheSup" data-text-collapsed="Ver lista" data-text-expanded="Fechar lista">
-        Ver lista
-      </button>
-      {% if mpx.atualizado_em %}
-      <small class="text-muted">Atualizado em {{ mpx.atualizado_em.strftime('%d/%m/%Y %H:%M') }}</small>
-      {% endif %}
-    </div>
-    <div class="collapse mt-2" id="movProxDetalheSup">
+<div class="movement-card mb-4">
+  <div class="movement-card-header">
+    <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+    <span class="movement-card-title">Movimento Próximos Inativação (hoje)</span>
+    <span class="badge-entrada">+{{ (mpx.entraram or [])|length }} entraram</span>
+    <span class="badge-saida">-{{ (mpx.sairam or [])|length }} saíram</span>
+    <button class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1 js-collapse-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#movProxDetalheSup" aria-expanded="false" aria-controls="movProxDetalheSup" data-text-collapsed="Ver lista" data-text-expanded="Fechar lista">
+      Ver lista
+    </button>
+    {% if mpx.atualizado_em %}
+    <small class="text-muted ms-auto">Atualizado {{ mpx.atualizado_em.strftime('%d/%m %H:%M') }}</small>
+    {% endif %}
+  </div>
+  <div class="collapse" id="movProxDetalheSup">
+    <div class="movement-card-body">
       <div class="row g-2">
         <div class="col-md-6">
-          <div class="fw-semibold text-success mb-1">Entraram ({{ (mpx.entraram or [])|length }})</div>
-          <div class="border rounded p-2" style="max-height:190px; overflow:auto; font-size:.82rem;">
+          <div class="movement-list-title text-success"><i class="bi bi-arrow-down-circle-fill"></i> Entraram ({{ (mpx.entraram or [])|length }})</div>
+          <div class="movement-list">
             {% for c in mpx.entraram or [] %}
-            <div class="border-bottom py-1 d-flex justify-content-between gap-2">
-              <span>{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
-              <span class="text-muted small">{% if c.ultimo_contato_por %}contatado por <strong>{{ c.ultimo_contato_por }}</strong>{% endif %}</span>
+            <div class="movement-item">
+              <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
+              {% if c.ultimo_contato_por %}<span class="movement-item-meta">por <strong>{{ c.ultimo_contato_por }}</strong></span>{% endif %}
             </div>
             {% else %}
-            <div class="text-muted">Sem entradas hoje.</div>
+            <div class="movement-empty">Sem entradas hoje.</div>
             {% endfor %}
           </div>
         </div>
         <div class="col-md-6">
-          <div class="fw-semibold text-danger mb-1">Sairam ({{ (mpx.sairam or [])|length }})</div>
-          <div class="border rounded p-2" style="max-height:190px; overflow:auto; font-size:.82rem;">
+          <div class="movement-list-title text-danger"><i class="bi bi-arrow-up-circle-fill"></i> Saíram ({{ (mpx.sairam or [])|length }})</div>
+          <div class="movement-list">
             {% for c in mpx.sairam or [] %}
-            <div class="border-bottom py-1 d-flex justify-content-between gap-2">
-              <span>{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
-              <span class="text-muted small text-end">
-                {% if c.motivo_movimento %}<strong>Motivo:</strong> {{ c.motivo_movimento }}{% endif %}
-                {% if c.motivo_detalhe %}<br><span>{{ c.motivo_detalhe }}</span>{% endif %}
-                {% if c.ultimo_contato_por %}<br>contatado por <strong>{{ c.ultimo_contato_por }}</strong>{% endif %}
+            <div class="movement-item">
+              <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
+              <span class="movement-item-meta">
+                {% if c.motivo_movimento %}{{ c.motivo_movimento }}{% endif %}
+                {% if c.ultimo_contato_por %} · por <strong>{{ c.ultimo_contato_por }}</strong>{% endif %}
               </span>
             </div>
             {% else %}
-            <div class="text-muted">Sem saídas hoje.</div>
+            <div class="movement-empty">Sem saídas hoje.</div>
             {% endfor %}
           </div>
         </div>

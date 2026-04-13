@@ -27,7 +27,7 @@
         {% if visao_consultores %}
         <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
         {% else %}
-        <i class="bi bi-clock"></i><span class="tab-label">Pendentes</span><span class="tab-count">{{ total_pendentes }}</span>
+        <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
         {% endif %}
       </a>
       {% endif %}
@@ -60,12 +60,22 @@
     <button class="btn btn-primary btn-sm" onclick="ligarProximoCliente()">
       <i class="bi bi-telephone-outbound me-1"></i>Ligar proximo
     </button>
-    {% endif %}
     <button class="btn btn-outline-danger btn-sm" onclick="filtrarClientesCriticos()">
       <i class="bi bi-exclamation-triangle me-1"></i>Filtrar criticos
     </button>
     <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltroCriticos()">
       <i class="bi bi-funnel me-1"></i>Limpar filtro
     </button>
-    <span class="quick-action-info ms-auto" id="quickActionInfo">Mostrando todos os clientes</span>
+    {% else %}
+    <span class="text-muted small">
+      <i class="bi bi-diagram-3 me-1"></i>Visao por representante: cada card agrupa uma carteira; expanda para ver clientes e consultores.
+    </span>
+    {% endif %}
+    <span class="quick-action-info ms-auto" id="quickActionInfo">
+      {% if current_user.tipo == 'supervisor_repr' %}
+      Lista agrupada por representante
+      {% else %}
+      Mostrando todos os clientes
+      {% endif %}
+    </span>
   </div>

@@ -78,17 +78,27 @@
   <button class="btn btn-primary btn-sm" onclick="ligarProximoCliente()">
     <i class="bi bi-telephone-outbound me-1"></i>Ligar proximo
   </button>
-  {% endif %}
   <button class="btn btn-outline-danger btn-sm" onclick="filtrarClientesCriticos()">
     <i class="bi bi-exclamation-triangle me-1"></i>Filtrar criticos
   </button>
   <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltroCriticos()">
     <i class="bi bi-funnel me-1"></i>Limpar filtro
   </button>
+  {% else %}
+  <span class="text-muted small">
+    <i class="bi bi-diagram-3 me-1"></i>Visao por representante: expanda os cards para ver clientes e consultor.
+  </span>
+  {% endif %}
   {% if current_user.tipo == 'supervisor' and aba == 'pendentes' and dashboard_tipo != 'televendas' %}
   <button class="btn btn-outline-primary btn-sm" onclick="sincronizarClientesManuais()" id="btnSincManuais">
     <i class="bi bi-arrow-repeat me-1"></i>Sincronizar com Oracle
   </button>
   {% endif %}
-  <span class="quick-action-info ms-auto" id="quickActionInfo">Mostrando todos os clientes</span>
+  <span class="quick-action-info ms-auto" id="quickActionInfo">
+    {% if current_user.tipo == 'supervisor_repr' %}
+    Lista agrupada por representante
+    {% else %}
+    Mostrando todos os clientes
+    {% endif %}
+  </span>
 </div>

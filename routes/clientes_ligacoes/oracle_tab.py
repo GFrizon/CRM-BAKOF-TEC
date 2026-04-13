@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 
 
 _ORACLE_90_150_CACHE = {}
@@ -7,6 +7,47 @@ _ORACLE_90_150_CACHE_TTL = timedelta(minutes=5)
 
 def limpar_cache_clientes_oracle():
     _ORACLE_90_150_CACHE.clear()
+
+
+def _coagir_data_pedido(valor):
+    if not valor:
+        return None
+    if isinstance(valor, datetime):
+        return valor
+    if isinstance(valor, date):
+        return datetime(valor.year, valor.month, valor.day, 0, 0, 0)
+    txt = str(valor).strip()
+    if not txt:
+        return None
+    formatos = (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y",
+    )
+    for fmt in formatos:
+        try:
+            return datetime.strptime(txt, fmt)
+        except Exception:
+            continue
+    return None
+
+
+def _filtrar_por_periodo(clientes, periodo_oracle):
+    if not periodo_oracle:
+        return list(clientes or [])
+    try:
+        dias = int(periodo_oracle)
+    except Exception:
+        return list(clientes or [])
+
+    limite = datetime.now() - timedelta(days=dias)
+    filtrados = []
+    for row in clientes or []:
+        dt = _coagir_data_pedido((row or {}).get("dt_pedido"))
+        if dt and dt <= limite:
+            filtrados.append(row)
+    return filtrados
 
 
 def carregar_clientes_oracle_deduplicados(logger, periodo_oracle):
@@ -46,9 +87,10 @@ def carregar_clientes_oracle_deduplicados(logger, periodo_oracle):
             clientes_oracle_por_cd[cd] = row
 
     clientes_deduplicados = list(clientes_oracle_por_cd.values())
+    clientes_filtrados = _filtrar_por_periodo(clientes_deduplicados, periodo_oracle)
     _ORACLE_90_150_CACHE[cache_key] = {
         "ts": datetime.now(),
-        "data": clientes_deduplicados,
+        "data": clientes_filtrados,
     }
-    return list(clientes_deduplicados)
+    return list(clientes_filtrados)
 

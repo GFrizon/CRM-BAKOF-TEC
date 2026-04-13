@@ -3,14 +3,14 @@
 <div class="card mb-4">
   <div class="card-header d-flex align-items-center justify-content-between">
     <span><i class="bi bi-bullseye"></i> Meta Diária — Hoje</span>
-    <small class="text-muted">Ligações realizadas vs meta configurada</small>
+    <small class="text-muted">{{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }} realizadas vs meta configurada</small>
   </div>
   <div class="table-container">
     <table class="table table-hover m-0">
       <thead>
         <tr>
           <th>Consultor</th>
-          <th class="text-center">Ligações Hoje</th>
+          <th class="text-center">{{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }} Hoje</th>
           <th class="text-center">Meta</th>
           <th style="width:220px">Progresso</th>
           <th class="text-center">%</th>

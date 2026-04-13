@@ -3,7 +3,7 @@
   <div class="col-md-6">
     <div class="card">
       <div class="card-header">
-        <i class="bi bi-trophy-fill"></i> Ranking de Ligações (30 dias) - {{ dashboard_titulo }}
+        <i class="bi bi-trophy-fill"></i> Ranking de {{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }} (30 dias) - {{ dashboard_titulo }}
       </div>
       <div class="table-container">
         <table class="table table-hover m-0">
@@ -11,7 +11,7 @@
             <tr>
               <th style="width: 60px">#</th>
               <th>Operador</th>
-              <th style="width: 120px" class="text-center">Ligações</th>
+              <th style="width: 120px" class="text-center">{{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }}</th>
               <th style="width: 80px"></th>
             </tr>
           </thead>

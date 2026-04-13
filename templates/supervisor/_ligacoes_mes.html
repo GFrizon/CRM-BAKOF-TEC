@@ -1,9 +1,9 @@
-<!-- Ligações do Mês por Consultor -->
+<!-- Interacoes/Ligacoes do Mes por Consultor -->
 <div class="row g-4">
   <div class="col-12">
     <div class="card">
       <div class="card-header">
-        <i class="bi bi-person-lines-fill"></i> Ligações do Mês por Operador ({{ dashboard_titulo }})
+        <i class="bi bi-person-lines-fill"></i> {{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }} do Mes por Operador ({{ dashboard_titulo }})
       </div>
       <div class="card-body border-bottom">
         <div class="row g-2">
@@ -28,7 +28,7 @@
           </div>
           <div class="col-md-3 d-flex align-items-end">
             <button class="btn btn-primary w-100" onclick="carregarLigacoesMes()">
-              <i class="bi bi-search"></i> Ver ligações
+              <i class="bi bi-search"></i> Ver {{ 'interacoes' if dashboard_tipo == 'consultor' else 'ligacoes' }}
             </button>
           </div>
         </div>

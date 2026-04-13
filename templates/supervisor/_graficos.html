@@ -4,7 +4,7 @@
   <div class="col-md-8">
     <div class="card">
       <div class="card-header">
-        <i class="bi bi-graph-up"></i> Ligações nos últimos 7 dias
+        <i class="bi bi-graph-up"></i> {{ 'Interacoes' if dashboard_tipo == 'consultor' else 'Ligacoes' }} nos ultimos 7 dias
       </div>
       <div class="card-body">
         <canvas id="chartLigacoesDias" height="80"></canvas>

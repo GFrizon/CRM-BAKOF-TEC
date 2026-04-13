@@ -1,7 +1,9 @@
 <!-- ============================================================
      FILTRO ORACLE POR PERÍODO
      ============================================================ -->
-{% if aba == 'oracle' %}
+{% set visao_atual_oracle = visao|default(request.args.get('visao', ''), true) %}
+{% set ocultar_filtro_oracle = (current_user.tipo == 'supervisor_repr' and visao_atual_oracle == 'dashboard') %}
+{% if aba == 'oracle' and not ocultar_filtro_oracle %}
 <div class="panel-card">
   <div class="panel-header">
     <i class="bi bi-funnel"></i>

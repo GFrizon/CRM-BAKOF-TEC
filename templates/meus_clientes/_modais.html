@@ -1,12 +1,14 @@
 <!-- ============================================================
      MODAL: REGISTRAR LIGAÇÃO
      ============================================================ -->
+{% set termo_interacao = 'interacao' if current_user.tipo == 'consultor' else 'ligacao' %}
+{% set termo_interacoes = 'interacoes' if current_user.tipo == 'consultor' else 'ligacoes' %}
 <div class="modal fade" id="modalLigacao" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <form onsubmit="salvarLigacao(event)">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-telephone-plus me-2"></i>Registrar ligação</h5>
+          <h5 class="modal-title"><i class="bi bi-telephone-plus me-2"></i>Registrar {{ termo_interacao }}</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -92,7 +94,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
         <button type="button" class="btn btn-primary" onclick="registrarLigacaoDesdeDetalhes()">
-          <i class="bi bi-telephone-plus me-1"></i> Registrar ligação
+          <i class="bi bi-telephone-plus me-1"></i> Registrar {{ termo_interacao }}
         </button>
       </div>
     </div>
@@ -106,7 +108,7 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Histórico de ligações</h5>
+        <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Historico de {{ termo_interacoes }}</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="historicoContent">
@@ -148,7 +150,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar ligação</h5>
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar {{ termo_interacao }}</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">

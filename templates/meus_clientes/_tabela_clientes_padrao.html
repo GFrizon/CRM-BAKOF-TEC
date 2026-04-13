@@ -13,7 +13,7 @@
           {% if aba == 'retornar' %}
           <th class="th-sort" onclick="sortFlatTable(this,{% if aba != 'pendentes' %}5{% else %}4{% endif %})">Próximo Contato<span class="sort-icon"></span></th>
           {% endif %}
-          <th class="th-sort" onclick="sortFlatTable(this, this.cellIndex)">Ligações<span class="sort-icon"></span></th>
+          <th class="th-sort" onclick="sortFlatTable(this, this.cellIndex)">{{ 'Interacoes' if current_user.tipo == 'consultor' else 'Ligacoes' }}<span class="sort-icon"></span></th>
           <th>Ações</th>
         </tr>
       </thead>

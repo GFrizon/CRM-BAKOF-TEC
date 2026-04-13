@@ -5,12 +5,12 @@
 <div class="panel-card">
   <div class="panel-header">
     <i class="bi bi-calendar-range"></i>
-    <span>Filtro de Ligações por Mês</span>
+    <span>Filtro de {{ 'Interacoes' if current_user.tipo == 'consultor' else 'Ligacoes' }} por Mes</span>
   </div>
   <div class="panel-body">
     <div class="row g-3 align-items-end">
       <div class="col-md-8">
-        <label class="form-label">Selecione o mês para visualizar suas ligações:</label>
+        <label class="form-label">Selecione o mes para visualizar suas {{ 'interacoes' if current_user.tipo == 'consultor' else 'ligacoes' }}:</label>
         <select class="form-select" id="filtroMesConsultor" onchange="aplicarFiltroMesConsultor()">
           <option value="">Todos (sem filtro)</option>
           {% for m in meses_disponiveis_consultor %}
