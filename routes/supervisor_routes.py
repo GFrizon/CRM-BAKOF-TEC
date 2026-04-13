@@ -21,6 +21,7 @@ from routes.clientes_ligacoes.analytics_api import (
 )
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
 from services.banner_service import get_banners_ativos
+from services.carteiras_movimento_service import carregar_movimento_carteira
 from services.inativos_movimento_service import carregar_movimento_inativos
 
 
@@ -223,6 +224,7 @@ def register_supervisor_routes(app):
             "total_retorno_atrasado": total_retorno_atrasado,
             "total_carteira_risco": total_carteira_risco,
         }
+
     def _carregar_dados_dashboard_supervisor(
         dashboard_tipo: str,
         hoje,
@@ -361,12 +363,167 @@ def register_supervisor_routes(app):
             "atualizado_em": (resumo_sync_hoje.atualizado_em if resumo_sync_hoje else None),
         }
         movimento_inativos_detalhes = carregar_movimento_inativos(datetime.now().date()) or {}
+        def _parse_dt_iso(valor):
+            if not valor:
+                return None
+            try:
+                return datetime.fromisoformat(str(valor))
+            except Exception:
+                return None
+
+        mov_90_150_raw = carregar_movimento_carteira("oracle_90_150", datetime.now().date()) or {}
+        mov_proximos_raw = carregar_movimento_carteira("proximos_inativacao", datetime.now().date()) or {}
+
+        limite_90 = datetime.now() - timedelta(days=90)
+        limite_150 = datetime.now() - timedelta(days=150)
+        limite_151 = datetime.now() - timedelta(days=151)
+        limite_180 = datetime.now() - timedelta(days=180)
+        limite_181 = datetime.now() - timedelta(days=181)
+        limite_730 = datetime.now() - timedelta(days=730)
+
+        base_filtro_cliente = [
+            Cliente.ativo == True,
+            Cliente.cd_cliente_oracle.isnot(None),
+            Cliente.ultimo_pedido_oracle.isnot(None),
+        ]
+
+        faixa_90_150_atual = {
+            str(cd or "").strip()
+            for (cd,) in (
+                db.session.query(Cliente.cd_cliente_oracle)
+                .join(Usuario, Usuario.id == Cliente.consultor_id)
+                .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+                .filter(*base_filtro_cliente)
+                .filter(Cliente.ultimo_pedido_oracle.between(limite_150, limite_90))
+                .all()
+            )
+            if str(cd or "").strip()
+        }
+        faixa_proximos_atual = {
+            str(cd or "").strip()
+            for (cd,) in (
+                db.session.query(Cliente.cd_cliente_oracle)
+                .join(Usuario, Usuario.id == Cliente.consultor_id)
+                .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+                .filter(*base_filtro_cliente)
+                .filter(Cliente.ultimo_pedido_oracle.between(limite_180, limite_151))
+                .all()
+            )
+            if str(cd or "").strip()
+        }
+        faixa_inativos_atual = {
+            str(cd or "").strip()
+            for (cd,) in (
+                db.session.query(Cliente.cd_cliente_oracle)
+                .join(Usuario, Usuario.id == Cliente.consultor_id)
+                .filter(Usuario.tipo == dashboard_tipo, Usuario.ativo == True)
+                .filter(*base_filtro_cliente)
+                .filter(Cliente.ultimo_pedido_oracle.between(limite_730, limite_181))
+                .all()
+            )
+            if str(cd or "").strip()
+        }
+
+        detalhes_cliente_por_cd = {}
+        codigos_mov = {
+            str((it or {}).get("cd_cliente") or "").strip()
+            for it in (list(mov_90_150_raw.get("sairam") or []) + list(mov_proximos_raw.get("sairam") or []))
+        }
+        codigos_mov = {cd for cd in codigos_mov if cd}
+        if codigos_mov:
+            rows_cli = (
+                Cliente.query
+                .filter(Cliente.cd_cliente_oracle.in_(list(codigos_mov)))
+                .all()
+            )
+            for cli in rows_cli:
+                cd = str(cli.cd_cliente_oracle or "").strip()
+                if cd and cd not in detalhes_cliente_por_cd:
+                    detalhes_cliente_por_cd[cd] = cli
+
+        def _motivo_detalhado_saida(cd: str, origem: str):
+            cd_norm = str(cd or "").strip()
+            if not cd_norm:
+                return ("Sem código do cliente", "")
+            cli = detalhes_cliente_por_cd.get(cd_norm)
+            if not cli:
+                return ("Não encontrado na base após sincronização", "")
+            if not bool(getattr(cli, "ativo", True)):
+                return ("Saiu da carteira ativa do CRM", "")
+            dt_ult = getattr(cli, "ultimo_pedido_oracle", None)
+            if not dt_ult:
+                return ("Sem data válida de último pedido", "")
+            dias_sem = (datetime.now() - dt_ult).days
+
+            if origem == "oracle_90_150":
+                if cd_norm in faixa_proximos_atual:
+                    return ("Foi para 'Próximos Inativação'", f"{dias_sem} dias sem pedido")
+                if cd_norm in faixa_inativos_atual:
+                    return ("Passou de 180 dias e virou Inativo", f"{dias_sem} dias sem pedido")
+                if dias_sem < 90:
+                    return ("Saiu por compra/recência", f"{dias_sem} dias sem pedido")
+                if dias_sem > 730:
+                    return ("Saiu da janela (>730 dias sem pedido)", f"{dias_sem} dias sem pedido")
+                return ("Mudança de base/carteira", f"{dias_sem} dias sem pedido")
+
+            if origem == "proximos_inativacao":
+                if cd_norm in faixa_inativos_atual:
+                    return ("Foi para carteira de Inativos", f"{dias_sem} dias sem pedido")
+                if cd_norm in faixa_90_150_atual:
+                    return ("Voltou para 'Sem Pedido 90-150'", f"{dias_sem} dias sem pedido")
+                if dias_sem < 151:
+                    return ("Saiu por compra/recência", f"{dias_sem} dias sem pedido")
+                if dias_sem > 730:
+                    return ("Saiu da janela (>730 dias sem pedido)", f"{dias_sem} dias sem pedido")
+                return ("Mudança de base/carteira", f"{dias_sem} dias sem pedido")
+
+            return ("Movimento de carteira", f"{dias_sem} dias sem pedido")
+
+        def _anotar_saidas_oracle_90_150(itens):
+            out = []
+            for item in list(itens or []):
+                d = dict(item or {})
+                cd = str(d.get("cd_cliente") or "").strip()
+                if not d.get("motivo_movimento"):
+                    motivo, detalhe = _motivo_detalhado_saida(cd, "oracle_90_150")
+                    d["motivo_movimento"] = motivo
+                    d["motivo_detalhe"] = detalhe
+                out.append(d)
+            return out
+
+        def _anotar_saidas_proximos(itens):
+            out = []
+            for item in list(itens or []):
+                d = dict(item or {})
+                cd = str(d.get("cd_cliente") or "").strip()
+                if not d.get("motivo_movimento"):
+                    motivo, detalhe = _motivo_detalhado_saida(cd, "proximos_inativacao")
+                    d["motivo_movimento"] = motivo
+                    d["motivo_detalhe"] = detalhe
+                out.append(d)
+            return out
+
+        movimento_carteiras_hoje = {
+            "oracle_90_150": {
+                "entraram": list(mov_90_150_raw.get("entraram") or []),
+                "sairam": _anotar_saidas_oracle_90_150(mov_90_150_raw.get("sairam") or []),
+                "total": int(mov_90_150_raw.get("total") or kpis.get("total_sem_pedido_90_150") or 0),
+                "atualizado_em": _parse_dt_iso(mov_90_150_raw.get("atualizado_em")),
+            },
+            "proximos_inativacao": {
+                "entraram": list(mov_proximos_raw.get("entraram") or []),
+                "sairam": _anotar_saidas_proximos(mov_proximos_raw.get("sairam") or []),
+                "total": int(mov_proximos_raw.get("total") or kpis.get("total_proximos_inativacao") or 0),
+                "atualizado_em": _parse_dt_iso(mov_proximos_raw.get("atualizado_em")),
+            },
+        }
 
         return {
             **kpis,
             **dados_dashboard,
             "movimento_inativos_hoje": movimento_inativos_hoje,
             "movimento_inativos_detalhes": movimento_inativos_detalhes,
+            "movimento_carteiras_hoje": movimento_carteiras_hoje,
             "dashboard_tipo": dashboard_tipo,
             "dashboard_titulo": dashboard_titulo,
             "mes_filtro": mes_filtro,

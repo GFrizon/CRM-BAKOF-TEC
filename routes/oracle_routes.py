@@ -10,7 +10,7 @@ from core.extensions import db
 from core.models import Cliente, Usuario
 from routes.clientes_ligacoes.cache_invalidation import invalidar_caches_listagens_clientes
 from sqlalchemy import or_
-from oracle_service import get_clientes_inativos_oracle, get_clientes_oracle, get_valor_total_365dias, test_oracle_connection
+from oracle_service import get_clientes_inativos_oracle, get_clientes_oracle, get_dias_media_recebimento_oracle, get_valor_total_365dias, test_oracle_connection
 from telefone_utils import identificar_ddd_padrao, padronizar_telefone
 
 logger = logging.getLogger(__name__)
@@ -144,6 +144,8 @@ def register_oracle_routes(app):
         )
         detalhes_oracle = get_cliente_oracle_por_codigo(cd_cliente_oracle) or {}
         centralizadora = get_centralizadora_cliente_oracle(cd_cliente_oracle) or {}
+        pagamento_medio_map = get_dias_media_recebimento_oracle([cd_cliente_oracle])
+        pagamento_medio_dias = pagamento_medio_map.get(str(cd_cliente_oracle or "").strip())
 
         def _pick(local_val, oracle_val):
             if local_val is None:
@@ -194,6 +196,7 @@ def register_oracle_routes(app):
                 "data_ultima_sincronizacao": cliente.data_ultima_sincronizacao.strftime('%d/%m/%Y %H:%M') if cliente.data_ultima_sincronizacao else None,
                 "cd_centralizado": centralizadora.get("cd_centralizado"),
                 "nome_centralizadora": centralizadora.get("nome_centralizadora"),
+                "pagamento_medio_dias": pagamento_medio_dias,
             }
         else:
             dt_pedido = ultimo_pedido_lista.get("dt_pedido") or detalhes_oracle.get("dt_pedido")
@@ -218,6 +221,7 @@ def register_oracle_routes(app):
                 "data_ultima_sincronizacao": None,
                 "cd_centralizado": centralizadora.get("cd_centralizado"),
                 "nome_centralizadora": centralizadora.get("nome_centralizadora"),
+                "pagamento_medio_dias": pagamento_medio_dias,
             }
 
         return jsonify({

@@ -562,6 +562,7 @@ def sincronizacao_automatica_diaria():
                 | set(codigos_proximos_sairam)
             )
             detalhes_por_codigo = {}
+            mapa_cliente_por_codigo = {}
             if codigos_movimento:
                 rows_mov = (
                     Cliente.query
@@ -609,6 +610,7 @@ def sincronizacao_automatica_diaria():
                     cd = str(cli.cd_cliente_oracle or "").strip()
                     if not cd:
                         continue
+                    mapa_cliente_por_codigo[cd] = cli
                     contato = ultimo_contato_por_cliente.get(int(cli.id)) if cli.id else None
                     detalhes_por_codigo[cd] = {
                         "cd_cliente": cd,
@@ -639,11 +641,96 @@ def sincronizacao_automatica_diaria():
                     "ultimo_resultado": "",
                 }
 
+            def _dias_sem_pedido(cd):
+                cli = mapa_cliente_por_codigo.get(str(cd or "").strip())
+                if not cli or not getattr(cli, "ultimo_pedido_oracle", None):
+                    return None
+                try:
+                    return int((data_sync - cli.ultimo_pedido_oracle).days)
+                except Exception:
+                    return None
+
+            def _motivo_saida_90_150(cd):
+                cd = str(cd or "").strip()
+                if not cd:
+                    return ("Sem código do cliente", "")
+                if cd in faixa_proximos_depois_sync:
+                    d = _dias_sem_pedido(cd)
+                    return ("Migrou para Próximos Inativação", f"{d} dias sem pedido" if d is not None else "")
+                if cd in inativos_depois_sync:
+                    d = _dias_sem_pedido(cd)
+                    return ("Passou de 180 dias e virou Inativo", f"{d} dias sem pedido" if d is not None else "")
+                cli = mapa_cliente_por_codigo.get(cd)
+                if cli and not bool(getattr(cli, "ativo", True)):
+                    return ("Saiu da carteira ativa do CRM", "")
+                d = _dias_sem_pedido(cd)
+                if d is not None and d < 90:
+                    return ("Saiu por compra/recência", f"{d} dias sem pedido")
+                if d is not None and d > 730:
+                    return ("Saiu da janela (>730 dias sem pedido)", f"{d} dias sem pedido")
+                return ("Mudança de base/carteira", f"{d} dias sem pedido" if d is not None else "")
+
+            def _motivo_saida_proximos(cd):
+                cd = str(cd or "").strip()
+                if not cd:
+                    return ("Sem código do cliente", "")
+                if cd in inativos_depois_sync:
+                    d = _dias_sem_pedido(cd)
+                    return ("Foi para carteira de Inativos", f"{d} dias sem pedido" if d is not None else "")
+                if cd in faixa_90_150_depois_sync:
+                    d = _dias_sem_pedido(cd)
+                    return ("Voltou para 'Sem Pedido 90-150'", f"{d} dias sem pedido" if d is not None else "")
+                cli = mapa_cliente_por_codigo.get(cd)
+                if cli and not bool(getattr(cli, "ativo", True)):
+                    return ("Saiu da carteira ativa do CRM", "")
+                d = _dias_sem_pedido(cd)
+                if d is not None and d < 151:
+                    return ("Saiu por compra/recência", f"{d} dias sem pedido")
+                if d is not None and d > 730:
+                    return ("Saiu da janela (>730 dias sem pedido)", f"{d} dias sem pedido")
+                return ("Mudança de base/carteira", f"{d} dias sem pedido" if d is not None else "")
+
+            def _detalhe_com_motivo(cd, motivo_fn):
+                item = dict(_detalhe(cd))
+                motivo, detalhe = motivo_fn(cd)
+                item["motivo_movimento"] = motivo
+                item["motivo_detalhe"] = detalhe
+                return item
+
+            def _motivo_entrada_inativos(cd):
+                cd = str(cd or "").strip()
+                if not cd:
+                    return ("Sem código do cliente", "")
+                d = _dias_sem_pedido(cd)
+                if cd in faixa_proximos_antes_sync:
+                    return ("Saiu de 'Próximos Inativação' e entrou em Inativos", f"{d} dias sem pedido" if d is not None else "")
+                if cd in faixa_90_150_antes_sync:
+                    return ("Avançou rápido para Inativos", f"{d} dias sem pedido" if d is not None else "")
+                return ("Entrou na faixa de Inativos", f"{d} dias sem pedido" if d is not None else "")
+
+            def _motivo_saida_inativos(cd):
+                cd = str(cd or "").strip()
+                if not cd:
+                    return ("Sem código do cliente", "")
+                cli = mapa_cliente_por_codigo.get(cd)
+                if cli and not bool(getattr(cli, "ativo", True)):
+                    return ("Saiu da carteira ativa do CRM", "")
+                d = _dias_sem_pedido(cd)
+                if d is not None and d < 181:
+                    if cd in faixa_proximos_depois_sync:
+                        return ("Reativou e foi para 'Próximos Inativação'", f"{d} dias sem pedido")
+                    if cd in faixa_90_150_depois_sync:
+                        return ("Reativou e foi para 'Sem Pedido 90-150'", f"{d} dias sem pedido")
+                    return ("Saiu por compra/recência", f"{d} dias sem pedido")
+                if d is not None and d > 730:
+                    return ("Saiu da janela (>730 dias sem pedido)", f"{d} dias sem pedido")
+                return ("Mudança de base/carteira", f"{d} dias sem pedido" if d is not None else "")
+
             salvar_movimento_inativos(
                 data_ref=data_ref,
                 atualizado_em=data_sync,
-                entraram=[_detalhe(cd) for cd in codigos_entraram],
-                sairam=[_detalhe(cd) for cd in codigos_sairam],
+                entraram=[_detalhe_com_motivo(cd, _motivo_entrada_inativos) for cd in codigos_entraram],
+                sairam=[_detalhe_com_motivo(cd, _motivo_saida_inativos) for cd in codigos_sairam],
                 total_inativos=len(inativos_depois_sync),
             )
             salvar_movimento_carteira(
@@ -651,7 +738,7 @@ def sincronizacao_automatica_diaria():
                 data_ref=data_ref,
                 atualizado_em=data_sync,
                 entraram=[_detalhe(cd) for cd in codigos_90_150_entraram],
-                sairam=[_detalhe(cd) for cd in codigos_90_150_sairam],
+                sairam=[_detalhe_com_motivo(cd, _motivo_saida_90_150) for cd in codigos_90_150_sairam],
                 total=len(faixa_90_150_depois_sync),
             )
             salvar_movimento_carteira(
@@ -659,7 +746,7 @@ def sincronizacao_automatica_diaria():
                 data_ref=data_ref,
                 atualizado_em=data_sync,
                 entraram=[_detalhe(cd) for cd in codigos_proximos_entraram],
-                sairam=[_detalhe(cd) for cd in codigos_proximos_sairam],
+                sairam=[_detalhe_com_motivo(cd, _motivo_saida_proximos) for cd in codigos_proximos_sairam],
                 total=len(faixa_proximos_depois_sync),
             )
 

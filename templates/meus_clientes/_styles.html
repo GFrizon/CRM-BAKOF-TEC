@@ -530,8 +530,16 @@ body.tab-switching {
 /* ============================================================
    TABELA DENTRO DO REPRESENTANTE
    ============================================================ */
-.rep-table-wrap { overflow-x: auto; }
-.rep-table { margin: 0; font-size: .83rem; }
+.rep-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.rep-table {
+  margin: 0;
+  font-size: .83rem;
+  width: 100%;
+  table-layout: fixed;
+}
 .rep-table thead th {
   background: #eaf1fb !important;
   color: var(--text-2) !important;
@@ -549,6 +557,9 @@ body.tab-switching {
   border-top: none !important;
   vertical-align: middle !important;
   font-size: .81rem !important;
+}
+.rep-table tbody tr {
+  height: 60px;
 }
 .rep-table tbody tr { transition: background .12s; }
 .rep-table tbody tr:hover td { background: var(--brand-50) !important; }
@@ -596,27 +607,72 @@ body.tab-switching {
   font-size: .77rem !important;
   color: #2f4765;
 }
+.rep-table th:nth-child(7),
+.rep-table td.col-pgto-medio {
+  text-align: center;
+  white-space: nowrap;
+}
+.rep-table td.col-acoes {
+  text-align: center;
+  white-space: nowrap;
+}
+.rep-table td.col-acoes .d-flex {
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px !important;
+  width: 89px;
+  margin: 0 auto;
+}
 .rep-table td.col-valor .valor-principal {
   font-size: .84rem;
   font-weight: 800;
   letter-spacing: .01em;
 }
 
+.pgto-chip {
+  display: inline-block;
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+.pgto-chip--ok {
+  color: #15803d;
+}
+.pgto-chip--warn {
+  color: #b45309;
+}
+.pgto-chip--late {
+  color: #b91c1c;
+}
+
 .oracle-cliente-main {
   font-size: .82rem;
   line-height: 1.1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .oracle-cliente-meta {
   margin-top: 2px;
   font-size: .71rem;
   color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .oracle-cliente-meta-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   line-height: 1.15;
+  overflow: hidden;
 }
 .oracle-cliente-meta-row + .oracle-cliente-meta-row {
   margin-top: 2px;
@@ -626,6 +682,9 @@ body.tab-switching {
   align-items: center;
   gap: 3px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 48%;
 }
 .oracle-cliente-meta-item i {
   color: #6a84a6;
@@ -662,13 +721,16 @@ body.tab-switching {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   font-size: .8rem;
   transition: all .15s;
   border-width: 1px;
 }
+.action-btn i {
+  line-height: 1;
+}
 .action-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.12); }
-.rep-table .action-btn { width: 28px; height: 28px; font-size: .76rem; }
+.rep-table .action-btn { width: 27px; height: 27px; font-size: .74rem; }
 
 @media (max-width: 1200px) {
   .rep-table thead th,
@@ -767,6 +829,12 @@ body.tab-switching {
   gap: 6px;
   flex-wrap: nowrap;
   white-space: nowrap;
+  max-width: 100%;
+}
+.contact-inline .tel-link {
+  max-width: calc(100% - 34px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .wa-link {

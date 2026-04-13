@@ -748,6 +748,27 @@ if (ctxResultados) {
     }
   });
 }
+
+(function bindCollapseToggleText() {
+  const buttons = document.querySelectorAll('.js-collapse-toggle[data-bs-toggle="collapse"]');
+  if (!buttons.length) return;
+
+  const syncText = (btn) => {
+    const expanded = String(btn.getAttribute('aria-expanded') || 'false') === 'true';
+    const txtCollapsed = btn.getAttribute('data-text-collapsed') || 'Ver lista';
+    const txtExpanded = btn.getAttribute('data-text-expanded') || 'Fechar lista';
+    btn.textContent = expanded ? txtExpanded : txtCollapsed;
+  };
+
+  buttons.forEach((btn) => {
+    const targetSel = btn.getAttribute('data-bs-target');
+    const target = targetSel ? document.querySelector(targetSel) : null;
+    syncText(btn);
+    if (!target) return;
+    target.addEventListener('shown.bs.collapse', () => syncText(btn));
+    target.addEventListener('hidden.bs.collapse', () => syncText(btn));
+  });
+})();
 }
 </script>
 

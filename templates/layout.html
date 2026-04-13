@@ -29,6 +29,10 @@
 
   </div>
 
+  {% if current_user.is_authenticated and request.endpoint != 'cranio_page' %}
+    {% include "layout/_cranio_widget.html" %}
+  {% endif %}
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   {% block scripts %}{% endblock %}
 

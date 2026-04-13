@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import re
 
 
 RESULTADOS_VALIDOS_LIGACAO = {
@@ -13,7 +14,34 @@ RESULTADOS_VALIDOS_LIGACAO = {
 
 def parse_valor_venda(valor_raw):
     try:
-        return float(str(valor_raw or 0).replace(",", "."))
+        txt = str(valor_raw or "").strip()
+        if not txt:
+            return 0.0
+
+        # Aceita formatos como:
+        # 1234.56 | 1.234,56 | 1,234.56 | R$ 1.234,56
+        txt = re.sub(r"[^\d,.\-]", "", txt)
+        if not txt or txt in {"-", ".", ",", "-.", "-,"}:
+            return 0.0
+
+        tem_virgula = "," in txt
+        tem_ponto = "." in txt
+
+        if tem_virgula and tem_ponto:
+            ultima_virgula = txt.rfind(",")
+            ultimo_ponto = txt.rfind(".")
+            separador_decimal = "," if ultima_virgula > ultimo_ponto else "."
+            separador_milhar = "." if separador_decimal == "," else ","
+            txt = txt.replace(separador_milhar, "")
+            if separador_decimal == ",":
+                txt = txt.replace(",", ".")
+        elif tem_virgula:
+            txt = txt.replace(".", "")
+            txt = txt.replace(",", ".")
+        else:
+            txt = txt.replace(",", "")
+
+        return float(txt)
     except Exception:
         return 0.0
 

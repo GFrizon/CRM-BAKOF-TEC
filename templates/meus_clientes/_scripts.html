@@ -144,7 +144,10 @@ async function editarLigacaoCompleta(ligacaoId) {
     if (!r.ok) { alert(data.erro || 'Erro ao carregar dados da ligação'); return; }
     document.getElementById('editLigacaoId').value  = data.id;
     document.getElementById('editResultado').value  = data.resultado;
-    document.getElementById('editValorVenda').value = data.valor_venda_fmt.replace('R$ ', '');
+    const valorNum = Number(data.valor_venda || 0);
+    document.getElementById('editValorVenda').value = Number.isFinite(valorNum)
+      ? valorNum.toFixed(2).replace('.', ',')
+      : '';
     document.getElementById('editObservacao').value = data.observacao || '';
     document.getElementById('editDataHora').textContent    = data.data_hora;
     document.getElementById('editContatoNome').textContent = data.contato_nome || 'N/A';
@@ -1816,6 +1819,7 @@ function renderizarDetalhesOracle(data) {
               ${cliente.categoria_consultor ? `<tr><td class="fw-bold text-muted">Consultor Oracle</td><td><small>${cliente.categoria_consultor}</small></td></tr>` : ''}
               ${cliente.ultimo_pedido_oracle ? `<tr><td class="fw-bold text-muted">Ultimo Pedido</td><td>${cliente.ultimo_pedido_oracle}</td></tr>` : ''}
               ${cliente.valor_ultimo_pedido ? `<tr><td class="fw-bold text-muted">Valor</td><td style="font-weight:700;color:#16a34a;">${parseFloat(cliente.valor_ultimo_pedido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>` : ''}
+              ${(cliente.pagamento_medio_dias !== null && cliente.pagamento_medio_dias !== undefined) ? `<tr><td class="fw-bold text-muted">Pgto Medio</td><td><span class="badge" style="${(Number(cliente.pagamento_medio_dias) >= 0 && Number(cliente.pagamento_medio_dias) <= 30) ? 'background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;' : 'background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;'}">${Math.round(Number(cliente.pagamento_medio_dias))}d</span></td></tr>` : ''}
             </table>
           </div>
         </div>
@@ -2209,5 +2213,26 @@ function sincronizarClientesManuais() {
     btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Sincronizar com Oracle';
   });
 }
+
+(function bindCollapseToggleText() {
+  const buttons = document.querySelectorAll('.js-collapse-toggle[data-bs-toggle="collapse"]');
+  if (!buttons.length) return;
+
+  const syncText = (btn) => {
+    const expanded = String(btn.getAttribute('aria-expanded') || 'false') === 'true';
+    const txtCollapsed = btn.getAttribute('data-text-collapsed') || 'Ver lista';
+    const txtExpanded = btn.getAttribute('data-text-expanded') || 'Fechar lista';
+    btn.textContent = expanded ? txtExpanded : txtCollapsed;
+  };
+
+  buttons.forEach((btn) => {
+    const targetSel = btn.getAttribute('data-bs-target');
+    const target = targetSel ? document.querySelector(targetSel) : null;
+    syncText(btn);
+    if (!target) return;
+    target.addEventListener('shown.bs.collapse', () => syncText(btn));
+    target.addEventListener('hidden.bs.collapse', () => syncText(btn));
+  });
+})();
 
 </script>

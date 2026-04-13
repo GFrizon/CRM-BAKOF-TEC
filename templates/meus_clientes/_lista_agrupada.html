@@ -86,17 +86,18 @@
           <table class="table rep-table">
             <thead>
               <tr>
-                <th class="th-sort" style="width:24%" onclick="sortRepTable(this,0)">Cliente<span class="sort-icon"></span></th>
-                <th class="th-sort" style="width:13%" onclick="sortRepTable(this,1)">CNPJ<span class="sort-icon"></span></th>
-                <th style="width:13%">Telefone</th>
-                <th class="th-sort" style="width:10%" onclick="sortRepTable(this,3)">Status<span class="sort-icon"></span></th>
-                <th class="th-sort" style="width:13%" onclick="sortRepTable(this,4)">{% if aba == 'inativos' %}Centralizadora{% else %}Consultor Oracle{% endif %}<span class="sort-icon"></span></th>
-                <th class="th-sort" style="width:10%" onclick="sortRepTable(this,5)">Ultimo Pedido<span class="sort-icon"></span></th>
+                <th class="th-sort" style="width:21%" onclick="sortRepTable(this,0)">Cliente<span class="sort-icon"></span></th>
+                <th class="th-sort" style="width:11%" onclick="sortRepTable(this,1)">CNPJ<span class="sort-icon"></span></th>
+                <th style="width:12%">Telefone</th>
+                <th class="th-sort" style="width:8%" onclick="sortRepTable(this,3)">Status<span class="sort-icon"></span></th>
+                <th class="th-sort" style="width:12%" onclick="sortRepTable(this,4)">{% if aba == 'inativos' %}Centralizadora{% else %}Consultor Oracle{% endif %}<span class="sort-icon"></span></th>
+                <th class="th-sort" style="width:8%" onclick="sortRepTable(this,5)">Ultimo Pedido<span class="sort-icon"></span></th>
+                <th class="th-sort" style="width:6%" onclick="sortRepTable(this,6)" title="Média de dias para pagamento">Pgto (d)<span class="sort-icon"></span></th>
                 {% if aba == 'proximos_inativacao' %}
-                <th class="th-sort" style="width:10%" onclick="sortRepTable(this,6)">Inativa em<span class="sort-icon"></span></th>
+                <th class="th-sort" style="width:9%" onclick="sortRepTable(this,7)">Inativa em<span class="sort-icon"></span></th>
                 {% endif %}
-                <th class="th-sort" style="width:9%" onclick="sortRepTable(this,{% if aba == 'proximos_inativacao' %}7{% else %}6{% endif %})">Valor (365d)<span class="sort-icon"></span></th>
-                <th style="width:8%">Ações</th>
+                <th class="th-sort" style="width:9%" onclick="sortRepTable(this,{% if aba == 'proximos_inativacao' %}8{% else %}7{% endif %})">Valor (365d)<span class="sort-icon"></span></th>
+                <th style="width:74px">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -191,6 +192,24 @@
                   <span style="font-size:.8rem;">{{ c.ultimo_pedido_oracle.strftime('%d/%m/%Y') }}</span>
                   {% else %}
                   <span style="color:var(--text-3);">-</span>
+                  {% endif %}
+                </td>
+                <td class="col-pgto-medio">
+                  {% if c.pagamento_medio_dias is defined and c.pagamento_medio_dias is not none %}
+                    {% set pg_raw = c.pagamento_medio_dias|float %}
+                    {% set pg = pg_raw|round|int %}
+                    <span class="pgto-chip {% if pg <= 0 %}pgto-chip--ok{% elif pg <= 30 %}pgto-chip--warn{% else %}pgto-chip--late{% endif %}"
+                          title="{% if pg < 0 %}Pagamento adiantado (média){% elif pg == 0 %}Pagamento no vencimento (média){% elif pg <= 30 %}Leve atraso (média){% else %}Atraso alto (média){% endif %}">
+                      {% if pg == 0 %}
+                        em dia
+                      {% elif pg < 0 %}
+                        {{ pg|abs }}d ad.
+                      {% else %}
+                        {{ pg }}d
+                      {% endif %}
+                    </span>
+                  {% else %}
+                    <span style="color:var(--text-3);">-</span>
                   {% endif %}
                 </td>
                 {% if aba == 'proximos_inativacao' %}

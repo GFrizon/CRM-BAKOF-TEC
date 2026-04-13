@@ -48,4 +48,5 @@ def montar_payload_cliente_oracle(
         "em_atendimento_ativo": bool(lock_info.get("ativo")),
         "em_atendimento_por_nome": lock_info.get("por_nome"),
         "em_atendimento_ate": lock_info.get("ate"),
+        "pagamento_medio_dias": cliente_oracle.get("pagamento_medio_dias"),
     }

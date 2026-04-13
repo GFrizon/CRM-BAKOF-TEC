@@ -91,3 +91,26 @@ def carregar_movimentos_carteira_mes(carteira: str, ano: int, mes: int):
         return itens
     except Exception:
         return []
+
+
+def carregar_movimento_carteira(carteira: str, data_ref=None):
+    carteira_key = str(carteira or "").strip().lower()
+    path = _storage_path()
+    if not carteira_key or not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        carteiras = payload.get("carteiras") if isinstance(payload, dict) else None
+        if not isinstance(carteiras, dict):
+            return None
+        carteira_obj = carteiras.get(carteira_key)
+        dias = carteira_obj.get("dias") if isinstance(carteira_obj, dict) else None
+        if not isinstance(dias, dict) or not dias:
+            return None
+        if data_ref is not None:
+            chave = _to_iso_data(data_ref)
+            return dias.get(chave)
+        chave_recente = sorted(dias.keys(), reverse=True)[0]
+        return dias.get(chave_recente)
+    except Exception:
+        return None

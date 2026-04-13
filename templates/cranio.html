@@ -1,15 +1,16 @@
-{% extends "layout.html" %}
+﻿{% extends "layout.html" %}
 {% block title %}Crânio{% endblock %}
 {% block content %}
 <div class="container-fluid py-3">
   <div class="panel-card">
     <div class="panel-header">
       <i class="bi bi-robot me-2"></i>Crânio
+      <span class="badge bg-warning text-dark ms-2">Em desenvolvimento (Beta)</span>
     </div>
     <div class="panel-body">
-      <p class="text-muted mb-3">Assistente interno para produtividade (sem consumo de API).</p>
+      <p class="text-muted mb-3">Assistente interno em desenvolvimento. Pode responder de forma incompleta em alguns cenários.</p>
       <div id="cranioChat" class="border rounded p-3 mb-3" style="min-height:220px; max-height:420px; overflow:auto; background:#fff;">
-        <div class="text-muted small">Exemplos: "resumo de hoje", "retornos atrasados", "proximos para ligar", "buscar cliente fermaq".</div>
+        <div class="text-muted small">Exemplos: "resumo de hoje", "retornos atrasados", "próximos para ligar", "buscar cliente fermaq".</div>
       </div>
       <form id="cranioForm" class="d-flex gap-2">
         <input id="cranioPergunta" class="form-control" placeholder="Pergunte ao Crânio..." autocomplete="off">
@@ -58,4 +59,3 @@
 })();
 </script>
 {% endblock %}
-

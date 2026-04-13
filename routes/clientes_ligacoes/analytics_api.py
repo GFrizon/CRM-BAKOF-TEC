@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from datetime import datetime, timedelta
 
 from sqlalchemy import case, desc, extract, func
@@ -92,7 +92,7 @@ def parse_mes_ano(args):
 
 def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_operador="consultor"):
     if mes < 1 or mes > 12:
-        return {"ok": False, "erro": "MÃªs invÃ¡lido"}, 400
+        return {"ok": False, "erro": "Mês inválido"}, 400
 
     inicio = datetime(ano, mes, 1)
     fim = datetime(ano + (1 if mes == 12 else 0), (1 if mes == 12 else mes + 1), 1)
@@ -135,7 +135,7 @@ def consultar_resultados_consultores_mes(mes, ano, meta_conversao=10.0, tipo_ope
         .subquery()
     )
 
-    # Totais gerais (mesma referÃªncia dos cards do dashboard supervisor)
+    # Totais gerais (mesma referência dos cards do dashboard supervisor)
     total_90_150_geral_oracle = len(carregar_clientes_oracle_deduplicados(logger, periodo_oracle=None) or [])
     total_proximos_geral_oracle = int(
         (
@@ -496,4 +496,3 @@ def consultar_detalhe_conversao_operador_mes(operador_id, mes, ano, tipo_operado
         },
     }
     return payload, 200
-

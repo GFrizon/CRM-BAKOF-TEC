@@ -1,0 +1,329 @@
+﻿<div id="cranioWidget" class="cranio-widget">
+
+  <!-- Botão flutuante — emoji e cor mudam conforme o humor -->
+  <button
+    id="cranioToggle"
+    type="button"
+    class="cranio-fab"
+    data-mood="normal"
+    aria-label="Abrir Crânio"
+  >
+    <span class="cranio-fab-icon bi bi-robot" id="cranioFabIcon" aria-hidden="true"></span>
+  </button>
+
+  <!-- Chip de evolução: aparece sobre o FAB quando painel fechado -->
+  <div id="cranioEvoChip" class="cranio-evo-chip" aria-hidden="true"></div>
+
+  <!-- Painel de chat -->
+  <section id="cranioPanel" class="cranio-panel d-none" aria-live="polite">
+    <header class="cranio-panel-header">
+      <div class="cranio-title">
+        <span id="cranioTitleIcon" class="cranio-title-icon bi bi-robot" aria-hidden="true"></span>
+        <span>Crânio</span>
+        <span class="cranio-beta-badge">Beta</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('cranio_page') }}">Tela completa</a>
+        <button id="cranioClose" type="button" class="btn btn-sm btn-outline-light" aria-label="Fechar">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </header>
+
+    <div class="cranio-hint-bar">
+      💡 Tente: "resumo de hoje" · "retornos atrasados" · "buscar cliente"
+    </div>
+
+    <div id="cranioQuickChat" class="cranio-messages">
+      <div id="cranioTyping" class="cm-row cm-row--bot d-none">
+        <span class="cm-avatar"><i class="bi bi-robot"></i></span>
+        <div class="cm-bubble cm-bubble--bot cm-bubble--typing">
+          <span class="cm-dot"></span><span class="cm-dot"></span><span class="cm-dot"></span>
+        </div>
+      </div>
+    </div>
+
+    <form id="cranioQuickForm" class="cranio-input-row">
+      <input
+        id="cranioQuickInput"
+        class="form-control form-control-sm"
+        type="text"
+        maxlength="300"
+        placeholder="Pergunte ao Crânio..."
+        autocomplete="off"
+      />
+      <button id="cranioQuickSend" type="submit" class="btn btn-primary btn-sm">
+        <i class="bi bi-send"></i>
+      </button>
+    </form>
+  </section>
+
+  <!-- Nudge de lembrete -->
+  <div id="cranioNudge" class="cranio-nudge d-none" role="status" aria-live="polite">
+    <div class="cranio-nudge-title"><i class="bi bi-bell"></i> Lembrete do Crânio</div>
+    <div id="cranioNudgeText" class="cranio-nudge-text"></div>
+    <button id="cranioNudgeClose" type="button" class="cranio-nudge-close" aria-label="Fechar lembrete">
+      <i class="bi bi-x"></i>
+    </button>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const widget     = document.getElementById('cranioWidget');
+  const toggle     = document.getElementById('cranioToggle');
+  const panel      = document.getElementById('cranioPanel');
+  const closeBtn   = document.getElementById('cranioClose');
+  const form       = document.getElementById('cranioQuickForm');
+  const input      = document.getElementById('cranioQuickInput');
+  const chat       = document.getElementById('cranioQuickChat');
+  const nudge       = document.getElementById('cranioNudge');
+  const nudgeText   = document.getElementById('cranioNudgeText');
+  const nudgeClose  = document.getElementById('cranioNudgeClose');
+  const fabIcon     = document.getElementById('cranioFabIcon');
+  const titleIcon   = document.getElementById('cranioTitleIcon');
+  const evoChip     = document.getElementById('cranioEvoChip');
+  const typingEl    = document.getElementById('cranioTyping');
+
+  if (!widget || !toggle || !panel || !closeBtn || !form || !input || !chat ||
+      !nudge || !nudgeText || !nudgeClose || !fabIcon || !evoChip || !typingEl) return;
+
+  const STATE_KEY         = 'cranio_widget_open';
+  const NUDGE_NEXT_KEY    = 'cranio_nudge_next_ts';
+  const NUDGE_DISMISS_KEY = 'cranio_nudge_dismissed_until';
+  const NUDGE_CYCLE_KEY   = 'cranio_nudge_cycle_seen_ids';
+
+  const MOOD_PHRASES = {
+    normal:    ['Pronto pra ajudar', 'De olho nos números', 'Aguardando ordens'],
+    tranquilo: ['Tudo sob controle', 'No ritmo certo', 'Focado aqui'],
+    animado:   ['Mestre das vendas!', 'Vendendo muito hoje!', 'Dia produtivo!', 'Tá arrasando!'],
+    pistola:   ['Dia pesado...', 'Não tá fácil hoje', 'Bora virar esse jogo!'],
+    lendario:  ['Status: LENDÁRIO', 'Nível máximo!', 'Crânio lendário!'],
+  };
+
+  const pickPhrase = (moodKey) => {
+    const list = MOOD_PHRASES[moodKey] || MOOD_PHRASES.normal;
+    return list[Math.floor(Math.random() * list.length)];
+  };
+
+  const MOOD_MAP = {
+    'normal':          'normal',
+    'zoeiro':          'tranquilo',
+    'tranquilo':       'tranquilo',
+    'animado':         'animado',
+    'pistola':         'pistola',
+    'lend\u00e1rio':   'lendario',
+    'lendario':        'lendario',
+    'cr\u00e2nio lend\u00e1rio': 'lendario',
+    'cranio lendario': 'lendario',
+    'cr\u00e2nio brabo':  'animado',
+    'cranio brabo':    'animado',
+    'cr\u00e2nio morto':  'pistola',
+    'cranio morto':    'pistola',
+    'cr\u00e2nio normal': 'normal',
+    'cranio normal':   'normal',
+  };
+
+  const MOOD_ICONS = {
+    normal: 'bi-robot',
+    tranquilo: 'bi-emoji-smile',
+    animado: 'bi-lightning-charge-fill',
+    pistola: 'bi-emoji-frown',
+    lendario: 'bi-stars',
+  };
+
+  const EVO_LABEL_MAP = {
+    'crânio morto': 'Recuperando ritmo',
+    'cranio morto': 'Recuperando ritmo',
+    'crânio normal': 'Ritmo estável',
+    'cranio normal': 'Ritmo estável',
+    'crânio brabo': 'Ritmo forte',
+    'cranio brabo': 'Ritmo forte',
+    'crânio lendário': 'Ritmo lendário',
+    'cranio lendario': 'Ritmo lendário',
+  };
+
+  /* ── Nudge helpers ────────────────────────────────────────── */
+  const showNudge = (text, priority) => {
+    nudgeText.textContent = String(text || '');
+    nudge.classList.remove('d-none', 'is-high', 'is-normal', 'is-showing');
+    nudge.classList.add(priority === 'high' ? 'is-high' : 'is-normal');
+    setTimeout(() => nudge.classList.add('is-showing'), 5);
+    const ttl = priority === 'high' ? 15000 : 11000;
+    window.setTimeout(() => {
+      nudge.classList.remove('is-showing');
+      window.setTimeout(() => nudge.classList.add('d-none'), 220);
+    }, ttl);
+  };
+
+  const pickReminderFromPool = (pool) => {
+    const items = Array.isArray(pool) ? pool.filter(i => i && i.id && i.message) : [];
+    if (!items.length) return null;
+    let seen = [];
+    try { seen = JSON.parse(localStorage.getItem(NUDGE_CYCLE_KEY) || '[]'); if (!Array.isArray(seen)) seen = []; } catch (_) { seen = []; }
+    let available = items.filter(i => !seen.includes(i.id));
+    if (!available.length) { seen = []; available = items.slice(); }
+    const chosen = available[Math.floor(Math.random() * available.length)];
+    seen.push(chosen.id);
+    localStorage.setItem(NUDGE_CYCLE_KEY, JSON.stringify(seen.slice(-40)));
+    return chosen;
+  };
+
+  const maybeFetchNudge = async (force = false) => {
+    const now = Date.now();
+    const dismissedUntil = Number(localStorage.getItem(NUDGE_DISMISS_KEY) || 0);
+    const nextTs         = Number(localStorage.getItem(NUDGE_NEXT_KEY) || 0);
+    if (!force && (now < dismissedUntil || now < nextTs)) return;
+    try {
+      const qs = new URLSearchParams();
+      qs.set('pool', '1');
+      if (force) qs.set('forcar', '1');
+      const res  = await fetch(`/api/cranio/lembrete?${qs.toString()}`, { method: 'GET' });
+      const data = await res.json();
+      if (!data || !data.ok || !data.show || !Array.isArray(data.pool) || !data.pool.length) {
+        localStorage.setItem(NUDGE_NEXT_KEY, String(now + 20 * 60 * 1000)); return;
+      }
+      const chosen = pickReminderFromPool(data.pool);
+      if (!chosen) { localStorage.setItem(NUDGE_NEXT_KEY, String(now + 20 * 60 * 1000)); return; }
+      showNudge(chosen.message, chosen.priority || 'normal');
+      localStorage.setItem(NUDGE_NEXT_KEY, String(now + 28 * 60 * 1000));
+    } catch (_) { localStorage.setItem(NUDGE_NEXT_KEY, String(now + 20 * 60 * 1000)); }
+  };
+
+  /* ── renderStatus: aplica humor+evolução no FAB e chip ────── */
+  const renderStatus = (status) => {
+    const humor    = (status && status.humor)    || {};
+    const evolucao = (status && status.evolucao) || {};
+
+    const moodKey    = MOOD_MAP[(humor.nome || '').toLowerCase()] || 'normal';
+    const moodIcon   = MOOD_ICONS[moodKey] || MOOD_ICONS.normal;
+    const currentFabMood = toggle.dataset.mood || 'normal';
+    const currentFabIcon = Object.values(MOOD_ICONS).find((icon) => fabIcon.classList.contains(icon));
+
+    /* Icon swap com micro-animação apenas quando muda */
+    if (currentFabMood !== moodKey || currentFabIcon !== moodIcon) {
+      fabIcon.classList.add('cranio-icon-out');
+      setTimeout(() => {
+        Object.values(MOOD_ICONS).forEach((icon) => {
+          fabIcon.classList.remove(icon);
+          if (titleIcon) titleIcon.classList.remove(icon);
+        });
+        fabIcon.classList.add(moodIcon);
+        if (titleIcon) titleIcon.classList.add(moodIcon);
+        toggle.dataset.mood  = moodKey;
+        toggle.setAttribute('aria-label', `Abrir Crânio - ${pickPhrase(moodKey)}`);
+        fabIcon.classList.remove('cranio-icon-out');
+      }, 210);
+    }
+
+    /* Chip: mostra nível de evolução real (Crânio brabo, lendário, etc.) */
+    const evoNomeRaw = String(evolucao.nome || '').trim();
+    const evoNomeKey = evoNomeRaw.toLowerCase();
+    const evoNome    = EVO_LABEL_MAP[evoNomeKey] || evoNomeRaw || pickPhrase(moodKey);
+    evoChip.textContent = `Nível: ${evoNome}`;
+
+    /* Peek: mostra o chip brevemente quando estado muda ou é atualizado */
+    evoChip.classList.remove('is-peek');
+    void evoChip.offsetWidth;
+    evoChip.classList.add('is-peek');
+    clearTimeout(evoChip._peekTimer);
+    evoChip._peekTimer = setTimeout(() => evoChip.classList.remove('is-peek'), 3500);
+  };
+
+  const fetchStatus = async () => {
+    try {
+      const res  = await fetch('/api/cranio/status', { method: 'GET' });
+      const data = await res.json();
+      if (data && data.ok && data.status) renderStatus(data.status);
+    } catch (_) {}
+  };
+
+  /* ── Chat helpers ─────────────────────────────────────────── */
+  const showTyping = () => {
+    typingEl.classList.remove('d-none');
+    chat.scrollTop = chat.scrollHeight;
+  };
+  const hideTyping = () => typingEl.classList.add('d-none');
+
+  const addMessage = (text, fromUser) => {
+    const row = document.createElement('div');
+    row.className = 'cm-row ' + (fromUser ? 'cm-row--user' : 'cm-row--bot');
+
+    if (!fromUser) {
+      const av = document.createElement('span');
+      av.className = 'cm-avatar';
+      av.innerHTML = '<i class="bi bi-robot"></i>';
+      row.appendChild(av);
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'cm-bubble ' + (fromUser ? 'cm-bubble--user' : 'cm-bubble--bot');
+    bubble.textContent = String(text || '');
+    row.appendChild(bubble);
+
+    chat.insertBefore(row, typingEl);
+    chat.scrollTop = chat.scrollHeight;
+  };
+
+  const setOpen = (open) => {
+    if (open) {
+      panel.classList.remove('d-none');
+      widget.classList.add('is-open');
+      localStorage.setItem(STATE_KEY, '1');
+      input.focus();
+    } else {
+      panel.classList.add('d-none');
+      widget.classList.remove('is-open');
+      localStorage.setItem(STATE_KEY, '0');
+    }
+  };
+
+  /* ── Event listeners ──────────────────────────────────────── */
+  toggle.addEventListener('click', () => setOpen(panel.classList.contains('d-none')));
+  closeBtn.addEventListener('click', () => setOpen(false));
+
+  nudgeClose.addEventListener('click', () => {
+    nudge.classList.remove('is-showing');
+    nudge.classList.add('d-none');
+    localStorage.setItem(NUDGE_DISMISS_KEY, String(Date.now() + 6 * 60 * 60 * 1000));
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pergunta = (input.value || '').trim();
+    if (!pergunta) return;
+    addMessage(pergunta, true);
+    input.value = '';
+    input.disabled = true;
+    showTyping();
+    try {
+      const res  = await fetch('/api/cranio/perguntar', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ pergunta })
+      });
+      const data = await res.json();
+      hideTyping();
+      if (!data.ok) throw new Error(data.erro || 'Falha ao responder');
+      addMessage(data.resposta || '-', false);
+      if (data.status) renderStatus(data.status);
+      else fetchStatus();
+    } catch (err) {
+      hideTyping();
+      addMessage('Erro: ' + (err && err.message ? err.message : 'falha de conexão'), false);
+    } finally {
+      input.disabled = false;
+      input.focus();
+    }
+  });
+
+  /* ── Init ─────────────────────────────────────────────────── */
+  if (localStorage.getItem(STATE_KEY) === '1') setOpen(true);
+
+  window.setTimeout(() => maybeFetchNudge(true), 7000);
+  window.setInterval(maybeFetchNudge, 15 * 60 * 1000);
+  window.setTimeout(fetchStatus, 600);
+  window.setInterval(fetchStatus, 20 * 1000);
+})();
+</script>

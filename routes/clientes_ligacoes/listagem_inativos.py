@@ -26,8 +26,14 @@ from routes.clientes_ligacoes.domain_utils import (
 )
 from routes.clientes_ligacoes.listagem_grouping_utils import consolidar_dados_grupos
 from routes.clientes_ligacoes.inativos_tab import carregar_clientes_inativos_enriquecidos
+from routes.clientes_ligacoes.dashboard_operacional import (
+    montar_meses_disponiveis,
+    montar_stats_consultor_televendas,
+    parse_filtro_mes_ano,
+)
 from routes.clientes_ligacoes.televendas_stats import montar_stats_produtividade_televendas
 from services.inativos_movimento_service import carregar_movimento_inativos
+from oracle_service import get_dias_media_recebimento_oracle
 
 
 def render_aba_inativos(
@@ -64,6 +70,7 @@ def render_aba_inativos(
         for c in clientes_oracle_inativos
         if c.get("cd_cliente")
     ]
+    pagamento_medio_por_cd = get_dias_media_recebimento_oracle(codigos_inativos) if codigos_inativos else {}
     filtrar_por_vinculo_dashboard = (dashboard_tipo == "consultor")
     operadores_ids_tipo = set()
     if filtrar_por_vinculo_dashboard:
@@ -196,8 +203,11 @@ def render_aba_inativos(
                 "consultores_internos": {},
             }
 
+        cliente_oracle_enriquecido = dict(cliente_oracle or {})
+        cliente_oracle_enriquecido["pagamento_medio_dias"] = pagamento_medio_por_cd.get(cd_cliente)
+
         dados_cliente = montar_payload_cliente_oracle(
-            cliente_oracle=cliente_oracle,
+            cliente_oracle=cliente_oracle_enriquecido,
             cliente_local=cliente_local,
             stats_lig=stats_lig,
             lock_info=lock_info,
@@ -285,6 +295,12 @@ def render_aba_inativos(
         total_retornar = todos_clientes.filter(Cliente.proxima_ligacao.isnot(None)).count()
 
     stats_televendas = montar_stats_produtividade_televendas()
+    mes_filtro, ano_filtro = parse_filtro_mes_ano(request.args, current_user.tipo)
+    stats_dashboard = {}
+    meses_disponiveis_consultor = []
+    if current_user.tipo == "televendas":
+        stats_dashboard = montar_stats_consultor_televendas(current_user, total_oracle_badge)
+        meses_disponiveis_consultor = montar_meses_disponiveis(current_user.tipo)
     total_inativos_exibido = total_inativos if filtrar_por_vinculo_dashboard else total_inativos_badge
 
     return render_template(
@@ -299,16 +315,16 @@ def render_aba_inativos(
         total_proximos=total_proximos_badge,
         usar_vista_agrupada=True,
         is_supervisor=current_user.tipo == "supervisor",
-        stats={},
+        stats=stats_dashboard,
         stats_inativos=stats_inativos,
         movimento_inativos_hoje=movimento_inativos_hoje,
         movimento_inativos_detalhes=movimento_inativos_detalhes,
         stats_televendas=stats_televendas,
         consultores_inativos=consultores_inativos,
         q=request.args.get("q", ""),
-        meses_disponiveis_consultor=[],
-        mes_filtro=None,
-        ano_filtro=None,
+        meses_disponiveis_consultor=meses_disponiveis_consultor,
+        mes_filtro=mes_filtro,
+        ano_filtro=ano_filtro,
         dashboard_tipo=dashboard_tipo,
         visao=visao,
     )

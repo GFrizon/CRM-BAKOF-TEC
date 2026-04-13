@@ -24,6 +24,7 @@ from routes.clientes_ligacoes.consultor_mapping import (
 )
 from routes.clientes_ligacoes.listagem_grouping_utils import consolidar_dados_grupos
 from routes.clientes_ligacoes.oracle_tab import carregar_clientes_oracle_deduplicados
+from oracle_service import get_dias_media_recebimento_oracle
 
 
 def render_aba_oracle(
@@ -51,6 +52,7 @@ def render_aba_oracle(
         for c in clientes_oracle
         if c.get("cd_cliente")
     ]
+    pagamento_medio_por_cd = get_dias_media_recebimento_oracle(codigos_oracle) if codigos_oracle else {}
 
     clientes_locais_por_cd = {}
     stats_ligacoes_por_cliente_id = {}
@@ -158,8 +160,11 @@ def render_aba_oracle(
                 "consultores_internos": {},
             }
 
+        cliente_oracle_enriquecido = dict(cliente_oracle or {})
+        cliente_oracle_enriquecido["pagamento_medio_dias"] = pagamento_medio_por_cd.get(cd_cliente)
+
         dados_cliente = montar_payload_cliente_oracle(
-            cliente_oracle=cliente_oracle,
+            cliente_oracle=cliente_oracle_enriquecido,
             cliente_local=cliente_local,
             stats_lig=stats_lig,
             lock_info=lock_info,

@@ -102,11 +102,13 @@ def classificar_listas_operacionais(
             if consultor_esperado and consultor_esperado != current_user.id:
                 continue
 
-        # Regra de negocio: para consultor, cliente manual pertence a
-        # "Clientes Especiais" (antiga aba Pendentes), mesmo com historico.
+        # Cliente manual sempre aparece em "Clientes Especiais".
+        # Se ja houve ligacao, ele tambem participa do fluxo normal
+        # (Contatados/Retornar) para manter continuidade e edicao.
         if current_user.tipo in ("consultor", "supervisor_repr") and origem_cliente == "manual":
             pendentes.append(dados)
-            continue
+            if total == 0:
+                continue
 
         if total == 0:
             # Evita misturar campanha 90-150d na aba operacional de pendentes

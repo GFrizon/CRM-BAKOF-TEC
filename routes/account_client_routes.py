@@ -399,11 +399,12 @@ def register_account_client_routes(app):
                     if consultor_esperado and consultor_esperado != current_user.id:
                         continue
 
-                # Mesma regra da tela principal: cliente manual do consultor
-                # aparece em "Clientes Especiais" independentemente de ligacoes.
+                # Cliente manual sempre aparece em "Clientes Especiais".
+                # Se ja houve ligacao, tambem segue fluxo normal (Contatados/Retornar).
                 if current_user.tipo == 'consultor' and origem_cliente == 'manual':
                     pendentes.append(dados)
-                    continue
+                    if total == 0:
+                        continue
 
                 if total == 0:
                     pendentes.append(dados)

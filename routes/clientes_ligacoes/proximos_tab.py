@@ -6,6 +6,7 @@ from sqlalchemy.orm import joinedload
 from core.extensions import db
 from core.models import Cliente, Ligacao
 from routes.clientes_ligacoes.domain_utils import _cliente_tem_representante_vinculado
+from oracle_service import get_dias_media_recebimento_oracle
 
 
 def preparar_contexto_proximos_inativacao(current_user, codigos_representantes_vinculados):
@@ -27,6 +28,8 @@ def preparar_contexto_proximos_inativacao(current_user, codigos_representantes_v
         q_proximos = q_proximos.filter(Cliente.consultor_id == current_user.id)
 
     clientes_proximos_raw = q_proximos.all()
+    codigos_proximos = [str(c.cd_cliente_oracle or "").strip() for c in clientes_proximos_raw if c.cd_cliente_oracle]
+    pagamento_medio_por_cd = get_dias_media_recebimento_oracle(codigos_proximos) if codigos_proximos else {}
 
     if current_user.tipo == "supervisor_repr":
         clientes_proximos_raw = [
@@ -114,6 +117,7 @@ def preparar_contexto_proximos_inativacao(current_user, codigos_representantes_v
             "dias_sem_pedido": dias_sem,
             "dias_para_inativar": dias_para_inativar,
             "data_prevista_inativacao": data_prevista_inativacao,
+            "pagamento_medio_dias": pagamento_medio_por_cd.get(str(c.cd_cliente_oracle or "").strip()),
         }
         grupos_px[nome_grupo]["clientes"].append(dados_px)
 

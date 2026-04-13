@@ -7,7 +7,7 @@ import os
 import logging
 import threading
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 from dotenv import load_dotenv
 from database_utils import retry_oracle_connection, retry_database
@@ -15,6 +15,7 @@ from database_utils import retry_oracle_connection, retry_database
 # Configuração de logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+_DIAS_MEDIA_RECEBIMENTO_CACHE = {"ts": None, "data": {}}
 
 # Carrega .env e .env.oracle para execuções fora do app.py
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -1101,4 +1102,108 @@ def get_cliente_oracle_por_codigo(cd_cliente: str):
 def get_vinculos_supervisor_representante_oracle(codigo_supervisor: Optional[str] = None):
     """Busca vínculos supervisor-representante da TG 650 no Oracle"""
     return oracle_service.get_vinculos_supervisor_representante(codigo_supervisor)
+
+
+def get_dias_media_recebimento_oracle(codigos_clientes: Optional[List[str]] = None):
+    """Busca mapa cd_empresa -> media de dias de recebimento."""
+    global _DIAS_MEDIA_RECEBIMENTO_CACHE
+    agora = datetime.now()
+    ttl = timedelta(minutes=10)
+    cache_quente = (
+        _DIAS_MEDIA_RECEBIMENTO_CACHE.get("ts") is not None
+        and (agora - _DIAS_MEDIA_RECEBIMENTO_CACHE["ts"]) <= ttl
+        and isinstance(_DIAS_MEDIA_RECEBIMENTO_CACHE.get("data"), dict)
+    )
+
+    if cache_quente:
+        base = _DIAS_MEDIA_RECEBIMENTO_CACHE["data"]
+    else:
+        base = {}
+        try:
+            rows = oracle_service.execute_query("SELECT * FROM diasmediarecebimento ORDER BY cd_empresa")
+            def _canon_cd(v):
+                s = str(v or "").strip()
+                if not s:
+                    return ""
+                dig = "".join(ch for ch in s if ch.isdigit())
+                if dig:
+                    return str(int(dig))
+                return s.upper()
+
+            for row in rows:
+                cd = (
+                    row.get("cd_empresa")
+                    or row.get("cd_cliente")
+                    or row.get("cdcliente")
+                    or row.get("empresa")
+                )
+                if cd is None:
+                    continue
+                cd_str = str(cd).strip()
+                if not cd_str:
+                    continue
+
+                valor = None
+                for chave in (
+                    "media_dias",
+                    "dias_media_recebimento",
+                    "diasmediarecebimento",
+                    "dias_media",
+                    "media_recebimento",
+                    "prazo_medio",
+                    "media",
+                    "dias",
+                ):
+                    if chave in row and row.get(chave) is not None:
+                        valor = row.get(chave)
+                        break
+                if valor is None:
+                    for k, v in row.items():
+                        if v is None:
+                            continue
+                        lk = str(k).lower()
+                        if "cd_" in lk or "empresa" in lk or "cliente" in lk or "codigo" in lk:
+                            continue
+                        try:
+                            valor = float(v)
+                            break
+                        except Exception:
+                            continue
+                if valor is None:
+                    continue
+                try:
+                    base[cd_str] = float(valor)
+                    cd_canon = _canon_cd(cd_str)
+                    if cd_canon and cd_canon not in base:
+                        base[cd_canon] = float(valor)
+                except Exception:
+                    continue
+        except Exception as e:
+            logger.warning(f"Falha ao buscar diasmediarecebimento: {e}")
+
+        _DIAS_MEDIA_RECEBIMENTO_CACHE = {"ts": agora, "data": base}
+
+    if not codigos_clientes:
+        return dict(base)
+    def _canon_cd(v):
+        s = str(v or "").strip()
+        if not s:
+            return ""
+        dig = "".join(ch for ch in s if ch.isdigit())
+        if dig:
+            return str(int(dig))
+        return s.upper()
+
+    resultado = {}
+    for c in codigos_clientes:
+        cd = str(c or "").strip()
+        if not cd:
+            continue
+        if cd in base:
+            resultado[cd] = base[cd]
+            continue
+        cd_canon = _canon_cd(cd)
+        if cd_canon and cd_canon in base:
+            resultado[cd] = base[cd_canon]
+    return resultado
 
