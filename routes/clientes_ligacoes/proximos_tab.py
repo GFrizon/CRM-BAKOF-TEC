@@ -62,7 +62,7 @@ def preparar_contexto_proximos_inativacao(
             for row in lig_agg_px
         }
 
-    if current_user.tipo == "supervisor_repr" and agrupar_por in ("representante", "uf"):
+    if agrupar_por in ("representante", "uf"):
         modo_agrupamento = agrupar_por
     else:
         modo_agrupamento = (

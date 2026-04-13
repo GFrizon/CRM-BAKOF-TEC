@@ -33,6 +33,10 @@
            href="{{ url_for('cranio_page') }}">
           <i class="bi bi-robot"></i> Crânio
         </a>
+        <a class="sidebar-link {% if request.endpoint == 'ajuda_suporte' %}active{% endif %}"
+           href="{{ url_for('ajuda_suporte') }}">
+          <i class="bi bi-question-circle"></i> Ajuda
+        </a>
         <a class="sidebar-link {% if request.endpoint == 'minha_conta' %}active{% endif %}"
            href="{{ url_for('minha_conta') }}">
           <i class="bi bi-person-circle"></i> Minha Conta
@@ -72,6 +76,10 @@
            href="{{ url_for('gerenciar_banners') }}">
           <i class="bi bi-megaphone-fill"></i> Banners
         </a>
+        <a class="sidebar-link {% if request.endpoint == 'ajuda_suporte' %}active{% endif %}"
+           href="{{ url_for('ajuda_suporte') }}">
+          <i class="bi bi-question-circle"></i> Ajuda
+        </a>
         <a class="sidebar-link {% if request.endpoint == 'minha_conta' %}active{% endif %}"
            href="{{ url_for('minha_conta') }}">
           <i class="bi bi-person-circle"></i> Minha Conta
@@ -91,6 +99,10 @@
         <a class="sidebar-link {% if request.endpoint == 'cranio_page' %}active{% endif %}"
            href="{{ url_for('cranio_page') }}">
           <i class="bi bi-robot"></i> Crânio
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'ajuda_suporte' %}active{% endif %}"
+           href="{{ url_for('ajuda_suporte') }}">
+          <i class="bi bi-question-circle"></i> Ajuda
         </a>
         <a class="sidebar-link {% if request.endpoint == 'minha_conta' %}active{% endif %}"
            href="{{ url_for('minha_conta') }}">

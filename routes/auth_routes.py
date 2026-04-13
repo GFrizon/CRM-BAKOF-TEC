@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -60,3 +60,52 @@ def register_auth_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": str(e)}), 500
+
+    @app.route("/ajuda-suporte")
+    @login_required
+    def ajuda_suporte():
+        return render_template("ajuda_suporte.html")
+
+    @app.route("/enviar-notificacao-whatsapp", methods=["POST"])
+    @login_required
+    def enviar_notificacao_whatsapp():
+        try:
+            data = request.get_json()
+            tipo = data.get('tipo', 'duvida')
+            mensagem = data.get('mensagem', '')
+            
+            if not mensagem.strip():
+                return jsonify({"ok": False, "mensagem": "Mensagem não pode estar vazia"}), 400
+            
+            # Formatar mensagem para WhatsApp
+            texto_formatado = f"""*CRM Bakof - Nova Mensagem de Suporte*%0A%0A*Usuário:* {current_user.nome}%0A*Tipo:* {tipo.title()}%0A*Data/Hora:* {datetime.now().strftime('%d/%m/%Y %H:%M')}%0A%0A*Mensagem:*%0A{mensagem}%0A%0A---
+Enviado pelo sistema CRM Bakof v3.0"""
+            
+            # Criar link wa.me direto
+            whatsapp_link = f"https://wa.me/5537449976?text={texto_formatado}"
+            
+            app.logger.info(f"Mensagem WhatsApp preparada para {current_user.nome}")
+            
+            return jsonify({
+                "ok": True, 
+                "mensagem": "Abrindo WhatsApp com sua mensagem...",
+                "whatsapp_link": whatsapp_link
+            })
+            
+        except Exception as e:
+            app.logger.error(f"Erro ao preparar mensagem WhatsApp: {str(e)}")
+            return jsonify({"ok": False, "mensagem": str(e)}), 500
+
+    @app.route("/testar-whatsapp")
+    @login_required
+    def testar_whatsapp():
+        """Rota para testar a conexão com WhatsApp"""
+        try:
+            from services.whatsapp_service import whatsapp_service
+            resultado = whatsapp_service.testar_conexao()
+            return jsonify(resultado)
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "message": f"Erro ao testar: {str(e)}"
+            })

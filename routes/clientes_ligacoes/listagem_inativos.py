@@ -132,9 +132,7 @@ def render_aba_inativos(
                         "ate": None,
                     }
 
-    agrupar_por_supervisor_repr = (
-        agrupar_por if current_user.tipo == "supervisor_repr" else "uf"
-    )
+    agrupar_por_ativo = agrupar_por if agrupar_por in ("representante", "uf") else "uf"
     representantes_data = {}
     for cliente_oracle in clientes_oracle_inativos:
         conceito_cliente = normalizar_conceito(cliente_oracle.get("conceito"))
@@ -192,7 +190,7 @@ def render_aba_inativos(
             lock_info = locks_por_cd_oracle.get(cd_cliente, {})
         if (not lock_info) and cliente_local and cliente_local.id:
             lock_info = locks_por_cliente_id.get(cliente_local.id, {})
-        if agrupar_por_supervisor_repr == "representante":
+        if agrupar_por_ativo == "representante":
             nome_grupo = (
                 str(cliente_oracle.get("representante") or "").strip() or "SEM REPRESENTANTE"
             )
@@ -231,7 +229,7 @@ def render_aba_inativos(
 
     representantes_ordenados, consultores_inativos, total_inativos, stats_inativos = consolidar_dados_grupos(
         representantes_data=representantes_data,
-        chave_sem_grupo=("SEM REPRESENTANTE" if agrupar_por_supervisor_repr == "representante" else "SEM UF"),
+        chave_sem_grupo=("SEM REPRESENTANTE" if agrupar_por_ativo == "representante" else "SEM UF"),
         conceitos_sem_conceito=("", "SEM CONCEITO", None),
     )
     if not filtrar_por_vinculo_dashboard:
@@ -336,5 +334,5 @@ def render_aba_inativos(
         ano_filtro=ano_filtro,
         dashboard_tipo=dashboard_tipo,
         visao=visao,
-        agrupar_por=agrupar_por_supervisor_repr,
+        agrupar_por=agrupar_por_ativo,
     )

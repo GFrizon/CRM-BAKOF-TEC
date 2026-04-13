@@ -1,19 +1,19 @@
 <!-- ============================================================
-     PAINEL DE ESTATÍSTICAS INATIVOS
+     PAINEL DE ESTATISTICAS INATIVOS
      ============================================================ -->
 {% if aba == 'inativos' %}
 <div class="panel-card">
   <div class="panel-header">
     <i class="bi bi-person-slash"></i>
-    <span>Estatísticas - Clientes inativos 181 dias a 2 anos</span>
-    <small><i class="bi bi-telephone"></i> Área Televendas</small>
+    <span>Estatisticas - Clientes inativos 181 dias a 2 anos</span>
+    <small><i class="bi bi-telephone"></i> Area Televendas</small>
   </div>
   <div class="panel-body">    <div class="movement-card mb-3">
       <div class="movement-card-header">
         <i class="bi bi-person-slash"></i>
         <span class="movement-card-title">Movimento do dia</span>
         <span class="badge-entrada">+{{ movimento_inativos_hoje.entraram if movimento_inativos_hoje else 0 }} entraram</span>
-        <span class="badge-saida">-{{ movimento_inativos_hoje.sairam if movimento_inativos_hoje else 0 }} saíram</span>
+        <span class="badge-saida">-{{ movimento_inativos_hoje.sairam if movimento_inativos_hoje else 0 }} sairam</span>
         <span class="badge" style="background:#e0f2fe;color:#0c4a6e;border:1px solid #bae6fd;font-size:.72rem;">
           Total: {{ movimento_inativos_hoje.total if movimento_inativos_hoje else 0 }}
         </span>
@@ -42,10 +42,6 @@
                 {% for c in movimento_inativos_detalhes.entraram or [] %}
                 <div class="movement-item">
                   <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente }})</span></span>
-                  <span class="movement-item-meta">
-                    {% if c.motivo_movimento %}{{ c.motivo_movimento }}{% endif %}
-                    {% if c.ultimo_contato_por %} · por <strong>{{ c.ultimo_contato_por }}</strong>{% endif %}
-                  </span>
                 </div>
                 {% else %}
                 <div class="movement-empty">Sem entradas hoje.</div>
@@ -53,18 +49,14 @@
               </div>
             </div>
             <div class="col-md-6">
-              <div class="movement-list-title text-danger"><i class="bi bi-arrow-up-circle-fill"></i> Saíram ({{ (movimento_inativos_detalhes.sairam or [])|length }})</div>
+              <div class="movement-list-title text-danger"><i class="bi bi-arrow-up-circle-fill"></i> Sairam ({{ (movimento_inativos_detalhes.sairam or [])|length }})</div>
               <div class="movement-list">
                 {% for c in movimento_inativos_detalhes.sairam or [] %}
                 <div class="movement-item">
                   <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente }})</span></span>
-                  <span class="movement-item-meta">
-                    {% if c.motivo_movimento %}{{ c.motivo_movimento }}{% endif %}
-                    {% if c.ultimo_contato_por %} · por <strong>{{ c.ultimo_contato_por }}</strong>{% endif %}
-                  </span>
                 </div>
                 {% else %}
-                <div class="movement-empty">Sem saídas hoje.</div>
+                <div class="movement-empty">Sem saidas hoje.</div>
                 {% endfor %}
               </div>
             </div>
@@ -95,7 +87,7 @@
         <div class="oracle-stat">
           <div class="oracle-stat-icon" style="background:var(--brand-50);"><i class="bi bi-currency-dollar" style="color:var(--brand-600);"></i></div>
           <div>
-            <div class="oracle-stat-label" style="color:var(--brand-600);">Ticket Médio</div>
+            <div class="oracle-stat-label" style="color:var(--brand-600);">Ticket Medio</div>
             <div class="oracle-stat-val" style="font-size:.85rem;">{{ stats_inativos.ticket_medio | formatar_dinheiro }}</div>
           </div>
         </div>
@@ -104,7 +96,7 @@
         <div class="oracle-stat">
           <div class="oracle-stat-icon" style="background:#fef9c3;"><i class="bi bi-calendar-x" style="color:#b45309;"></i></div>
           <div>
-            <div class="oracle-stat-label" style="color:#b45309;">Média Dias</div>
+            <div class="oracle-stat-label" style="color:#b45309;">Media Dias</div>
             <div class="oracle-stat-val">{{ "%.0f"|format(stats_inativos.dias_sem_pedido or 0) }}d</div>
           </div>
         </div>
@@ -164,4 +156,5 @@
   </div>
 </div>
 {% endif %}
+
 

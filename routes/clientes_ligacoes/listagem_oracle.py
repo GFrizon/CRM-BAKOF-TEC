@@ -85,9 +85,7 @@ def render_aba_oracle(
                 ids_locais
             )
 
-    agrupar_por_supervisor_repr = (
-        agrupar_por if current_user.tipo == "supervisor_repr" else "representante"
-    )
+    agrupar_por_ativo = agrupar_por if agrupar_por in ("representante", "uf") else "representante"
     representantes_data = {}
     for cliente_oracle in clientes_oracle:
         conceito_cliente = str(cliente_oracle.get("conceito") or "").strip().upper()
@@ -149,7 +147,7 @@ def render_aba_oracle(
             if cliente_local and cliente_local.id else {}
         )
 
-        if agrupar_por_supervisor_repr == "uf":
+        if agrupar_por_ativo == "uf":
             nome_grupo = str(cliente_oracle.get("uf") or "").strip().upper() or "SEM UF"
         else:
             nome_grupo = (
@@ -192,7 +190,7 @@ def render_aba_oracle(
 
     representantes_ordenados, consultores_oracle, total_oracle, stats_oracle = consolidar_dados_grupos(
         representantes_data=representantes_data,
-        chave_sem_grupo=("SEM UF" if agrupar_por_supervisor_repr == "uf" else "SEM REPRESENTANTE"),
+        chave_sem_grupo=("SEM UF" if agrupar_por_ativo == "uf" else "SEM REPRESENTANTE"),
         conceitos_sem_conceito=("SEM CONCEITO", None),
     )
 
@@ -256,6 +254,6 @@ def render_aba_oracle(
         ano_filtro=None,
         dashboard_tipo=dashboard_tipo,
         visao=visao,
-        agrupar_por=agrupar_por_supervisor_repr,
+        agrupar_por=agrupar_por_ativo,
     )
 

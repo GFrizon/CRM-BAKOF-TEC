@@ -30,7 +30,7 @@ def _ultimos_meses(qtd=12):
     meses_nomes = {
         1: "Janeiro",
         2: "Fevereiro",
-        3: "Março",
+        3: "MarÃ§o",
         4: "Abril",
         5: "Maio",
         6: "Junho",
@@ -362,7 +362,7 @@ def register_supervisor_routes(app):
             "total": int(resumo_sync_hoje.total_inativos) if resumo_sync_hoje else 0,
             "atualizado_em": (resumo_sync_hoje.atualizado_em if resumo_sync_hoje else None),
         }
-        movimento_inativos_detalhes = carregar_movimento_inativos(datetime.now().date()) or {}
+        movimento_inativos_detalhes_raw = carregar_movimento_inativos(datetime.now().date()) or {}
         def _parse_dt_iso(valor):
             if not valor:
                 return None
@@ -427,7 +427,11 @@ def register_supervisor_routes(app):
         detalhes_cliente_por_cd = {}
         codigos_mov = {
             str((it or {}).get("cd_cliente") or "").strip()
-            for it in (list(mov_90_150_raw.get("sairam") or []) + list(mov_proximos_raw.get("sairam") or []))
+            for it in (
+                list(mov_90_150_raw.get("sairam") or [])
+                + list(mov_proximos_raw.get("sairam") or [])
+                + list(movimento_inativos_detalhes_raw.get("sairam") or [])
+            )
         }
         codigos_mov = {cd for cd in codigos_mov if cd}
         if codigos_mov:
@@ -444,39 +448,46 @@ def register_supervisor_routes(app):
         def _motivo_detalhado_saida(cd: str, origem: str):
             cd_norm = str(cd or "").strip()
             if not cd_norm:
-                return ("Sem código do cliente", "")
+                return ("Sem codigo do cliente", "")
             cli = detalhes_cliente_por_cd.get(cd_norm)
             if not cli:
-                return ("Não encontrado na base após sincronização", "")
-            if not bool(getattr(cli, "ativo", True)):
-                return ("Saiu da carteira ativa do CRM", "")
+                return ("Nao encontrado na base apos sincronizacao", "")
+
             dt_ult = getattr(cli, "ultimo_pedido_oracle", None)
-            if not dt_ult:
-                return ("Sem data válida de último pedido", "")
-            dias_sem = (datetime.now() - dt_ult).days
+            dias_sem = (datetime.now() - dt_ult).days if dt_ult else None
 
             if origem == "oracle_90_150":
+                if dias_sem is not None and dias_sem < 90:
+                    return ("Fez pedido recente", f"{dias_sem} dias sem pedido")
                 if cd_norm in faixa_proximos_atual:
-                    return ("Foi para 'Próximos Inativação'", f"{dias_sem} dias sem pedido")
+                    return ("Foi para Proximos Inativacao", f"{dias_sem or '-'} dias sem pedido")
                 if cd_norm in faixa_inativos_atual:
-                    return ("Passou de 180 dias e virou Inativo", f"{dias_sem} dias sem pedido")
-                if dias_sem < 90:
-                    return ("Saiu por compra/recência", f"{dias_sem} dias sem pedido")
-                if dias_sem > 730:
+                    return ("Passou de 180 dias e virou Inativo", f"{dias_sem or '-'} dias sem pedido")
+                if dias_sem is not None and dias_sem > 730:
                     return ("Saiu da janela (>730 dias sem pedido)", f"{dias_sem} dias sem pedido")
-                return ("Mudança de base/carteira", f"{dias_sem} dias sem pedido")
+                if not bool(getattr(cli, "ativo", True)):
+                    return ("Fora da base local (validar Oracle)", f"{dias_sem or '-'} dias sem pedido")
+                if dias_sem is None:
+                    return ("Sem data valida de ultimo pedido", "")
+                return ("Mudanca de base/carteira", f"{dias_sem} dias sem pedido")
 
             if origem == "proximos_inativacao":
+                if dias_sem is not None and dias_sem < 151:
+                    return ("Fez pedido recente", f"{dias_sem} dias sem pedido")
                 if cd_norm in faixa_inativos_atual:
-                    return ("Foi para carteira de Inativos", f"{dias_sem} dias sem pedido")
+                    return ("Foi para carteira de Inativos", f"{dias_sem or '-'} dias sem pedido")
                 if cd_norm in faixa_90_150_atual:
-                    return ("Voltou para 'Sem Pedido 90-150'", f"{dias_sem} dias sem pedido")
-                if dias_sem < 151:
-                    return ("Saiu por compra/recência", f"{dias_sem} dias sem pedido")
-                if dias_sem > 730:
+                    return ("Voltou para Sem Pedido 90-150", f"{dias_sem or '-'} dias sem pedido")
+                if dias_sem is not None and dias_sem > 730:
                     return ("Saiu da janela (>730 dias sem pedido)", f"{dias_sem} dias sem pedido")
-                return ("Mudança de base/carteira", f"{dias_sem} dias sem pedido")
+                if not bool(getattr(cli, "ativo", True)):
+                    return ("Fora da base local (validar Oracle)", f"{dias_sem or '-'} dias sem pedido")
+                if dias_sem is None:
+                    return ("Sem data valida de ultimo pedido", "")
+                return ("Mudanca de base/carteira", f"{dias_sem} dias sem pedido")
 
+            if dias_sem is None:
+                return ("Movimento de carteira", "")
             return ("Movimento de carteira", f"{dias_sem} dias sem pedido")
 
         def _anotar_saidas_oracle_90_150(itens):
@@ -484,10 +495,9 @@ def register_supervisor_routes(app):
             for item in list(itens or []):
                 d = dict(item or {})
                 cd = str(d.get("cd_cliente") or "").strip()
-                if not d.get("motivo_movimento"):
-                    motivo, detalhe = _motivo_detalhado_saida(cd, "oracle_90_150")
-                    d["motivo_movimento"] = motivo
-                    d["motivo_detalhe"] = detalhe
+                motivo, detalhe = _motivo_detalhado_saida(cd, "oracle_90_150")
+                d["motivo_movimento"] = motivo
+                d["motivo_detalhe"] = detalhe
                 out.append(d)
             return out
 
@@ -496,12 +506,51 @@ def register_supervisor_routes(app):
             for item in list(itens or []):
                 d = dict(item or {})
                 cd = str(d.get("cd_cliente") or "").strip()
-                if not d.get("motivo_movimento"):
-                    motivo, detalhe = _motivo_detalhado_saida(cd, "proximos_inativacao")
-                    d["motivo_movimento"] = motivo
-                    d["motivo_detalhe"] = detalhe
+                motivo, detalhe = _motivo_detalhado_saida(cd, "proximos_inativacao")
+                d["motivo_movimento"] = motivo
+                d["motivo_detalhe"] = detalhe
                 out.append(d)
             return out
+
+        def _anotar_saidas_inativos(itens):
+            out = []
+            for item in list(itens or []):
+                d = dict(item or {})
+                cd = str(d.get("cd_cliente") or "").strip()
+                cli = detalhes_cliente_por_cd.get(cd)
+                dt_ult = getattr(cli, "ultimo_pedido_oracle", None) if cli else None
+                dias_sem = (datetime.now() - dt_ult).days if dt_ult else None
+
+                if dias_sem is not None and dias_sem < 181:
+                    if cd in faixa_90_150_atual:
+                        motivo = "Fez pedido e voltou para Sem Pedido 90-150"
+                    elif cd in faixa_proximos_atual:
+                        motivo = "Fez pedido e foi para Proximos Inativacao"
+                    else:
+                        motivo = "Fez pedido recente"
+                    detalhe = f"{dias_sem} dias sem pedido"
+                elif dias_sem is not None and dias_sem > 730:
+                    motivo = "Saiu da janela (>730 dias sem pedido)"
+                    detalhe = f"{dias_sem} dias sem pedido"
+                elif not cli or not bool(getattr(cli, "ativo", True)):
+                    motivo = "Fora da base local (validar Oracle)"
+                    detalhe = f"{dias_sem or '-'} dias sem pedido"
+                elif dias_sem is None:
+                    motivo = "Sem data valida de ultimo pedido"
+                    detalhe = ""
+                else:
+                    motivo = "Mudanca de base/carteira"
+                    detalhe = f"{dias_sem} dias sem pedido"
+
+                d["motivo_movimento"] = motivo
+                d["motivo_detalhe"] = detalhe
+                out.append(d)
+            return out
+
+        movimento_inativos_detalhes = dict(movimento_inativos_detalhes_raw or {})
+        movimento_inativos_detalhes["sairam"] = _anotar_saidas_inativos(
+            movimento_inativos_detalhes_raw.get("sairam") or []
+        )
 
         movimento_carteiras_hoje = {
             "oracle_90_150": {
@@ -629,12 +678,12 @@ def register_supervisor_routes(app):
             return base
 
         categorias_regras = {
-            "Preço": ("preco", "caro", "desconto", "valor", "custo", "orcamento"),
+            "PreÃ§o": ("preco", "caro", "desconto", "valor", "custo", "orcamento"),
             "Estoque/Prazo": ("estoque", "falta", "prazo", "entrega", "demora", "aguardando"),
-            "Concorrência": ("concorrente", "concorrencia", "outra marca", "outra loja"),
+            "ConcorrÃªncia": ("concorrente", "concorrencia", "outra marca", "outra loja"),
             "Timing/Retorno": ("retornar", "retorno", "depois", "proximo mes", "sem tempo"),
             "Contato": ("nao atende", "nao atendeu", "telefone", "whatsapp", "wats", "enviado", "catalogo"),
-            "Crédito": ("credito", "limite", "inadimpl", "boleto", "pagamento"),
+            "CrÃ©dito": ("credito", "limite", "inadimpl", "boleto", "pagamento"),
         }
         stopwords = {
             "de", "da", "do", "e", "a", "o", "em", "no", "na", "para", "com", "sem", "por",
@@ -711,7 +760,7 @@ def register_supervisor_routes(app):
         if not codigo_base:
             return {
                 "ok": False,
-                "mensagem": "Código TG650 não configurado para este supervisor",
+                "mensagem": "CÃ³digo TG650 nÃ£o configurado para este supervisor",
                 "novos": 0,
                 "atualizados": 0,
             }
@@ -738,7 +787,7 @@ def register_supervisor_routes(app):
         if not vinculos_oracle:
             return {
                 "ok": False,
-                "mensagem": "Nenhum vínculo encontrado na TG 650",
+                "mensagem": "Nenhum vÃ­nculo encontrado na TG 650",
                 "novos": 0,
                 "atualizados": 0,
             }
@@ -780,7 +829,7 @@ def register_supervisor_routes(app):
         db.session.commit()
         return {
             "ok": True,
-            "mensagem": f"Sincronização concluída! {novos} novos, {atualizados} atualizados.",
+            "mensagem": f"SincronizaÃ§Ã£o concluÃ­da! {novos} novos, {atualizados} atualizados.",
             "novos": novos,
             "atualizados": atualizados,
         }
@@ -890,7 +939,7 @@ def register_supervisor_routes(app):
                 download_name=filename,
             )
         except Exception as e:
-            flash(f"Não foi possível gerar PDF: {str(e)}", "danger")
+            flash(f"NÃ£o foi possÃ­vel gerar PDF: {str(e)}", "danger")
             endpoint = "dashboard_supervisor_televendas" if (request.args.get("tipo") or "") == "televendas" else "dashboard_supervisor"
             return redirect(url_for(endpoint, secao="fechamento"))
 
@@ -1092,7 +1141,7 @@ def register_supervisor_routes(app):
             data_expiracao = payload.get("data_expiracao")
 
             if not titulo or not mensagem:
-                return jsonify({"ok": False, "mensagem": "Título e mensagem são obrigatórios"}), 400
+                return jsonify({"ok": False, "mensagem": "TÃ­tulo e mensagem sÃ£o obrigatÃ³rios"}), 400
 
             if tipo not in ["info", "warning", "success", "danger"]:
                 tipo = "info"
@@ -1103,7 +1152,7 @@ def register_supervisor_routes(app):
                     expiracao_dt = datetime.strptime(data_expiracao, "%Y-%m-%d")
                     expiracao_dt = expiracao_dt.replace(hour=23, minute=59, second=59)
                 except Exception:
-                    return jsonify({"ok": False, "mensagem": "Data de expiração inválida"}), 400
+                    return jsonify({"ok": False, "mensagem": "Data de expiraÃ§Ã£o invÃ¡lida"}), 400
 
             banner = Banner(
                 titulo=titulo,
@@ -1130,7 +1179,7 @@ def register_supervisor_routes(app):
         try:
             banner = db.session.get(Banner, banner_id)
             if not banner:
-                return jsonify({"ok": False, "mensagem": "Banner não encontrado"}), 404
+                return jsonify({"ok": False, "mensagem": "Banner nÃ£o encontrado"}), 404
 
             banner.ativo = not banner.ativo
             db.session.commit()
@@ -1151,12 +1200,12 @@ def register_supervisor_routes(app):
         try:
             banner = db.session.get(Banner, banner_id)
             if not banner:
-                return jsonify({"ok": False, "mensagem": "Banner não encontrado"}), 404
+                return jsonify({"ok": False, "mensagem": "Banner nÃ£o encontrado"}), 404
 
             db.session.delete(banner)
             db.session.commit()
 
-            return jsonify({"ok": True, "mensagem": "Banner excluído com sucesso!"})
+            return jsonify({"ok": True, "mensagem": "Banner excluÃ­do com sucesso!"})
 
         except Exception as e:
             db.session.rollback()
@@ -1198,7 +1247,7 @@ def register_supervisor_routes(app):
 
         supervisor = db.session.get(Usuario, supervisor_id)
         if not supervisor or supervisor.tipo != "supervisor_repr":
-            return jsonify({"ok": False, "mensagem": "Supervisor de representante não encontrado"}), 404
+            return jsonify({"ok": False, "mensagem": "Supervisor de representante nÃ£o encontrado"}), 404
 
         vinculos = SupervisorRepresentanteVinculo.query.filter_by(supervisor_id=supervisor_id).all()
 
@@ -1230,14 +1279,14 @@ def register_supervisor_routes(app):
         try:
             supervisor = db.session.get(Usuario, supervisor_id)
             if not supervisor or supervisor.tipo != "supervisor_repr":
-                return jsonify({"ok": False, "mensagem": "Supervisor de representante não encontrado"}), 404
+                return jsonify({"ok": False, "mensagem": "Supervisor de representante nÃ£o encontrado"}), 404
 
             payload = request.get_json(silent=True) or {}
             codigo_representante = s(payload.get("codigo_representante"))
             nome_representante = s(payload.get("nome_representante"))
 
             if not codigo_representante:
-                return jsonify({"ok": False, "mensagem": "Código do representante é obrigatório"}), 400
+                return jsonify({"ok": False, "mensagem": "CÃ³digo do representante Ã© obrigatÃ³rio"}), 400
 
             vinculo_existente = SupervisorRepresentanteVinculo.query.filter_by(
                 supervisor_id=supervisor_id,
@@ -1248,8 +1297,8 @@ def register_supervisor_routes(app):
                 if not vinculo_existente.ativo:
                     vinculo_existente.ativo = True
                     db.session.commit()
-                    return jsonify({"ok": True, "mensagem": "Vínculo reativado com sucesso!"})
-                return jsonify({"ok": False, "mensagem": "Vínculo já existe"}), 400
+                    return jsonify({"ok": True, "mensagem": "VÃ­nculo reativado com sucesso!"})
+                return jsonify({"ok": False, "mensagem": "VÃ­nculo jÃ¡ existe"}), 400
 
             novo_vinculo = SupervisorRepresentanteVinculo(
                 supervisor_id=supervisor_id,
@@ -1262,7 +1311,7 @@ def register_supervisor_routes(app):
             db.session.add(novo_vinculo)
             db.session.commit()
 
-            return jsonify({"ok": True, "mensagem": "Vínculo adicionado com sucesso!"})
+            return jsonify({"ok": True, "mensagem": "VÃ­nculo adicionado com sucesso!"})
 
         except Exception as e:
             db.session.rollback()
@@ -1277,12 +1326,12 @@ def register_supervisor_routes(app):
         try:
             vinculo = db.session.get(SupervisorRepresentanteVinculo, vinculo_id)
             if not vinculo or vinculo.supervisor_id != supervisor_id:
-                return jsonify({"ok": False, "mensagem": "Vínculo não encontrado"}), 404
+                return jsonify({"ok": False, "mensagem": "VÃ­nculo nÃ£o encontrado"}), 404
 
             vinculo.ativo = False
             db.session.commit()
 
-            return jsonify({"ok": True, "mensagem": "Vínculo removido com sucesso!"})
+            return jsonify({"ok": True, "mensagem": "VÃ­nculo removido com sucesso!"})
 
         except Exception as e:
             db.session.rollback()
@@ -1297,10 +1346,10 @@ def register_supervisor_routes(app):
         try:
             supervisor = db.session.get(Usuario, supervisor_id)
             if not supervisor or supervisor.tipo != "supervisor_repr":
-                return jsonify({"ok": False, "mensagem": "Supervisor de representante não encontrado"}), 404
+                return jsonify({"ok": False, "mensagem": "Supervisor de representante nÃ£o encontrado"}), 404
 
             if not supervisor.codigo_supervisor_tg650:
-                return jsonify({"ok": False, "mensagem": "Código TG650 não configurado para este supervisor"}), 400
+                return jsonify({"ok": False, "mensagem": "CÃ³digo TG650 nÃ£o configurado para este supervisor"}), 400
 
             sync_result = _sincronizar_vinculos_tg650_supervisor_repr(supervisor_id, supervisor.codigo_supervisor_tg650)
             if not sync_result.get("ok"):
@@ -1321,7 +1370,7 @@ def register_supervisor_routes(app):
             from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
         except Exception as e:
             raise RuntimeError(
-                "Biblioteca de PDF não instalada. Instale com: pip install reportlab"
+                "Biblioteca de PDF nÃ£o instalada. Instale com: pip install reportlab"
             ) from e
 
         buffer = BytesIO()
@@ -1339,7 +1388,7 @@ def register_supervisor_routes(app):
         mes = int(payload.get("mes") or datetime.now().month)
         ano = int(payload.get("ano") or datetime.now().year)
         meses_nomes = {
-            1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+            1: "Janeiro", 2: "Fevereiro", 3: "MarÃ§o", 4: "Abril",
             5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
             9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro",
         }
@@ -1357,9 +1406,9 @@ def register_supervisor_routes(app):
 
         titulo_html = (
             f"<b>Bakof CRM - Fechamento Mensal</b><br/>"
-            f"<font size='10'>Setor: {dashboard_titulo} | Período: {periodo_txt}<br/>"
+            f"<font size='10'>Setor: {dashboard_titulo} | PerÃ­odo: {periodo_txt}<br/>"
             f"Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')} - "
-            f"Operadores no relatório: {len(consultores)}</font>"
+            f"Operadores no relatÃ³rio: {len(consultores)}</font>"
         )
         cabecalho = Table(
             [[logo_cell, Paragraph(titulo_html, normal)]],
@@ -1383,10 +1432,10 @@ def register_supervisor_routes(app):
         story = [cabecalho, Spacer(1, 8)]
 
         resumo = [
-            ["Ligações", str(int(totais.get("total_ligacoes") or 0))],
+            ["LigaÃ§Ãµes", str(int(totais.get("total_ligacoes") or 0))],
             ["Vendas", str(int(totais.get("total_vendas") or 0))],
             ["Retornar", str(int(totais.get("total_retornar") or 0))],
-            ["Conversão", f"{totais.get('conversao') or 0}%"],
+            ["ConversÃ£o", f"{totais.get('conversao') or 0}%"],
             ["Meta", f"{totais.get('meta_conversao') or 0}%"],
             ["Receita", str(totais.get("receita_fmt") or "R$ 0,00")],
             ["Receita Comprovada (Oracle)", str(totais.get("receita_comprovada_oracle_fmt") or "R$ 0,00")],
@@ -1409,13 +1458,13 @@ def register_supervisor_routes(app):
 
         cabecalho = [
             "Operador",
-            "Ligações",
+            "LigaÃ§Ãµes",
             "Vendas",
             "Retornar",
             "Conv.%",
             "Meta%",
             "90-150",
-            "Próx.",
+            "PrÃ³x.",
             "Receita",
             "Rec. Oracle",
         ]
@@ -1438,7 +1487,7 @@ def register_supervisor_routes(app):
 
         linhas.append(
             [
-                "Total resultado do período",
+                "Total resultado do perÃ­odo",
                 str(int(totais.get("total_ligacoes") or 0)),
                 str(int(totais.get("total_vendas") or 0)),
                 str(int(totais.get("total_retornar") or 0)),
