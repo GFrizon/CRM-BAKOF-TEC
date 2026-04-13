@@ -50,6 +50,7 @@ def render_aba_inativos(
     cache_store: dict,
     dashboard_tipo=None,
     visao=None,
+    agrupar_por="uf",
 ):
     # REGRA VALIDADA (2026-03): lista de inativos vem da base local sincronizada diariamente.
     app.logger.info("=== INICIANDO TRATAMENTO ABA INATIVOS ===")
@@ -131,6 +132,9 @@ def render_aba_inativos(
                         "ate": None,
                     }
 
+    agrupar_por_supervisor_repr = (
+        agrupar_por if current_user.tipo == "supervisor_repr" else "uf"
+    )
     representantes_data = {}
     for cliente_oracle in clientes_oracle_inativos:
         conceito_cliente = normalizar_conceito(cliente_oracle.get("conceito"))
@@ -188,11 +192,16 @@ def render_aba_inativos(
             lock_info = locks_por_cd_oracle.get(cd_cliente, {})
         if (not lock_info) and cliente_local and cliente_local.id:
             lock_info = locks_por_cliente_id.get(cliente_local.id, {})
-        uf_grupo = str(cliente_oracle.get("uf") or "").strip().upper() or "SEM UF"
+        if agrupar_por_supervisor_repr == "representante":
+            nome_grupo = (
+                str(cliente_oracle.get("representante") or "").strip() or "SEM REPRESENTANTE"
+            )
+        else:
+            nome_grupo = str(cliente_oracle.get("uf") or "").strip().upper() or "SEM UF"
 
-        if uf_grupo not in representantes_data:
-            representantes_data[uf_grupo] = {
-                "nome": uf_grupo,
+        if nome_grupo not in representantes_data:
+            representantes_data[nome_grupo] = {
+                "nome": nome_grupo,
                 "clientes": [],
                 "total_clientes": 0,
                 "liberados": 0,
@@ -215,14 +224,14 @@ def render_aba_inativos(
             origem_padrao="oracle_inativos",
         )
 
-        representantes_data[uf_grupo]["clientes"].append(dados_cliente)
+        representantes_data[nome_grupo]["clientes"].append(dados_cliente)
         if consultor_cliente:
-            consultores_uf = representantes_data[uf_grupo]["consultores_internos"]
+            consultores_uf = representantes_data[nome_grupo]["consultores_internos"]
             consultores_uf[consultor_cliente] = consultores_uf.get(consultor_cliente, 0) + 1
 
     representantes_ordenados, consultores_inativos, total_inativos, stats_inativos = consolidar_dados_grupos(
         representantes_data=representantes_data,
-        chave_sem_grupo="SEM UF",
+        chave_sem_grupo=("SEM REPRESENTANTE" if agrupar_por_supervisor_repr == "representante" else "SEM UF"),
         conceitos_sem_conceito=("", "SEM CONCEITO", None),
     )
     if not filtrar_por_vinculo_dashboard:
@@ -327,4 +336,5 @@ def render_aba_inativos(
         ano_filtro=ano_filtro,
         dashboard_tipo=dashboard_tipo,
         visao=visao,
+        agrupar_por=agrupar_por_supervisor_repr,
     )

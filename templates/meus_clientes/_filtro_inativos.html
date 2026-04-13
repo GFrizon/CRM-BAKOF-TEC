@@ -14,6 +14,7 @@
     <form method="get" action="{{ url_for('meus_clientes') }}" class="row g-3">
       <input type="hidden" name="aba" value="inativos">
       <input type="hidden" name="visao" value="{{ visao|default(request.args.get('visao', 'dashboard')) }}">
+      <input type="hidden" name="agrupar_por" value="{{ agrupar_por|default(request.args.get('agrupar_por', ''), true) }}">
       {% if dashboard_tipo %}
       <input type="hidden" name="dashboard_tipo" value="{{ dashboard_tipo }}">
       {% endif %}

@@ -40,6 +40,7 @@ def render_aba_oracle(
     total_proximos_badge: int,
     dashboard_tipo=None,
     visao=None,
+    agrupar_por="representante",
 ):
     # REGRA VALIDADA (2026-03): usar Oracle como fonte de verdade da lista 90-150d.
     # Nao voltar para filtro principal via MySQL local.
@@ -84,6 +85,9 @@ def render_aba_oracle(
                 ids_locais
             )
 
+    agrupar_por_supervisor_repr = (
+        agrupar_por if current_user.tipo == "supervisor_repr" else "representante"
+    )
     representantes_data = {}
     for cliente_oracle in clientes_oracle:
         conceito_cliente = str(cliente_oracle.get("conceito") or "").strip().upper()
@@ -145,11 +149,16 @@ def render_aba_oracle(
             if cliente_local and cliente_local.id else {}
         )
 
-        representante = str(cliente_oracle.get("representante") or "").strip() or "SEM REPRESENTANTE"
+        if agrupar_por_supervisor_repr == "uf":
+            nome_grupo = str(cliente_oracle.get("uf") or "").strip().upper() or "SEM UF"
+        else:
+            nome_grupo = (
+                str(cliente_oracle.get("representante") or "").strip() or "SEM REPRESENTANTE"
+            )
 
-        if representante not in representantes_data:
-            representantes_data[representante] = {
-                "nome": representante,
+        if nome_grupo not in representantes_data:
+            representantes_data[nome_grupo] = {
+                "nome": nome_grupo,
                 "clientes": [],
                 "total_clientes": 0,
                 "liberados": 0,
@@ -172,18 +181,18 @@ def render_aba_oracle(
             origem_padrao="oracle",
         )
 
-        representantes_data[representante]["clientes"].append(dados_cliente)
+        representantes_data[nome_grupo]["clientes"].append(dados_cliente)
 
         if cliente_local and cliente_local.consultor:
             nome_consultor = cliente_local.consultor.nome
-            reps = representantes_data[representante]["consultores_internos"]
+            reps = representantes_data[nome_grupo]["consultores_internos"]
             if nome_consultor not in reps:
                 reps[nome_consultor] = 0
             reps[nome_consultor] += 1
 
     representantes_ordenados, consultores_oracle, total_oracle, stats_oracle = consolidar_dados_grupos(
         representantes_data=representantes_data,
-        chave_sem_grupo="SEM REPRESENTANTE",
+        chave_sem_grupo=("SEM UF" if agrupar_por_supervisor_repr == "uf" else "SEM REPRESENTANTE"),
         conceitos_sem_conceito=("SEM CONCEITO", None),
     )
 
@@ -247,5 +256,6 @@ def render_aba_oracle(
         ano_filtro=None,
         dashboard_tipo=dashboard_tipo,
         visao=visao,
+        agrupar_por=agrupar_por_supervisor_repr,
     )
 

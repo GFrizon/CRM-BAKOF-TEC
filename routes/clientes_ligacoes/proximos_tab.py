@@ -9,7 +9,11 @@ from routes.clientes_ligacoes.domain_utils import _cliente_tem_representante_vin
 from oracle_service import get_dias_media_recebimento_oracle
 
 
-def preparar_contexto_proximos_inativacao(current_user, codigos_representantes_vinculados):
+def preparar_contexto_proximos_inativacao(
+    current_user,
+    codigos_representantes_vinculados,
+    agrupar_por=None,
+):
     agora_px = datetime.now()
     limite_min_px = agora_px - timedelta(days=180)
     limite_max_px = agora_px - timedelta(days=151)
@@ -58,12 +62,25 @@ def preparar_contexto_proximos_inativacao(current_user, codigos_representantes_v
             for row in lig_agg_px
         }
 
-    agrupar_por_representante_px = current_user.tipo in ("consultor", "televendas", "supervisor_repr")
+    if current_user.tipo == "supervisor_repr" and agrupar_por in ("representante", "uf"):
+        modo_agrupamento = agrupar_por
+    else:
+        modo_agrupamento = (
+            "representante"
+            if current_user.tipo in ("consultor", "televendas", "supervisor_repr")
+            else "consultor"
+        )
     grupos_px = {}
     for c in clientes_proximos_raw:
         consultor_nome = (c.consultor.nome if c.consultor else None) or "SEM CONSULTOR"
         representante_nome = (c.representante_oracle or c.representante_nome or "").strip() or "SEM REPRESENTANTE"
-        nome_grupo = representante_nome if agrupar_por_representante_px else consultor_nome
+        uf_nome = (c.uf or "").strip().upper() or "SEM UF"
+        if modo_agrupamento == "uf":
+            nome_grupo = uf_nome
+        elif modo_agrupamento == "representante":
+            nome_grupo = representante_nome
+        else:
+            nome_grupo = consultor_nome
 
         if nome_grupo not in grupos_px:
             grupos_px[nome_grupo] = {
@@ -137,7 +154,10 @@ def preparar_contexto_proximos_inativacao(current_user, codigos_representantes_v
         grupos_px.items(),
         key=lambda x: (
             -x[1]["total_clientes"],
-            x[0] == ("SEM REPRESENTANTE" if agrupar_por_representante_px else "SEM CONSULTOR"),
+            x[0] == (
+                "SEM UF" if modo_agrupamento == "uf"
+                else ("SEM REPRESENTANTE" if modo_agrupamento == "representante" else "SEM CONSULTOR")
+            ),
             x[0],
         ),
     )

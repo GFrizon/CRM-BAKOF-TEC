@@ -15,11 +15,16 @@ def render_aba_proximos_inativacao(
     q: str,
     dashboard_tipo=None,
     visao=None,
+    agrupar_por="representante",
 ):
+    agrupar_por_supervisor_repr = (
+        agrupar_por if current_user.tipo == "supervisor_repr" else None
+    )
     representantes_ordenados_px, total_proximos_count, stats_proximos = (
         preparar_contexto_proximos_inativacao(
             current_user,
             codigos_representantes_vinculados,
+            agrupar_por=agrupar_por_supervisor_repr,
         )
     )
     termo = (q or "").strip()
@@ -104,4 +109,5 @@ def render_aba_proximos_inativacao(
         ano_filtro=None,
         dashboard_tipo=dashboard_tipo,
         visao=visao,
+        agrupar_por=(agrupar_por_supervisor_repr or "representante"),
     )

@@ -22,6 +22,14 @@ def limpar_cache_contagem_inativos():
 
 
 def register_clientes_ligacoes_listagem_routes(app):
+    def _resolver_agrupar_por(aba_atual: str):
+        valor = (request.args.get("agrupar_por") or "").strip().lower()
+        if valor in ("representante", "uf"):
+            return valor
+        # Mantem o padrao atual ao abrir:
+        # inativos por UF, demais por representante.
+        return "uf" if aba_atual == "inativos" else "representante"
+
     def _calcular_badges_operacionais(aba, apenas_meus, codigos_representantes_vinculados, dashboard_tipo=None):
         q = Cliente.query.options(joinedload(Cliente.ligacoes)).filter(Cliente.ativo == True)
         q = aplicar_filtro_base_clientes(
@@ -52,6 +60,7 @@ def register_clientes_ligacoes_listagem_routes(app):
         total_proximos_badge = contexto_inicial["total_proximos_badge"]
         apenas_meus = contexto_inicial["apenas_meus"]
         codigos_representantes_vinculados = contexto_inicial["codigos_representantes_vinculados"]
+        agrupar_por = _resolver_agrupar_por(aba)
         total_inativos_badge = calcular_total_inativos_badge_com_cache(
             current_user=current_user,
             apenas_meus=apenas_meus,
@@ -72,6 +81,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                 total_proximos_badge=total_proximos_badge,
                 dashboard_tipo=dashboard_tipo,
                 visao=visao,
+                agrupar_por=agrupar_por,
             )
 
         if aba == 'inativos':
@@ -88,6 +98,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                 cache_store=_INATIVOS_COUNT_CACHE,
                 dashboard_tipo=dashboard_tipo,
                 visao=visao,
+                agrupar_por=agrupar_por,
             )
 
         if aba == 'proximos_inativacao':
@@ -100,6 +111,7 @@ def register_clientes_ligacoes_listagem_routes(app):
                 q=request.args.get('q', ''),
                 dashboard_tipo=dashboard_tipo,
                 visao=visao,
+                agrupar_por=agrupar_por,
             )
 
         return render_fluxo_operacional(
@@ -114,6 +126,7 @@ def register_clientes_ligacoes_listagem_routes(app):
             cache_ttl_seconds=_INATIVOS_COUNT_CACHE_TTL_SECONDS,
             dashboard_tipo=dashboard_tipo,
             visao=visao,
+            agrupar_por=agrupar_por,
         )
 
     @app.route('/api/clientes/badges')

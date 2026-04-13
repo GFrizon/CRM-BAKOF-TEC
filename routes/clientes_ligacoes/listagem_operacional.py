@@ -30,6 +30,7 @@ def render_fluxo_operacional(
     cache_ttl_seconds: int,
     dashboard_tipo=None,
     visao=None,
+    agrupar_por=None,
 ):
     # Parametros de filtro mensal para consultores e televendas
     mes_filtro, ano_filtro = parse_filtro_mes_ano(request.args, current_user.tipo)
@@ -142,6 +143,7 @@ def render_fluxo_operacional(
             meses_disponiveis_consultor=meses_disponiveis_consultor,
             dashboard_tipo=dashboard_tipo,
             visao=visao,
+            agrupar_por=agrupar_por,
         )
 
     return render_template(
@@ -166,4 +168,5 @@ def render_fluxo_operacional(
         meses_disponiveis_consultor=meses_disponiveis_consultor,
         dashboard_tipo=dashboard_tipo,
         visao=visao,
+        agrupar_por=agrupar_por,
     )
