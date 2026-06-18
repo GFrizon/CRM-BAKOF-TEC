@@ -2109,6 +2109,17 @@ function renderizarDetalhesOracle(data) {
 
   document.getElementById('detalhesOracleContent').innerHTML = html;
   window.clienteDetalhesAtual = cliente.id || null;
+  window.clienteDetalhesDados = cliente;
+  
+  // Mostrar/esconder botao de editar para clientes manuais
+  const btnEditar = document.getElementById('btnEditarClienteManualNoDetalhe');
+  if (btnEditar) {
+    if (cliente.origem === 'manual') {
+      btnEditar.classList.remove('d-none');
+    } else {
+      btnEditar.classList.add('d-none');
+    }
+  }
 }
 
 function registrarLigacaoDesdeDetalhes() {
@@ -2847,6 +2858,16 @@ async function salvarEdicaoClienteManual(event) {
     }
   } catch (e) {
     mostrarToastMensagem('Erro de conexao: ' + e.message, 'error');
+  }
+}
+
+// Funcao para editar cliente manual desde o modal de detalhes
+function editarClienteDesdeDetalhes() {
+  if (window.clienteDetalhesAtual && window.clienteDetalhesDados) {
+    const c = window.clienteDetalhesDados;
+    const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalDetalhesOracle'));
+    modalDetalhes.hide();
+    abrirEditarClienteManual(c.id, c.nome, c.cnpj || '', c.telefone || '', c.telefone2 || '');
   }
 }
 </script>
