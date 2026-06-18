@@ -8,12 +8,12 @@
           <th>Telefone</th>
           <th class="th-sort" onclick="sortFlatTable(this,3)">Representante<span class="sort-icon"></span></th>
           {% if aba != 'pendentes' %}
-          <th class="th-sort" onclick="sortFlatTable(this,4)">Ãltima LigaÃ§Ã£o<span class="sort-icon"></span></th>
+          <th class="th-sort" onclick="sortFlatTable(this,4)">Última Ligação<span class="sort-icon"></span></th>
           {% endif %}
           {% if aba == 'retornar' %}
           <th class="th-sort" onclick="sortFlatTable(this,{% if aba != 'pendentes' %}5{% else %}4{% endif %})">Próximo Contato<span class="sort-icon"></span></th>
           {% endif %}
-          <th class="th-sort" onclick="sortFlatTable(this, this.cellIndex)">{{ 'InteraÃ§Ãµes' if current_user.tipo == 'consultor' else 'LigaÃ§Ãµes' }}<span class="sort-icon"></span></th>
+          <th class="th-sort" onclick="sortFlatTable(this, this.cellIndex)">{{ 'Interações' if current_user.tipo == 'consultor' else 'Ligações' }}<span class="sort-icon"></span></th>
           <th>Ações</th>
         </tr>
       </thead>
