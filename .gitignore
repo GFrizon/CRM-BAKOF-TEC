@@ -67,3 +67,6 @@ app_original_backup.py
 *.temp
 *.lock
 temp/
+
+# Windsurf/Devin internal
+_/
