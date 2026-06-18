@@ -2897,4 +2897,51 @@ function editarClienteDesdeDetalhes() {
     abrirEditarClienteManual(c.id, c.nome, c.cnpj || '', c.telefone || '', c.telefone2 || '');
   }
 }
+
+// Busca CNPJ no Oracle para preencher modal de edicao
+async function buscarCnpjOracleParaEdicao() {
+  const cnpjInput = document.getElementById('editClienteCnpj');
+  const statusEl = document.getElementById('edit_oracle_status');
+  const cnpj = limpaDigitos(cnpjInput.value);
+
+  if (!cnpj || cnpj.length < 7) {
+    if (statusEl) statusEl.textContent = 'Informe um CNPJ valido (minimo 7 digitos) para buscar no Oracle.';
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = 'Buscando no Oracle...';
+
+  try {
+    const r = await fetch('/clientes/preencher-oracle-cnpj', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ cnpj })
+    });
+    const j = await r.json();
+
+    if (!r.ok || !j.ok) {
+      if (statusEl) statusEl.textContent = j.mensagem || 'Erro ao consultar Oracle.';
+      return;
+    }
+
+    if (!j.encontrado) {
+      if (statusEl) statusEl.textContent = j.mensagem || 'CNPJ nao encontrado no Oracle.';
+      return;
+    }
+
+    const d = j.dados || {};
+    document.getElementById('editClienteNome').value = (d.nome || '').toUpperCase();
+    document.getElementById('editClienteCnpj').value = formatarCnpj(d.cnpj || cnpj);
+    document.getElementById('editClienteTelefone').value = d.telefone || d.telefone2 || '';
+    document.getElementById('editClienteTelefone2').value = d.telefone2 || '';
+
+    if (statusEl) {
+      const sufixo = d.consultor_nome_sugerido ? ` Consultor: ${d.consultor_nome_sugerido}.` : '';
+      statusEl.textContent = `Dados atualizados do Oracle.${sufixo}`;
+    }
+  } catch (erro) {
+    console.error('Erro ao buscar CNPJ no Oracle:', erro);
+    if (statusEl) statusEl.textContent = 'Erro ao consultar Oracle.';
+  }
+}
 </script>

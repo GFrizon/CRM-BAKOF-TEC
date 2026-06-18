@@ -326,7 +326,7 @@
           </div>
           {% endif %}
           <small class="text-muted mt-2 d-block">
-            Origem serÃ¡ marcada como <strong>manual</strong>.
+            Origem será marcada como <strong>manual</strong>.
           </small>
         </div>
         <div class="modal-footer">
@@ -360,7 +360,13 @@
             </div>
             <div class="col-12">
               <label class="form-label">CNPJ</label>
-              <input type="text" class="form-control" id="editClienteCnpj" placeholder="00.000.000/0000-00">
+              <div class="input-group">
+                <input type="text" class="form-control" id="editClienteCnpj" placeholder="00.000.000/0000-00">
+                <button type="button" class="btn btn-outline-secondary" onclick="buscarCnpjOracleParaEdicao()">
+                  Buscar no Oracle
+                </button>
+              </div>
+              <small id="edit_oracle_status" class="text-muted d-block mt-1"></small>
             </div>
             <div class="col-md-6">
               <label class="form-label">Telefone *</label>
