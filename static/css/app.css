@@ -2041,22 +2041,20 @@ html, body {
 /* Pattern removido - fundo clean sem interferência visual */
 
 /* =============================================================================
-   COPA 2026 — Pattern de fundo (listras diagonais verde/amarelo)
+   COPA 2026 — Faixas largas horizontais com cores do Brasil (bem transparentes)
    ============================================================================= */
 .app-content {
-  background-image: repeating-linear-gradient(
-    135deg,
-    transparent,
-    transparent 50px,
-    rgba(0,156,59,0.08) 50px,
-    rgba(0,156,59,0.08) 53px
-  ),
-  repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 70px,
-    rgba(255,223,0,0.06) 70px,
-    rgba(255,223,0,0.06) 73px
+  background: linear-gradient(
+    180deg,
+    rgba(0,156,59,0.04) 0%,
+    rgba(0,156,59,0.04) 15%,
+    rgba(255,223,0,0.03) 15%,
+    rgba(255,223,0,0.03) 30%,
+    transparent 30%,
+    transparent 70%,
+    rgba(255,223,0,0.03) 70%,
+    rgba(255,223,0,0.03) 85%,
+    rgba(0,156,59,0.04) 85%,
+    rgba(0,156,59,0.04) 100%
   );
-  background-attachment: fixed;
 }
