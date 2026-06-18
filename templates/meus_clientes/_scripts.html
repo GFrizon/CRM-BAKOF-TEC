@@ -7,6 +7,7 @@ let modalAdicionar = null;
 let modalEditarObs = null;
 let modalEditarLigacao = null;
 let modalVendaRetroativa = null;
+let modalEditarClienteManual = null;
 let _rowLigacaoAtiva = null;
 const IS_SUPERVISOR = {{ 'true' if is_supervisor else 'false' }};
 const TERMO_INTERACAO = "{{ 'interacao' if current_user.tipo == 'consultor' else 'ligacao' }}";
@@ -26,6 +27,7 @@ function inicializarModaisPagina() {
   modalEditarObs = _criarModalSeExistir('modalEditarObs');
   modalEditarLigacao = _criarModalSeExistir('modalEditarLigacao');
   modalVendaRetroativa = _criarModalSeExistir('modalVendaRetroativa');
+  modalEditarClienteManual = _criarModalSeExistir('modalEditarClienteManual');
 }
 
 inicializarModaisPagina();
@@ -2805,4 +2807,46 @@ async function exportarListaGrupoPDF(index, triggerBtn = null) {
   });
 })();
 
+
+// Funcoes para editar cliente manual
+function abrirEditarClienteManual(id, nome, cnpj, telefone, telefone2) {
+  document.getElementById('editClienteId').value = id;
+  document.getElementById('editClienteNome').value = nome;
+  document.getElementById('editClienteCnpj').value = cnpj || '';
+  document.getElementById('editClienteTelefone').value = telefone || '';
+  document.getElementById('editClienteTelefone2').value = telefone2 || '';
+  if (modalEditarClienteManual) modalEditarClienteManual.show();
+}
+
+async function salvarEdicaoClienteManual(event) {
+  event.preventDefault();
+  const id = document.getElementById('editClienteId').value;
+  const nome = document.getElementById('editClienteNome').value.trim();
+  const cnpj = document.getElementById('editClienteCnpj').value.trim();
+  const telefone = document.getElementById('editClienteTelefone').value.trim();
+  const telefone2 = document.getElementById('editClienteTelefone2').value.trim();
+  
+  if (!nome || !telefone) {
+    mostrarToastMensagem('Nome e telefone sao obrigatorios!', 'error');
+    return;
+  }
+  
+  try {
+    const resp = await fetch('/api/clientes/' + id + '/editar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, cnpj, telefone, telefone2 })
+    });
+    const j = await resp.json();
+    if (j.sucesso) {
+      mostrarToastMensagem('Cliente atualizado com sucesso!', 'success');
+      if (modalEditarClienteManual) modalEditarClienteManual.hide();
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      mostrarToastMensagem(j.mensagem || 'Erro ao atualizar cliente', 'error');
+    }
+  } catch (e) {
+    mostrarToastMensagem('Erro de conexao: ' + e.message, 'error');
+  }
+}
 </script>

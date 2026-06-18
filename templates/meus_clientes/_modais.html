@@ -336,3 +336,46 @@
     </div>
   </div>
 </div>
+
+<!-- ============================================================
+     MODAL: EDITAR CLIENTE MANUAL
+     ============================================================ -->
+<div class="modal fade" id="modalEditarClienteManual" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form onsubmit="salvarEdicaoClienteManual(event)">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Cliente</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editClienteId">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Nome *</label>
+              <input type="text" class="form-control" id="editClienteNome" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label">CNPJ</label>
+              <input type="text" class="form-control" id="editClienteCnpj" placeholder="00.000.000/0000-00">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Telefone *</label>
+              <input type="text" class="form-control" id="editClienteTelefone" required placeholder="(00) 00000-0000">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Telefone 2</label>
+              <input type="text" class="form-control" id="editClienteTelefone2" placeholder="(00) 00000-0000">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-warning">
+            <i class="bi bi-save me-1"></i> Salvar Alterações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

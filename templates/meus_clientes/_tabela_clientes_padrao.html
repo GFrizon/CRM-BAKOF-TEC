@@ -123,6 +123,13 @@
                 <i class="bi bi-telephone-plus"></i>
               </button>
               {% endif %}
+              {% if c.origem == 'manual' and current_user.tipo not in ('supervisor_repr', 'representante') %}
+              <button class="action-btn btn btn-outline-warning"
+                      onclick="abrirEditarClienteManual({{ c.id }}, '{{ c.nome|e }}', '{{ (c.cnpj or '')|e }}', '{{ c.telefone|e }}', '{{ (c.telefone2 or '')|e }}')"
+                      title="Editar Cliente">
+                <i class="bi bi-pencil"></i>
+              </button>
+              {% endif %}
               {% if c.total_ligacoes > 0 %}
               <button class="action-btn btn {% if c.especial_contato_mensal_status == 'mes_atual' %}btn-outline-success action-btn-monthly action-btn-monthly--current{% elif c.especial_contato_mensal_status == 'mes_anterior' %}btn-outline-warning action-btn-monthly action-btn-monthly--previous{% elif c.especial_contato_mensal_status in ('atrasado', 'sem_historico') %}btn-outline-danger action-btn-monthly action-btn-monthly--late{% else %}btn-outline-secondary{% endif %}"
                       data-action="historico"
