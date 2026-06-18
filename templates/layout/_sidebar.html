@@ -165,29 +165,6 @@
     {% endif %}
   </nav>
 
-  <!-- Copa 2026 – bandeira animada -->
-  <div class="sidebar-copa">
-    <div class="bandeira-container" title="Brasil na Copa 2026!">
-      <svg class="bandeira-svg" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="verdeBr" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" style="stop-color:#009c3b"/>
-            <stop offset="100%" style="stop-color:#007a2e"/>
-          </linearGradient>
-        </defs>
-        <!-- Fundo verde -->
-        <rect width="120" height="80" fill="url(#verdeBr)" rx="4"/>
-        <!-- Losango amarelo -->
-        <polygon points="60,8 112,40 60,72 8,40" fill="#ffdf00"/>
-        <!-- Círculo azul -->
-        <circle cx="60" cy="40" r="22" fill="#002776"/>
-        <!-- Faixa branca simplificada -->
-        <path d="M 38,40 Q 60,28 82,40" stroke="#fff" stroke-width="2" fill="none" opacity="0.9"/>
-      </svg>
-      <span class="texto-copa">Rumo ao Hexa!</span>
-    </div>
-  </div>
-
   <!-- Rodapé – usuário + logout -->
   {% if current_user.is_authenticated %}
   <div class="sidebar-footer">
