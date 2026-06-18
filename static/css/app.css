@@ -2040,3 +2040,23 @@ html, body {
 
 /* Pattern removido - fundo clean sem interferência visual */
 
+/* =============================================================================
+   COPA 2026 — Pattern sutil de fundo (listras diagonais)
+   ============================================================================= */
+.app-content {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 60px,
+    rgba(0,156,59,0.025) 60px,
+    rgba(0,156,59,0.025) 62px
+  ),
+  repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 80px,
+    rgba(255,223,0,0.02) 80px,
+    rgba(255,223,0,0.02) 82px
+  );
+  background-attachment: fixed;
+}
