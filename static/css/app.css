@@ -2018,3 +2018,42 @@ html, body {
 }
 
 .table-clickable:hover td { background: var(--surface-2); }
+
+/* =============================================================================
+   COPA 2026 — Loading spinner verde-amarelo + pattern sutil no fundo
+   ============================================================================= */
+
+/* Loading spinner estilo Brasil */
+.spinner-brasil {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(0,148,0,0.2);
+  border-top-color: #009400;
+  border-right-color: #ffdf00;
+  border-radius: 50%;
+  animation: spin-brasil 1s linear infinite;
+}
+
+@keyframes spin-brasil {
+  to { transform: rotate(360deg); }
+}
+
+/* Pattern sutil verde/amarelo no fundo do app-content */
+.app-content {
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 20px,
+      rgba(0,148,0,0.015) 20px,
+      rgba(0,148,0,0.015) 40px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 20px,
+      rgba(255,223,0,0.012) 20px,
+      rgba(255,223,0,0.012) 40px
+    );
+  background-attachment: fixed;
+}
