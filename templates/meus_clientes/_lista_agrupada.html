@@ -328,6 +328,13 @@
                             title="Ver Detalhes Oracle">
                       <i class="bi bi-eye"></i>
                     </button>
+                    {% if c.origem == 'manual' and current_user.tipo not in ('supervisor_repr', 'representante') %}
+                    <button class="action-btn btn btn-outline-warning"
+                            onclick="abrirEditarClienteManual({{ c.id }}, '{{ c.nome|e }}', '{{ (c.cnpj or '')|e }}', '{{ c.telefone|e }}', '{{ (c.telefone2 or '')|e }}')"
+                            title="Editar Cliente">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    {% endif %}
                     {% if current_user.tipo not in ('supervisor_repr', 'representante') %}
                     {% if c.id %}
                     <button class="action-btn btn btn-primary"
