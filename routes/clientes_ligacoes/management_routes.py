@@ -399,3 +399,43 @@ def register_clientes_ligacoes_management_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({"ok": False, "mensagem": f"Erro: {str(e)}"}), 500
+
+
+    @app.route("/api/clientes/<int:cliente_id>/editar", methods=["POST"])
+    @login_required
+    def editar_cliente_manual(cliente_id):
+        if not current_user.is_authenticated:
+            return jsonify({"sucesso": False, "mensagem": "Nao autenticado"}), 401
+
+        if current_user.tipo in ("supervisor_repr", "representante"):
+            return jsonify({"sucesso": False, "mensagem": "Acesso negado"}), 403
+
+        from core.models import Cliente
+
+        cliente = Cliente.query.get(cliente_id)
+        if not cliente:
+            return jsonify({"sucesso": False, "mensagem": "Cliente nao encontrado"}), 404
+
+        if cliente.origem != "manual":
+            return jsonify({"sucesso": False, "mensagem": "Apenas clientes manuais podem ser editados"}), 403
+
+        payload = request.get_json(silent=True) or {}
+        nome = (payload.get("nome") or "").strip()
+        cnpj = (payload.get("cnpj") or "").strip()
+        telefone = (payload.get("telefone") or "").strip()
+        telefone2 = (payload.get("telefone2") or "").strip()
+
+        if not nome or not telefone:
+            return jsonify({"sucesso": False, "mensagem": "Nome e telefone sao obrigatorios"}), 400
+
+        try:
+            cliente.nome = nome
+            cliente.cnpj = cnpj if cnpj else None
+            cliente.telefone = telefone
+            cliente.telefone2 = telefone2 if telefone2 else None
+            db.session.commit()
+            invalidar_caches_listagens_clientes("edicao de cliente manual")
+            return jsonify({"sucesso": True, "mensagem": "Cliente atualizado com sucesso"})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"sucesso": False, "mensagem": f"Erro ao atualizar: {str(e)}"}), 500
