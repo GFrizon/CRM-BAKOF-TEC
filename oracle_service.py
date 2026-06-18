@@ -285,7 +285,7 @@ class OracleService:
         left join geempres REP on REP.cd_empresa = CLI.cd_representant
         left join geempres CEN on CEN.cd_empresa = CLI.cd_centralizado
         where CLI.pessoa = '0'
-          and CLI.tipo_de_empresa = 'R'
+          and CLI.tipo_de_empresa in ('R', 'T')
           and case 
                 when regexp_like(TGS.categoria, '^[0-9]+$') 
                      and to_number(TGS.categoria) <= 100
@@ -371,7 +371,7 @@ class OracleService:
         left join geempres REP on REP.cd_empresa = CLI.cd_representant
         left join geempres CEN on CEN.cd_empresa = CLI.cd_centralizado
         where CLI.pessoa = '0'
-          and CLI.tipo_de_empresa = 'R'
+          and CLI.tipo_de_empresa in ('R', 'T')
           and case 
                 when regexp_like(TGS.categoria, '^[0-9]+$') 
                      and to_number(TGS.categoria) <= 999
@@ -456,7 +456,7 @@ class OracleService:
         left join geempres REP on REP.cd_empresa = CLI.cd_representant
         left join geempres CEN on CEN.cd_empresa = CLI.cd_centralizado
         where CLI.pessoa = '0'
-          and CLI.tipo_de_empresa = 'R'
+          and CLI.tipo_de_empresa in ('R', 'T')
           and case
                 when regexp_like(TGS.categoria, '^[0-9]+$')
                      and to_number(TGS.categoria) <= 999
@@ -633,7 +633,7 @@ class OracleService:
         left join geempres REP on REP.cd_empresa = CLI.cd_representant
         left join geempres CEN on CEN.cd_empresa = CLI.cd_centralizado
         where CLI.pessoa = '0'
-          and CLI.tipo_de_empresa = 'R'
+          and CLI.tipo_de_empresa in ('R', 'T')
           and case
                 when regexp_like(TGS.categoria, '^[0-9]+$')
                      and to_number(TGS.categoria) <= 100
@@ -771,7 +771,7 @@ class OracleService:
         left join Gecatego TG1 on TG1.cd_tg = 634 and TG1.categoria = coalesce(TGS.categoria,'999')
         left join geempres REP on REP.cd_empresa = CLI.cd_representant
         where CLI.pessoa = '0'
-          and CLI.tipo_de_empresa = 'R'
+          and CLI.tipo_de_empresa in ('R', 'T')
           and CLI.conceito = 'L'
           and case
                 when regexp_like(TGS.categoria, '^[0-9]+$')
@@ -1377,7 +1377,7 @@ class OracleService:
         left join geempres REP on REP.cd_empresa = CLI.cd_representant
         where regexp_replace(nvl(to_char(CLI.cnpj_cpf), ''), '[^0-9]', '') = :cnpj
           and CLI.pessoa = '0'
-          and CLI.tipo_de_empresa = 'R'
+          and CLI.tipo_de_empresa in ('R', 'T')
         order by UPE.dt_pedido desc nulls last, CLI.cd_empresa
         fetch first 1 rows only
         """
@@ -1447,7 +1447,7 @@ class OracleService:
                 left join geempres REP on REP.cd_empresa = CLI.cd_representant
                 where SUBSTR(regexp_replace(nvl(to_char(CLI.cnpj_cpf), ''), '[^0-9]', ''), 1, 8) = :cnpj_raiz
                   and CLI.pessoa = '0'
-                  and CLI.tipo_de_empresa = 'R'
+                  and CLI.tipo_de_empresa in ('R', 'T')
                 order by UPE.dt_pedido desc nulls last, CLI.cd_empresa
                 fetch first 1 rows only
                 """
@@ -1524,7 +1524,7 @@ class OracleService:
             left join geempres REP on REP.cd_empresa = CLI.cd_representant
             where SUBSTR(regexp_replace(nvl(to_char(CLI.cnpj_cpf), ''), '[^0-9]', ''), 1, 8) = :cnpj_raiz
               and CLI.pessoa = '0'
-              and CLI.tipo_de_empresa = 'R'
+              and CLI.tipo_de_empresa in ('R', 'T')
             order by UPE.dt_pedido desc nulls last, CLI.cd_empresa
             fetch first 1 rows only
             """
@@ -1560,7 +1560,7 @@ class OracleService:
             left join geempres REP on REP.cd_empresa = CLI.cd_representant
             where regexp_replace(nvl(to_char(CLI.cnpj_cpf), ''), '[^0-9]', '') = :cnpj
               and CLI.pessoa = '0'
-              and CLI.tipo_de_empresa = 'R'
+              and CLI.tipo_de_empresa in ('R', 'T')
             fetch first 1 rows only
             """
             results_simples = self.execute_query(query_simples, {"cnpj": cnpj_digits})
