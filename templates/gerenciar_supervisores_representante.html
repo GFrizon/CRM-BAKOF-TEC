@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}Gerenciar Supervisores de Representante{% endblock %}
+{% block content %}
+
+{% include "gerenciar_supervisores_representante/_styles.html" %}
+
+{% include "gerenciar_supervisores_representante/_lista.html" %}
+
+{% include "gerenciar_supervisores_representante/_modais.html" %}
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% include "gerenciar_supervisores_representante/_scripts.html" %}
+{% endblock %}

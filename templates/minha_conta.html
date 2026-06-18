@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% block title %}Minha Conta{% endblock %}
+{% block content %}
+
+{% include "minha_conta/_header.html" %}
+
+{% include "minha_conta/_conteudo.html" %}
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% include "minha_conta/_scripts.html" %}
+{% endblock %}

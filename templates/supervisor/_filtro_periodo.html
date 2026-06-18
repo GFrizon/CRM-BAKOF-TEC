@@ -1,0 +1,28 @@
+<!-- Filtro por mes/ano -->
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-funnel"></i> Filtrar Desempenho por Período</span>
+    <small class="text-muted">{{ dashboard_titulo }}</small>
+  </div>
+  <div class="card-body py-3">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-5">
+        <select class="form-select" id="filtroMes" onchange="aplicarFiltroMes()">
+          {% for m in meses_disponiveis %}
+          <option value="{{ m.mes }}-{{ m.ano }}" {% if m.mes == mes_filtro and m.ano == ano_filtro %}selected{% endif %}>
+            {{ m.texto }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" onclick="aplicarFiltroMes()">
+          <i class="bi bi-search"></i> Filtrar
+        </button>
+      </div>
+      <div class="col-md-5 text-muted small">
+        Selecione o mês/ano para visualizar o desempenho dos {{ dashboard_titulo|lower }}
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,94 @@
+﻿{% if dashboard_tipo == 'consultor' and movimento_carteiras_hoje %}
+{% set m90 = movimento_carteiras_hoje.oracle_90_150 or {} %}
+{% set mpx = movimento_carteiras_hoje.proximos_inativacao or {} %}
+
+<div class="movement-card mb-3">
+  <div class="movement-card-header">
+    <i class="bi bi-database"></i>
+    <span class="movement-card-title">Movimento Sem Pedido 90-150d (hoje)</span>
+    <span class="badge-entrada">+{{ (m90.entraram or [])|length }} entraram</span>
+    <span class="badge-saida">-{{ (m90.sairam or [])|length }} saíram</span>
+    <button class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1 js-collapse-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#mov90DetalheSup" aria-expanded="false" aria-controls="mov90DetalheSup" data-text-collapsed="Ver lista" data-text-expanded="Fechar lista">
+      Ver lista
+    </button>
+    {% if m90.atualizado_em %}
+    <small class="text-muted ms-auto">Atualizado {{ m90.atualizado_em.strftime('%d/%m %H:%M') }}</small>
+    {% endif %}
+  </div>
+  <div class="collapse" id="mov90DetalheSup">
+    <div class="movement-card-body">
+      <div class="row g-2">
+        <div class="col-md-6">
+          <div class="movement-list-title text-success"><i class="bi bi-arrow-down-circle-fill"></i> Entraram ({{ (m90.entraram or [])|length }})</div>
+          <div class="movement-list">
+            {% for c in m90.entraram or [] %}
+            <div class="movement-item">
+              <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
+            </div>
+            {% else %}
+            <div class="movement-empty">Sem entradas hoje.</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="movement-list-title text-danger"><i class="bi bi-arrow-up-circle-fill"></i> Saíram ({{ (m90.sairam or [])|length }})</div>
+          <div class="movement-list">
+            {% for c in m90.sairam or [] %}
+            <div class="movement-item">
+              <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
+            </div>
+            {% else %}
+            <div class="movement-empty">Sem saídas hoje.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="movement-card mb-4">
+  <div class="movement-card-header">
+    <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+    <span class="movement-card-title">Movimento Próximos Inativação (hoje)</span>
+    <span class="badge-entrada">+{{ (mpx.entraram or [])|length }} entraram</span>
+    <span class="badge-saida">-{{ (mpx.sairam or [])|length }} saíram</span>
+    <button class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1 js-collapse-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#movProxDetalheSup" aria-expanded="false" aria-controls="movProxDetalheSup" data-text-collapsed="Ver lista" data-text-expanded="Fechar lista">
+      Ver lista
+    </button>
+    {% if mpx.atualizado_em %}
+    <small class="text-muted ms-auto">Atualizado {{ mpx.atualizado_em.strftime('%d/%m %H:%M') }}</small>
+    {% endif %}
+  </div>
+  <div class="collapse" id="movProxDetalheSup">
+    <div class="movement-card-body">
+      <div class="row g-2">
+        <div class="col-md-6">
+          <div class="movement-list-title text-success"><i class="bi bi-arrow-down-circle-fill"></i> Entraram ({{ (mpx.entraram or [])|length }})</div>
+          <div class="movement-list">
+            {% for c in mpx.entraram or [] %}
+            <div class="movement-item">
+              <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
+            </div>
+            {% else %}
+            <div class="movement-empty">Sem entradas hoje.</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="movement-list-title text-danger"><i class="bi bi-arrow-up-circle-fill"></i> Saíram ({{ (mpx.sairam or [])|length }})</div>
+          <div class="movement-list">
+            {% for c in mpx.sairam or [] %}
+            <div class="movement-item">
+              <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente or '-' }})</span></span>
+            </div>
+            {% else %}
+            <div class="movement-empty">Sem saídas hoje.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}

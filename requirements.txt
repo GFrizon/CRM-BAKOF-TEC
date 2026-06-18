@@ -1,0 +1,38 @@
+﻿# Core do Flask
+flask==3.0.3
+flask-login==0.6.3
+flask-wtf==1.2.1
+itsdangerous==2.2.0
+jinja2==3.1.4
+werkzeug==3.0.3
+
+# Banco de Dados MySQL
+pymysql==1.1.1
+mysqlclient==2.2.4  # Se o servidor não suportar, podemos trocar por PyMySQL puro
+sqlalchemy==2.0.30
+
+# E-mails com SMTP
+flask-mail==0.9.1
+
+# Agendamento de tarefas (relatórios diários)
+apscheduler==3.10.4
+
+# Upload e leitura de CSV/Excel
+pandas==2.1.4
+numpy==1.24.4
+openpyxl==3.1.5
+xlrd==2.0.1
+
+# Segurança senha (hashing)
+passlib==1.7.4
+bcrypt==4.1.2
+
+# Carregar variáveis de ambiente (.env)
+python-dotenv==1.0.1
+
+# Front-end opcional (gráficos)
+plotly==5.24.1
+
+# Conexão com banco Oracle para integração CRM
+# Mantem compatibilidade com Oracle Client 12.2 em modo thick e verifier legado.
+oracledb==1.4.2

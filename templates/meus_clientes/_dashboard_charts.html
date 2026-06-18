@@ -1,0 +1,33 @@
+{% if current_user.tipo in ('consultor', 'televendas') and stats and stats.chart_ligacoes_14d %}
+<div class="row g-3 mb-4 dashboard-chart-grid">
+  <div class="col-xl-8">
+    <div class="dashboard-chart-card">
+      <div class="dashboard-chart-head">
+        <div>
+          <span class="dashboard-chart-kicker">Evolucao</span>
+          <h3>{{ 'Ligacoes' if current_user.tipo == 'televendas' else 'Interacoes' }} por dia</h3>
+        </div>
+        <span class="dashboard-chart-pill">{{ stats.chart_periodo_label or '30 dias' }}</span>
+      </div>
+      <div class="dashboard-chart-shell dashboard-chart-shell-line">
+        <canvas id="chartOperadorEvolucao"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="dashboard-chart-card">
+      <div class="dashboard-chart-head">
+        <div>
+          <span class="dashboard-chart-kicker">Resultado</span>
+          <h3>Distribuicao 30d</h3>
+        </div>
+        <span class="dashboard-chart-pill">{{ stats.converteu_30 or 0 }} vendas</span>
+      </div>
+      <div class="dashboard-chart-shell dashboard-chart-shell-donut">
+        <canvas id="chartOperadorResultados"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}

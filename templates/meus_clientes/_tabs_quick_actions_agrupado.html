@@ -1,0 +1,342 @@
+<div class="panel-card" style="overflow:visible;">
+  <div class="panel-body carteiras-shell">
+    <div class="carteiras-header">
+      <span class="carteiras-title"><i class="bi bi-collection me-1"></i> Carteiras</span>
+    </div>
+    <div class="modern-tabs nav">
+      {% set visao_televendas = (current_user.tipo == 'televendas') or (current_user.tipo == 'supervisor' and dashboard_tipo == 'televendas') %}
+      {% set visao_consultores = (current_user.tipo in ('consultor', 'representante')) or (current_user.tipo == 'supervisor' and dashboard_tipo == 'consultor') %}
+      {% set q_atual = request.args.get('q', '') %}
+      {% set periodo_recencia_atual = periodo_recencia|default(request.args.get('periodo_recencia', 'ano_atual'), true) %}
+      {% set agrupar_por_atual = agrupar_por|default(request.args.get('agrupar_por', ''), true) %}
+      {% if not agrupar_por_atual %}
+        {% set agrupar_por_atual = 'uf' if aba == 'inativos' else 'representante' %}
+      {% endif %}
+      {% set visao_sem_classificacao_consultor = (current_user.tipo == 'consultor' and aba == 'pendentes' and agrupar_por_atual == 'sem_classificacao') %}
+
+      {% if visao_consultores %}
+      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
+      </a>
+      <a class="nav-link tab-ativos {{ 'active' if aba == 'ativos' }}" data-aba="ativos" href="{{ url_for('meus_clientes', aba='ativos', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-graph-up-arrow"></i><span class="tab-label">Clientes Ativos</span><span class="tab-count">{{ total_ativos|default(0) }}</span>
+      </a>
+      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-150d</span><span class="tab-count">{{ total_oracle }}</span>
+      </a>
+      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Proximos Inativacao</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
+      </a>
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-person-slash"></i><span class="tab-label">Lista Publica</span><span class="tab-count">{{ total_inativos }}</span>
+      </a>
+      {% if current_user.tipo == 'representante' %}
+      <a class="nav-link tab-construtoras {{ 'active' if aba == 'construtoras' }}" data-aba="construtoras" href="{{ url_for('meus_clientes', aba='construtoras', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-building"></i><span class="tab-label">Construtoras</span><span class="tab-count">{{ total_construtoras|default(0) }}</span>
+      </a>
+      {% endif %}
+      {% if current_user.tipo != 'representante' %}
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
+        {% if total_retornos_atrasados|default(0)|int > 0 %}
+        <i class="bi bi-exclamation-triangle-fill tab-alert" title="{{ total_retornos_atrasados|default(0)|int }} retorno{{ 's' if total_retornos_atrasados|default(0)|int != 1 else '' }} atrasado{{ 's' if total_retornos_atrasados|default(0)|int != 1 else '' }}"></i>
+        {% endif %}
+      </a>
+      {% endif %}
+      {% elif visao_televendas %}
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-person-slash"></i><span class="tab-label">Lista Publica</span><span class="tab-count">{{ total_inativos }}</span>
+      </a>
+      <a class="nav-link tab-construtoras {{ 'active' if aba == 'construtoras' }}" data-aba="construtoras" href="{{ url_for('meus_clientes', aba='construtoras', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-building"></i><span class="tab-label">Construtoras</span><span class="tab-count">{{ total_construtoras|default(0) }}</span>
+      </a>
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
+        {% if total_retornos_atrasados|default(0)|int > 0 %}
+        <i class="bi bi-exclamation-triangle-fill tab-alert" title="{{ total_retornos_atrasados|default(0)|int }} retorno{{ 's' if total_retornos_atrasados|default(0)|int != 1 else '' }} atrasado{{ 's' if total_retornos_atrasados|default(0)|int != 1 else '' }}"></i>
+        {% endif %}
+      </a>
+      {% else %}
+      {% if current_user.tipo not in ('supervisor_repr', 'representante') %}
+      <a class="nav-link tab-pendentes {{ 'active' if aba == 'pendentes' }}" data-aba="pendentes" href="{{ url_for('meus_clientes', aba='pendentes', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-stars"></i><span class="tab-label">Clientes Especiais</span><span class="tab-count">{{ total_pendentes }}</span>
+      </a>
+      <a class="nav-link tab-ativos {{ 'active' if aba == 'ativos' }}" data-aba="ativos" href="{{ url_for('meus_clientes', aba='ativos', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-graph-up-arrow"></i><span class="tab-label">Clientes Ativos</span><span class="tab-count">{{ total_ativos|default(0) }}</span>
+      </a>
+      {% endif %}
+      <a class="nav-link oracle-tab tab-oracle {{ 'active' if aba == 'oracle' }}" data-aba="oracle" href="{{ url_for('meus_clientes', aba='oracle', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-database"></i><span class="tab-label">Sem Pedido 90-150d</span><span class="tab-count">{{ total_oracle }}</span>
+      </a>
+      <a class="nav-link tab-proximos {{ 'active' if aba == 'proximos_inativacao' }}" data-aba="proximos_inativacao" href="{{ url_for('meus_clientes', aba='proximos_inativacao', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-exclamation-triangle"></i><span class="tab-label">Proximos Inativacao</span><span class="tab-count">{{ total_proximos|default(0) }}</span>
+      </a>
+      {% if current_user.tipo == 'supervisor' %}
+      <a class="nav-link oracle-tab tab-inativos {{ 'active' if aba == 'inativos' }}" data-aba="inativos" href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-person-slash"></i><span class="tab-label">Lista Publica</span><span class="tab-count">{{ total_inativos }}</span>
+      </a>
+      {% if not visao_consultores %}
+      <a class="nav-link tab-construtoras {{ 'active' if aba == 'construtoras' }}" data-aba="construtoras" href="{{ url_for('meus_clientes', aba='construtoras', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-building"></i><span class="tab-label">Construtoras</span><span class="tab-count">{{ total_construtoras|default(0) }}</span>
+      </a>
+      {% endif %}
+      {% endif %}
+      {% if current_user.tipo not in ('supervisor_repr', 'representante') %}
+      <a class="nav-link tab-retornar {{ 'active' if aba == 'retornar' }}" data-aba="retornar" href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo, visao='clientes', q=q_atual, agrupar_por=agrupar_por_atual) }}">
+        <i class="bi bi-arrow-return-right"></i><span class="tab-label">Retornar</span> <span class="tab-count">{{ total_retornar }}</span>
+        {% if total_retornos_atrasados|default(0)|int > 0 %}
+        <i class="bi bi-exclamation-triangle-fill tab-alert" title="{{ total_retornos_atrasados|default(0)|int }} retorno{{ 's' if total_retornos_atrasados|default(0)|int != 1 else '' }} atrasado{{ 's' if total_retornos_atrasados|default(0)|int != 1 else '' }}"></i>
+        {% endif %}
+      </a>
+      {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="quick-action-bar carteira-toolbar view-toolbar d-flex flex-wrap align-items-center gap-2">
+  {% if current_user.tipo in ('supervisor_repr', 'representante') %}
+  <span class="text-muted small">
+    <i class="bi bi-diagram-3 me-1"></i>Visao por representante: cada card agrupa uma carteira; expanda para ver clientes e consultores.
+  </span>
+  {% endif %}
+  {% if current_user.tipo == 'consultor' and aba == 'pendentes' %}
+  <span class="view-toolbar-label me-1">
+    <i class="bi bi-layout-text-window-reverse me-1"></i>Visualizacao:
+  </span>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Tipo de visao">
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'representante' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='pendentes', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='representante') }}"
+    >
+      Por representante
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'recencia' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='pendentes', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia=periodo_recencia_atual) }}"
+    >
+      Frequencia
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'sem_classificacao' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='pendentes', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='sem_classificacao') }}"
+    >
+      Sem classificacao
+    </a>
+  </div>
+  {% endif %}
+  {% if current_user.tipo == 'supervisor' and aba == 'pendentes' %}
+  <span class="view-toolbar-label me-1">
+    <i class="bi bi-layout-text-window-reverse me-1"></i>Visualizacao:
+  </span>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Tipo de visao supervisor pendentes">
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'consultor' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='pendentes', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='consultor') }}"
+    >
+      Por consultor
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'representante' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='pendentes', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='representante') }}"
+    >
+      Por representante
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'recencia' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='pendentes', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia=periodo_recencia_atual) }}"
+    >
+      Frequencia
+    </a>
+  </div>
+  {% endif %}
+  {% if current_user.tipo == 'consultor' and aba == 'ativos' %}
+  <span class="view-toolbar-label me-1">
+    <i class="bi bi-layout-text-window-reverse me-1"></i>Visualizacao:
+  </span>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Tipo de visao ativos">
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'representante' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='ativos', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='representante') }}"
+    >
+      Por representante
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'uf' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='ativos', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='uf') }}"
+    >
+      Por UF
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'recencia' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='ativos', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia=periodo_recencia_atual) }}"
+    >
+      Frequencia
+    </a>
+  </div>
+  {% endif %}
+  {% if current_user.tipo == 'supervisor' and aba == 'ativos' %}
+  <span class="view-toolbar-label me-1">
+    <i class="bi bi-layout-text-window-reverse me-1"></i>Visualizacao:
+  </span>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Tipo de visao supervisor ativos">
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'representante' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='ativos', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='representante') }}"
+    >
+      Por representante
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'uf' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='ativos', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='uf') }}"
+    >
+      Por UF
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'recencia' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='ativos', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia=periodo_recencia_atual) }}"
+    >
+      Frequencia
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'consultor' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='ativos', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='consultor') }}"
+    >
+      Por consultor
+    </a>
+  </div>
+  {% endif %}
+  {% if agrupar_por_atual == 'recencia' and aba == 'ativos' %}
+  <span class="view-toolbar-label me-1">
+    <i class="bi bi-calendar3 me-1"></i>Periodo:
+  </span>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Periodo da recencia ativos">
+    <a
+      class="btn {{ 'btn-primary' if periodo_recencia_atual == 'ano_atual' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='ativos', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia='ano_atual') }}"
+    >
+      Ano atual
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if periodo_recencia_atual == 'ultimos_365_dias' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='ativos', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia='ultimos_365_dias') }}"
+    >
+      Ultimos 365 dias
+    </a>
+  </div>
+  {% endif %}
+  {% if agrupar_por_atual == 'recencia' and aba == 'pendentes' %}
+  <span class="view-toolbar-label me-1">
+    <i class="bi bi-calendar3 me-1"></i>Periodo:
+  </span>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Periodo da recencia pendentes">
+    <a
+      class="btn {{ 'btn-primary' if periodo_recencia_atual == 'ano_atual' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='pendentes', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia='ano_atual') }}"
+    >
+      Ano atual
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if periodo_recencia_atual == 'ultimos_365_dias' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba='pendentes', visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia='ultimos_365_dias') }}"
+    >
+      Ultimos 365 dias
+    </a>
+  </div>
+  {% endif %}
+  {% if current_user.tipo in ('consultor', 'supervisor', 'supervisor_repr', 'representante', 'televendas') and aba in ('oracle', 'inativos', 'proximos_inativacao', 'construtoras') %}
+  <span class="view-toolbar-label me-1">
+    <i class="bi bi-layout-text-window-reverse me-1"></i>Visualizacao:
+  </span>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Tipo de visao inativos">
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'representante' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba=aba, visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='representante') }}"
+    >
+      Por representante
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'uf' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba=aba, visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='uf') }}"
+    >
+      Por UF
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'recencia' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba=aba, visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia=periodo_recencia_atual) }}"
+    >
+      Frequencia
+    </a>
+    {% if current_user.tipo == 'supervisor' %}
+    <a
+      class="btn {{ 'btn-primary' if agrupar_por_atual == 'consultor' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba=aba, visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='consultor') }}"
+    >
+      Por consultor
+    </a>
+    {% endif %}
+  </div>
+  {% if agrupar_por_atual == 'recencia' and aba in ('oracle', 'inativos', 'proximos_inativacao', 'construtoras') %}
+  <span class="view-toolbar-label me-1">
+    <i class="bi bi-calendar3 me-1"></i>Periodo:
+  </span>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Periodo da recencia">
+    <a
+      class="btn {{ 'btn-primary' if periodo_recencia_atual == 'ano_atual' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba=aba, visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia='ano_atual') }}"
+    >
+      Ano atual
+    </a>
+    <a
+      class="btn {{ 'btn-primary' if periodo_recencia_atual == 'ultimos_365_dias' else 'btn-outline-primary' }}"
+      href="{{ url_for('meus_clientes', aba=aba, visao='clientes', dashboard_tipo=dashboard_tipo, q=q_atual, agrupar_por='recencia', periodo_recencia='ultimos_365_dias') }}"
+    >
+      Ultimos 365 dias
+    </a>
+  </div>
+  {% endif %}
+  {% endif %}
+  <span class="quick-action-info ms-auto" id="quickActionInfo">
+    {% if visao_sem_classificacao_consultor %}
+    Lista sem classificacao
+    {% elif current_user.tipo == 'consultor' and aba == 'pendentes' %}
+    {% if agrupar_por_atual == 'recencia' %}
+    {% if periodo_recencia_atual == 'ultimos_365_dias' %}
+    Lista livre ordenada por recorrencia e recencia nos ultimos 365 dias
+    {% else %}
+    Lista livre ordenada por recorrencia e recencia desde 01/01/{{ ano_recencia }}
+    {% endif %}
+    {% else %}
+    Lista agrupada por representante
+    {% endif %}
+    {% elif current_user.tipo == 'supervisor' and aba == 'pendentes' %}
+    {% if agrupar_por_atual == 'representante' %}
+    Lista agrupada por representante
+    {% elif agrupar_por_atual == 'recencia' %}
+    {% if periodo_recencia_atual == 'ultimos_365_dias' %}
+    Lista livre ordenada por recorrencia e recencia nos ultimos 365 dias
+    {% else %}
+    Lista livre ordenada por recorrencia e recencia desde 01/01/{{ ano_recencia }}
+    {% endif %}
+    {% else %}
+    Lista agrupada por consultor
+    {% endif %}
+    {% elif aba in ('oracle', 'inativos', 'proximos_inativacao', 'construtoras', 'ativos') and current_user.tipo in ('consultor', 'supervisor', 'supervisor_repr', 'representante', 'televendas') %}
+    {% if agrupar_por_atual == 'uf' %}
+    Lista agrupada por UF
+    {% elif agrupar_por_atual == 'recencia' %}
+    {% if periodo_recencia_atual == 'ultimos_365_dias' %}
+    Lista livre ordenada por recorrencia e recencia nos ultimos 365 dias
+    {% else %}
+    Lista livre ordenada por recorrencia e recencia desde 01/01/{{ ano_recencia }}
+    {% endif %}
+    {% elif agrupar_por_atual == 'consultor' %}
+    Lista agrupada por consultor
+    {% else %}
+    Lista agrupada por representante
+    {% endif %}
+    {% else %}
+    Mostrando todos os clientes
+    {% endif %}
+  </span>
+</div>

@@ -1,0 +1,249 @@
+{% extends "layout.html" %}
+{% block title %}Crânio Insights{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="panel-card">
+    <div class="panel-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div><i class="bi bi-robot me-2"></i>Crânio Insights</div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-primary cranio-periodo-btn active" data-periodo="hoje">Hoje</button>
+        <button class="btn btn-sm btn-outline-primary cranio-periodo-btn" data-periodo="3d">Últimos 3 dias</button>
+        <button class="btn btn-sm btn-outline-primary cranio-periodo-btn" data-periodo="mes">Este mês</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <p class="text-muted mb-3">
+        Painel inicial do novo Crânio. Nesta fase ele lê as observações e resultados já registrados no CRM, sem consumir IA em tempo real.
+      </p>
+
+      <div class="alert alert-info py-2 small mb-3">
+        O chat antigo foi mantido só no backend por segurança. A próxima fase será gerar snapshots automáticos e depois acoplar IA em cima desse material já resumido.
+      </div>
+
+      <div id="cranioSnapshotBox" class="alert alert-secondary py-2 small mb-3 d-none"></div>
+      <div id="cranioAiBox" class="alert alert-warning py-2 small mb-3 d-none"></div>
+
+      <div id="cranioLoading" class="text-muted small mb-3">
+        Carregando insights...
+      </div>
+
+      <div id="cranioInsights" class="d-none">
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-xl-6">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                  <div>
+                    <div class="text-uppercase text-muted small fw-semibold">Resumo Executivo</div>
+                    <div id="cranioMeta" class="small text-muted"></div>
+                  </div>
+                  <span class="badge text-bg-light" id="cranioGeradoEm"></span>
+                </div>
+                <div id="cranioResumo" class="fs-6 lh-base"></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-2">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body">
+                <div class="text-uppercase text-muted small fw-semibold">Ligações</div>
+                <div id="mLigacoes" class="display-6 fw-bold">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-2">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body">
+                <div class="text-uppercase text-muted small fw-semibold">Vendas</div>
+                <div id="mVendas" class="display-6 fw-bold text-success">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6 col-xl-2">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body">
+                <div class="text-uppercase text-muted small fw-semibold">Retornos</div>
+                <div id="mRetornos" class="display-6 fw-bold text-primary">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-lg-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body">
+                <div class="text-uppercase text-muted small fw-semibold mb-2">Temas Mais Citados</div>
+                <div id="cranioTemas" class="d-flex flex-wrap gap-2"></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body">
+                <div class="text-uppercase text-muted small fw-semibold mb-2">Alertas</div>
+                <ul id="cranioAlertas" class="mb-0 ps-3"></ul>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body">
+                <div class="text-uppercase text-muted small fw-semibold mb-2">Oportunidades</div>
+                <ul id="cranioOps" class="mb-0 ps-3"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <div class="text-uppercase text-muted small fw-semibold mb-3">Radar por Operador</div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Operador</th>
+                    <th class="text-center">Ligações</th>
+                    <th class="text-center">Vendas</th>
+                    <th class="text-center">Retornos</th>
+                    <th class="text-center">Conversão</th>
+                    <th>Tema principal</th>
+                  </tr>
+                </thead>
+                <tbody id="cranioOperadores"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const root = document.getElementById('cranioInsights');
+  const loading = document.getElementById('cranioLoading');
+  const buttons = Array.from(document.querySelectorAll('.cranio-periodo-btn'));
+  if (!root || !loading || !buttons.length) return;
+
+  const els = {
+    snapshotBox: document.getElementById('cranioSnapshotBox'),
+    aiBox: document.getElementById('cranioAiBox'),
+    meta: document.getElementById('cranioMeta'),
+    geradoEm: document.getElementById('cranioGeradoEm'),
+    resumo: document.getElementById('cranioResumo'),
+    ligacoes: document.getElementById('mLigacoes'),
+    vendas: document.getElementById('mVendas'),
+    retornos: document.getElementById('mRetornos'),
+    temas: document.getElementById('cranioTemas'),
+    alertas: document.getElementById('cranioAlertas'),
+    ops: document.getElementById('cranioOps'),
+    operadores: document.getElementById('cranioOperadores'),
+  };
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function renderList(target, items, fallback) {
+    if (!target) return;
+    if (!Array.isArray(items) || !items.length) {
+      target.innerHTML = `<li class="text-muted">${escapeHtml(fallback)}</li>`;
+      return;
+    }
+    target.innerHTML = items.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+  }
+
+  function render(data, snapshotStatus, aiStatus) {
+    const insights = data || {};
+    root.classList.remove('d-none');
+    loading.textContent = '';
+    if (els.snapshotBox) {
+      if (snapshotStatus && snapshotStatus.data_ref) {
+        const visoes = Array.isArray(snapshotStatus.visoes) && snapshotStatus.visoes.length
+          ? ` • Visões: ${snapshotStatus.visoes.join(', ')}`
+          : '';
+        els.snapshotBox.classList.remove('d-none');
+        els.snapshotBox.innerHTML = snapshotStatus.tem_snapshot_hoje
+          ? `Snapshot diário local disponível em <strong>${escapeHtml(snapshotStatus.data_ref)}</strong>${visoes}`
+          : `Último snapshot local disponível em <strong>${escapeHtml(snapshotStatus.data_ref)}</strong>${visoes}`;
+      } else {
+        els.snapshotBox.classList.remove('d-none');
+        els.snapshotBox.textContent = 'Snapshot diário local ainda não gerado. Por enquanto, a leitura exibida abaixo está vindo ao vivo.';
+      }
+    }
+    if (els.aiBox) {
+      els.aiBox.classList.remove('d-none');
+      if (!aiStatus || !aiStatus.habilitado) {
+        els.aiBox.innerHTML = 'Resumo estratégico com IA está <strong>desabilitado</strong> por configuração. A estrutura já está pronta e pode ser ativada depois.';
+      } else if (aiStatus.resumo_hoje && aiStatus.resumo_hoje.ok) {
+        const conteudo = aiStatus.resumo_hoje.conteudo || {};
+        const resumo = conteudo.resumo_executivo || 'Resumo IA disponível.';
+        els.aiBox.innerHTML = `Resumo estratégico IA disponível para <strong>${escapeHtml(aiStatus.data_ref || '')}</strong>: ${escapeHtml(resumo)}`;
+      } else if (aiStatus.data_ref) {
+        els.aiBox.innerHTML = `Última tentativa de resumo IA vinculada à base <strong>${escapeHtml(aiStatus.data_ref)}</strong>, mas ainda sem conteúdo validado.`;
+      } else {
+        els.aiBox.innerHTML = 'Resumo estratégico IA ainda não foi gerado.';
+      }
+    }
+    els.meta.textContent = `${insights.visao_label || '-'} • ${insights.periodo_label || '-'}`;
+    els.geradoEm.textContent = insights.gerado_em || '';
+    els.resumo.textContent = insights.resumo_executivo || '-';
+    els.ligacoes.textContent = (insights.metricas && insights.metricas.ligacoes) || 0;
+    els.vendas.textContent = (insights.metricas && insights.metricas.vendas) || 0;
+    els.retornos.textContent = (insights.metricas && insights.metricas.retornos) || 0;
+
+    const temas = Array.isArray(insights.temas_principais) ? insights.temas_principais : [];
+    els.temas.innerHTML = temas.length
+      ? temas.map(item => `<span class="badge rounded-pill text-bg-light border">${escapeHtml(item.tema)} (${escapeHtml(item.qtd)})</span>`).join('')
+      : '<span class="text-muted small">Sem temas recorrentes relevantes no período.</span>';
+
+    renderList(els.alertas, insights.alertas, 'Nenhum alerta forte detectado no período.');
+    renderList(els.ops, insights.oportunidades, 'Nenhuma oportunidade destacada automaticamente.');
+
+    const operadores = Array.isArray(insights.operadores) ? insights.operadores : [];
+    els.operadores.innerHTML = operadores.length
+      ? operadores.map(op => `
+          <tr>
+            <td>${escapeHtml(op.nome)}</td>
+            <td class="text-center">${escapeHtml(op.ligacoes)}</td>
+            <td class="text-center text-success fw-semibold">${escapeHtml(op.vendas)}</td>
+            <td class="text-center">${escapeHtml(op.retornos)}</td>
+            <td class="text-center">${escapeHtml(op.conversao)}%</td>
+            <td>${escapeHtml(op.tema_principal)}</td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="6" class="text-center text-muted py-3">Sem operadores com interações no período.</td></tr>';
+  }
+
+  async function carregar(periodo) {
+    loading.textContent = 'Carregando insights...';
+    root.classList.add('d-none');
+    buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.periodo === periodo));
+    try {
+      const res = await fetch(`/api/cranio/insights?periodo=${encodeURIComponent(periodo)}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.erro || 'Falha ao carregar insights');
+      render(data.insights || {}, data.snapshot_status || {}, data.ai_status || {});
+    } catch (err) {
+      loading.textContent = `Erro ao carregar insights: ${err.message || 'falha'}`;
+    }
+  }
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => carregar(btn.dataset.periodo || 'hoje'));
+  });
+
+  carregar('hoje');
+})();
+</script>
+{% endblock %}

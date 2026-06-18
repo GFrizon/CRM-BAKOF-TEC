@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}Gerenciar Banners{% endblock %}
+{% block content %}
+
+{% include "gerenciar_banners/_header.html" %}
+
+{% include "gerenciar_banners/_lista.html" %}
+
+{% include "gerenciar_banners/_modal_criar.html" %}
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% include "gerenciar_banners/_scripts.html" %}
+{% endblock %}

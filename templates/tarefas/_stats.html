@@ -1,0 +1,30 @@
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="bi bi-list-task"></i></div>
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total de Tarefas</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon orange"><i class="bi bi-clock"></i></div>
+      <div class="stat-value">{{ stats.por_status.pendente }}</div>
+      <div class="stat-label">Pendentes</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon cyan"><i class="bi bi-arrow-repeat"></i></div>
+      <div class="stat-value">{{ stats.por_status.em_andamento }}</div>
+      <div class="stat-label">Em Andamento</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+      <div class="stat-value">{{ stats.atrasadas }}</div>
+      <div class="stat-label">Atrasadas</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,2808 @@
+<script>
+
+let modalLigacao = null;
+let modalHistorico = null;
+let modalLimpar = null;
+let modalAdicionar = null;
+let modalEditarObs = null;
+let modalEditarLigacao = null;
+let modalVendaRetroativa = null;
+let _rowLigacaoAtiva = null;
+const IS_SUPERVISOR = {{ 'true' if is_supervisor else 'false' }};
+const TERMO_INTERACAO = "{{ 'interacao' if current_user.tipo == 'consultor' else 'ligacao' }}";
+const TERMO_INTERACOES = "{{ 'interacoes' if current_user.tipo == 'consultor' else 'ligacoes' }}";
+
+function _criarModalSeExistir(elementId) {
+  const el = document.getElementById(elementId);
+  if (!el) return null;
+  return bootstrap.Modal.getOrCreateInstance(el);
+}
+
+function inicializarModaisPagina() {
+  modalLigacao = _criarModalSeExistir('modalLigacao');
+  modalHistorico = _criarModalSeExistir('modalHistorico');
+  modalLimpar = _criarModalSeExistir('modalLimpar');
+  modalAdicionar = _criarModalSeExistir('modalAdicionar');
+  modalEditarObs = _criarModalSeExistir('modalEditarObs');
+  modalEditarLigacao = _criarModalSeExistir('modalEditarLigacao');
+  modalVendaRetroativa = _criarModalSeExistir('modalVendaRetroativa');
+}
+
+inicializarModaisPagina();
+
+function mostrarToastMensagem(msg, tipo = 'success') {
+  const id = 'toast-status-codex';
+  let el = document.getElementById(id);
+  if (!el) {
+    const wrap = document.createElement('div');
+    wrap.className = 'toast-container position-fixed top-0 end-0 p-3';
+    wrap.style.zIndex = '1200';
+    wrap.innerHTML = `
+      <div id="${id}" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body fw-semibold"></div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    el = document.getElementById(id);
+  }
+  const body = el.querySelector('.toast-body');
+  if (body) body.textContent = msg || 'Operacao concluida.';
+  el.classList.remove('text-bg-success', 'text-bg-danger', 'text-bg-primary');
+  el.classList.add(tipo === 'error' ? 'text-bg-danger' : (tipo === 'info' ? 'text-bg-primary' : 'text-bg-success'));
+  bootstrap.Toast.getOrCreateInstance(el, { delay: 2200 }).show();
+}
+
+// FECHAR POP-UP DE NOVIDADES
+async function fecharNovidades(persistir = false) {
+  const modal = document.getElementById('modalNovidades');
+  if (!modal) return;
+  const versao = modal.getAttribute('data-release-version') || 'v3.0';
+  const chave = `crm_novidades_dismissed_${versao}`;
+  const marcar = persistir || Boolean(document.getElementById('chkNaoMostrarVersao')?.checked);
+
+  if (marcar) {
+    try {
+      localStorage.setItem(chave, '1');
+      await fetch('/marcar-novidades-vistas', { method: 'POST' });
+    } catch (_) {}
+  }
+  modal.style.display = 'none';
+}
+
+// Se já foi dispensado nesta versão no navegador, não exibe de novo.
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('modalNovidades');
+  if (!modal) return;
+  const versao = modal.getAttribute('data-release-version') || 'v3.0';
+  const chave = `crm_novidades_dismissed_${versao}`;
+  if (localStorage.getItem(chave) === '1') {
+    modal.style.display = 'none';
+  }
+});
+
+function abrirForm(id, nome, telefone, cdClienteOracle = '') {
+  document.getElementById('cliId').value = id;
+  let row = id ? document.querySelector(`tr[data-cliente-id="${id}"]`) : null;
+  if (!row && cdClienteOracle) {
+    row = document.querySelector(`tr[data-cd-cliente-oracle="${cdClienteOracle}"]`);
+  }
+  _rowLigacaoAtiva = row || null;
+  const cdNaLinha = row ? (row.getAttribute('data-cd-cliente-oracle') || '').trim() : '';
+  document.getElementById('cliCdClienteOracle').value = (cdClienteOracle || cdNaLinha || '').toString().trim();
+  document.getElementById('cliNome').value = nome;
+  document.getElementById('cliTelefone').value = telefone || '';
+  document.getElementById('contato_nome').value = '';
+  document.getElementById('resultado').value = 'nao_comprou';
+  document.getElementById('valor_venda').value = '';
+  document.getElementById('observacao').value = '';
+  document.getElementById('dias_retorno').value = '';
+  document.getElementById('data_retorno').value = '';
+  toggleCamposResultado();
+  modalLigacao.show();
+}
+
+function toggleCamposResultado() {
+  const r = document.getElementById('resultado').value;
+  const boxValor   = document.getElementById('valorContainer');
+  const boxRetorno = document.getElementById('retornoContainer');
+  if (r === 'comprou') {
+    boxValor.style.display = 'block';
+    document.getElementById('valor_venda').required = true;
+  } else {
+    boxValor.style.display = 'none';
+    document.getElementById('valor_venda').required = false;
+    document.getElementById('valor_venda').value = '';
+  }
+  // Mostrar campos de retorno para QUALQUER resultado (opcional)
+  boxRetorno.style.display = 'block';
+}
+
+// HISTÓRICO COM BOTÃO DE EDITAR
+function historico(id) {
+  modalHistorico.show();
+  fetch(`/historico-ligacoes/${id}`)
+    .then(r => r.json())
+    .then(hist => {
+      const div = document.getElementById('historicoContent');
+      if (!hist || hist.length === 0) {
+        div.innerHTML = '<p class="text-muted text-center py-3">Nenhum registro de ligação.</p>';
+        return;
+      }
+      let html = '<div style="display:flex;flex-direction:column;gap:10px;">';
+      hist.forEach(item => {
+        html += `
+          <div style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--surface-2);">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <div style="font-size:.82rem;font-weight:700;color:var(--text-1);">${item.data_hora}</div>
+                <div style="font-size:.78rem;color:var(--text-2);margin-top:2px;">${item.consultor}</div>
+                <div class="mt-2 d-flex gap-2 flex-wrap">
+                  <span class="badge-count" style="font-size:.7rem;">${item.resultado}</span>
+                  ${item.contato_nome ? `<span style="font-size:.75rem;color:var(--text-2);">Contato: ${item.contato_nome}</span>` : ''}
+                  ${item.valor_venda !== 'R$ 0,00' ? `<span style="font-size:.75rem;font-weight:700;color:#16a34a;">${item.valor_venda}</span>` : ''}
+                </div>
+                ${item.observacao ? `<div style="margin-top:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:.8rem;color:var(--text-2);">${item.observacao}</div>` : ''}
+              </div>
+              ${item.pode_editar ? `
+                <button class="action-btn btn btn-outline-primary ms-2" onclick="editarLigacaoCompleta(${item.id})">
+                  <i class="bi bi-pencil-square"></i>
+                </button>` : ''}
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      div.innerHTML = html;
+    })
+    .catch(() => {
+      document.getElementById('historicoContent').innerHTML =
+        '<p class="text-danger">Erro ao carregar Histórico.</p>';
+    });
+}
+
+// ABRIR MODAL DE EDIÇÃO COMPLETA
+async function editarLigacaoCompleta(ligacaoId) {
+  try {
+    const r = await fetch(`/api/detalhes-ligacao/${ligacaoId}`);
+    const data = await r.json();
+    if (!r.ok) { alert(data.erro || 'Erro ao carregar dados da ligação'); return; }
+    document.getElementById('editLigacaoId').value  = data.id;
+    document.getElementById('editResultado').value  = data.resultado;
+    const valorNum = Number(data.valor_venda || 0);
+    document.getElementById('editValorVenda').value = Number.isFinite(valorNum)
+      ? valorNum.toFixed(2).replace('.', ',')
+      : '';
+    document.getElementById('editObservacao').value = data.observacao || '';
+    document.getElementById('editDataHora').textContent    = data.data_hora;
+    document.getElementById('editContatoNome').textContent = data.contato_nome || 'N/A';
+    toggleEditValorContainer();
+    document.getElementById('editResultado').onchange = toggleEditValorContainer;
+    modalHistorico.hide();
+    modalEditarLigacao.show();
+  } catch (erro) {
+    console.error('Erro:', erro);
+    alert('Erro ao carregar dados da ligação');
+  }
+}
+
+async function garantirClienteLocalEAbrirForm(clienteOracle) {
+  try {
+    const r = await fetch('/garantir-cliente-local-oracle', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrf_token')
+      },
+      body: JSON.stringify(clienteOracle || {})
+    });
+
+    const data = await r.json();
+    if (!data.success || !data.cliente || !data.cliente.id) {
+      alert(data.message || 'NÃ£o foi possÃ­vel preparar o cliente para ligaÃ§Ã£o.');
+      return;
+    }
+
+    abrirForm(
+      data.cliente.id,
+      data.cliente.nome || (clienteOracle && clienteOracle.nome) || 'Cliente',
+      data.cliente.telefone || (clienteOracle && (clienteOracle.telefone || clienteOracle.telefone2)) || '',
+      (clienteOracle && clienteOracle.cd_cliente_oracle) || ''
+    );
+  } catch (erro) {
+    console.error('Erro ao garantir cliente local:', erro);
+    alert('Erro ao preparar cliente para ligacao.');
+  }
+}
+
+function toggleEditValorContainer() {
+  const resultado = document.getElementById('editResultado').value;
+  document.getElementById('editValorContainer').style.display = (resultado === 'comprou') ? 'block' : 'none';
+}
+
+async function salvarEdicaoLigacao() {
+  const ligacaoId = document.getElementById('editLigacaoId').value;
+  try {
+    const r = await fetch(`/editar-ligacao/${ligacaoId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        resultado:   document.getElementById('editResultado').value,
+        valor_venda: document.getElementById('editValorVenda').value,
+        observacao:  document.getElementById('editObservacao').value
+      })
+    });
+    const j = await r.json();
+    if (j.ok) { modalEditarLigacao.hide(); alert(j.mensagem || 'ligação atualizada!'); location.reload(); }
+    else       { alert(j.mensagem || 'Erro ao atualizar ligação'); }
+  } catch (erro) { console.error('Erro:', erro); alert('Erro ao atualizar ligação'); }
+}
+
+function editarObservacao(ligacaoId, obsAtual) {
+  document.getElementById('ligacaoIdEdit').value  = ligacaoId;
+  document.getElementById('observacaoEdit').value = obsAtual;
+  modalHistorico.hide();
+  modalEditarObs.show();
+}
+
+async function salvarEdicaoObs() {
+  const ligacaoId = document.getElementById('ligacaoIdEdit').value;
+  const novaObs   = document.getElementById('observacaoEdit').value;
+  try {
+    const r = await fetch(`/editar-observacao/${ligacaoId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ observacao: novaObs })
+    });
+    const j = await r.json();
+    if (j.ok) { modalEditarObs.hide(); alert(j.mensagem || 'observação atualizada!'); location.reload(); }
+    else       { alert(j.mensagem || 'Erro ao atualizar'); }
+  } catch (erro) { console.error('Erro:', erro); alert('Erro ao atualizar observação'); }
+}
+
+function abrirModalLimpar() { modalLimpar.show(); }
+
+async function confirmarLimpeza() {
+  const id = document.getElementById('consultorLimpar').value;
+  const r  = await fetch('/limpar-clientes-consultor', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({consultor_id: id})
+  });
+  const j = await r.json();
+  if (j.ok) { _cacheAbasLimpar(); modalLimpar.hide(); alert(j.mensagem); location.reload(); }
+  else       { alert(j.mensagem || 'Erro ao limpar'); }
+}
+
+// Salvar ligação
+async function salvarLigacao(e) {
+  e.preventDefault();
+  const id = document.getElementById('cliId').value;
+  const cdClienteOracle = (document.getElementById('cliCdClienteOracle').value || '').trim();
+  const payload = {
+    contato_nome: document.getElementById('contato_nome').value,
+    resultado:    document.getElementById('resultado').value,
+    valor_venda:  document.getElementById('valor_venda').value,
+    observacao:   document.getElementById('observacao').value
+  };
+  // Enviar campos de retorno para QUALQUER resultado (se preenchidos)
+  const dias = parseInt(document.getElementById('dias_retorno').value || '0', 10);
+  const data = document.getElementById('data_retorno').value;
+  if (data)              { payload.data_retorno  = data; }
+  else if (!isNaN(dias) && dias > 0) { payload.dias_retorno = dias; }
+  const r = await fetch(`/registrar-ligacao/${id}`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const j = await r.json();
+  if (j.ok) { 
+    modalLigacao.hide(); 
+    mostrarToastMensagem(j.mensagem || 'Ligacao registrada!', 'success');
+    _cacheAbasLimpar();
+
+    const retornoAgendado = Boolean(j.proxima_ligacao || payload.data_retorno || payload.dias_retorno);
+
+    // Nas carteiras Oracle, manter cliente na lista e apenas atualizar status local.
+    if (ABA_ATUAL === 'oracle' || ABA_ATUAL === 'construtoras') {
+      _atualizarLinhaEmPlace(id, j.proxima_ligacao, cdClienteOracle);
+      if (retornoAgendado) {
+        _ajustarContadorAba('retornar', +1);
+        _destacarAbaDestino('retornar');
+      }
+      atualizarInfoQuickActions();
+      atualizarBadgesAbasAssincrono();
+      return;
+    }
+
+    // Abas de carteira: cliente permanece na lista e atualiza localmente.
+    if (ABA_ATUAL === 'inativos' || ABA_ATUAL === 'ativos' ||
+        ABA_ATUAL === 'pendentes' || ABA_ATUAL === 'proximos_inativacao') {
+      _atualizarLinhaEmPlace(id, retornoAgendado ? j.proxima_ligacao : null, cdClienteOracle);
+      if (retornoAgendado) {
+        _ajustarContadorAba('retornar', +1);
+        _destacarAbaDestino('retornar');
+      }
+      atualizarInfoQuickActions();
+      atualizarBadgesAbasAssincrono();
+      return;
+    }
+
+    
+    // Aba Retornar: atualiza in-place se agendou retorno, senão remove da lista
+    if (ABA_ATUAL === 'retornar') {
+      if (retornoAgendado) {
+        _atualizarLinhaEmPlace(id, j.proxima_ligacao, cdClienteOracle);
+      } else {
+        _removerClienteDaTela(id);
+        _ajustarContadorAba('retornar', -1);
+      }
+      atualizarInfoQuickActions();
+      atualizarBadgesAbasAssincrono();
+      return;
+    }
+
+    location.reload();
+  }
+  else       { alert(j.mensagem || 'Erro ao registrar ligação'); }
+}
+
+function abrirModalVendaRetroativa() {
+  const cd = document.getElementById('retroCdClienteOracle');
+  const cnpj = document.getElementById('retroCnpj');
+  const contato = document.getElementById('retroContatoNome');
+  const valor = document.getElementById('retroValorVenda');
+  const obs = document.getElementById('retroObservacao');
+  if (cd) cd.value = '';
+  if (cnpj) cnpj.value = '';
+  if (contato) contato.value = '';
+  if (valor) valor.value = '';
+  if (obs) obs.value = '';
+  if (modalVendaRetroativa) modalVendaRetroativa.show();
+}
+
+async function salvarVendaRetroativa(e) {
+  e.preventDefault();
+  const payload = {
+    cd_cliente_oracle: document.getElementById('retroCdClienteOracle').value,
+    cnpj: document.getElementById('retroCnpj').value,
+    contato_nome: document.getElementById('retroContatoNome').value,
+    valor_venda: document.getElementById('retroValorVenda').value,
+    observacao: document.getElementById('retroObservacao').value
+  };
+
+  try {
+    const r = await fetch('/registrar-venda-retroativa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if (j.ok) {
+      if (modalVendaRetroativa) modalVendaRetroativa.hide();
+      mostrarToastMensagem(j.mensagem || 'Venda retroativa registrada!', 'success');
+      _cacheAbasLimpar();
+      setTimeout(() => location.reload(), 500);
+      return;
+    }
+    alert(j.mensagem || 'Erro ao registrar venda retroativa');
+  } catch (erro) {
+    console.error('Erro ao registrar venda retroativa:', erro);
+    alert('Erro ao registrar venda retroativa');
+  }
+}
+
+// Modal novo cliente
+function abrirModalAdicionar() {
+ativarMascaraCnpjNovoCliente();
+  document.getElementById('novo_nome').value = '';
+  document.getElementById('novo_cnpj').value = '';
+  document.getElementById('novo_telefone').value = '';
+  document.getElementById('novo_representante').value = '';
+  document.getElementById('novo_cd_cliente_oracle').value = '';
+  document.getElementById('novo_telefone2').value = '';
+  document.getElementById('novo_representante_oracle').value = '';
+  document.getElementById('novo_categoria_consultor').value = '';
+  document.getElementById('novo_conceito').value = '';
+  document.getElementById('novo_municipio').value = '';
+  document.getElementById('novo_uf').value = '';
+  document.getElementById('novo_contato').value = '';
+  const st = document.getElementById('novo_oracle_status');
+  if (st) st.textContent = '';
+  {% if is_supervisor %}
+  document.getElementById('novo_consultor').value = '';
+  {% endif %}
+  modalAdicionar.show();
+}
+
+function limpaDigitos(v) { return (v || '').replace(/\D+/g, ''); }
+
+function formatarCnpj(v) {
+  const d = limpaDigitos(v).slice(0, 14);
+  if (d.length <= 2) return d;
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+}
+
+function ativarMascaraCnpjNovoCliente() {
+  const el = document.getElementById('novo_cnpj');
+  if (!el || el.dataset.maskReady === '1') return;
+  el.dataset.maskReady = '1';
+  el.addEventListener('input', () => {
+    el.value = formatarCnpj(el.value);
+  });
+  el.addEventListener('blur', () => {
+    el.value = formatarCnpj(el.value);
+  });
+}
+
+async function buscarCnpjOracle() {
+  const cnpjInput = document.getElementById('novo_cnpj');
+  const statusEl = document.getElementById('novo_oracle_status');
+  const botao = document.getElementById('btn_buscar_oracle_cnpj');
+  const cnpj = limpaDigitos(cnpjInput.value);
+
+  if (!cnpj || cnpj.length < 7) {
+    if (statusEl) statusEl.textContent = 'Informe um CNPJ valido (minimo 7 digitos) para buscar no Oracle.';
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = 'Buscando no Oracle...';
+  if (botao) botao.disabled = true;
+
+  try {
+    const r = await fetch('/clientes/preencher-oracle-cnpj', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ cnpj })
+    });
+    const j = await r.json();
+
+    if (!r.ok || !j.ok) {
+      if (statusEl) statusEl.textContent = j.mensagem || 'Erro ao consultar Oracle.';
+      return;
+    }
+
+    if (!j.encontrado) {
+      if (statusEl) statusEl.textContent = j.mensagem || 'CNPJ nÃ£o encontrado no Oracle.';
+      return;
+    }
+
+    const d = j.dados || {};
+    document.getElementById('novo_nome').value = (d.nome || '').toUpperCase();
+    document.getElementById('novo_cnpj').value = formatarCnpj(d.cnpj || cnpj);
+    document.getElementById('novo_telefone').value = d.telefone || d.telefone2 || '';
+    document.getElementById('novo_representante').value = (d.representante_nome || '').toUpperCase();
+    document.getElementById('novo_cd_cliente_oracle').value = d.cd_cliente_oracle || '';
+    document.getElementById('novo_telefone2').value = d.telefone2 || '';
+    document.getElementById('novo_representante_oracle').value = d.representante_oracle || '';
+    document.getElementById('novo_categoria_consultor').value = d.categoria_consultor || '';
+    document.getElementById('novo_conceito').value = d.conceito || '';
+    document.getElementById('novo_municipio').value = d.municipio || '';
+    document.getElementById('novo_uf').value = d.uf || '';
+    document.getElementById('novo_contato').value = d.contato || '';
+
+    {% if is_supervisor %}
+    const consultorSelect = document.getElementById('novo_consultor');
+    if (consultorSelect && d.consultor_id_sugerido) {
+      consultorSelect.value = String(d.consultor_id_sugerido);
+    }
+    {% endif %}
+
+    if (statusEl) {
+      const sufixo = d.consultor_nome_sugerido ? ` Consultor sugerido: ${d.consultor_nome_sugerido}.` : '';
+      statusEl.textContent = `Dados preenchidos a partir do Oracle.${sufixo}`;
+    }
+  } catch (erro) {
+    console.error('Erro ao buscar CNPJ no Oracle:', erro);
+    if (statusEl) statusEl.textContent = 'Erro ao consultar Oracle.';
+  } finally {
+    if (botao) botao.disabled = false;
+  }
+}
+
+async function salvarCliente(e) {
+  e.preventDefault();
+  const nome = document.getElementById('novo_nome').value.trim().toUpperCase();
+  if (!nome) return alert("Informe o nome");
+  const payload = {
+    nome,
+    cnpj: limpaDigitos(document.getElementById('novo_cnpj').value),
+    telefone: limpaDigitos(document.getElementById('novo_telefone').value),
+    telefone2: limpaDigitos(document.getElementById('novo_telefone2').value),
+    representante_nome: document.getElementById('novo_representante').value.trim().toUpperCase(),
+    cd_cliente_oracle: document.getElementById('novo_cd_cliente_oracle').value.trim(),
+    representante_oracle: document.getElementById('novo_representante_oracle').value.trim(),
+    categoria_consultor: document.getElementById('novo_categoria_consultor').value.trim(),
+    conceito: document.getElementById('novo_conceito').value.trim(),
+    municipio: document.getElementById('novo_municipio').value.trim(),
+    uf: document.getElementById('novo_uf').value.trim(),
+    contato: document.getElementById('novo_contato').value.trim()
+  };
+  {% if is_supervisor %}
+  const cons = document.getElementById('novo_consultor').value;
+  if (!cons) return alert("Selecione o consultor");
+  payload.consultor_id = parseInt(cons);
+  {% endif %}
+  const r = await fetch('/clientes/criar', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const j = await r.json();
+  if (j.ok) { _cacheAbasLimpar(); modalAdicionar.hide(); alert(j.mensagem || "Cliente criado!"); location.reload(); }
+  else       { alert(j.mensagem || "Erro ao criar"); }
+}
+
+function filtrarPorOrigem() {
+  const seletor = document.getElementById('filtroOrigem');
+  if (!seletor) return;
+  const form = seletor.closest('form');
+  const emVistaAgrupada = Boolean(document.querySelector('.rep-card'));
+  if (emVistaAgrupada) {
+    if (form) form.submit();
+    return;
+  }
+  const v = seletor.value;
+  const rows = _linhasClientesTabela();
+  rows.forEach(tr => {
+    const o = tr.getAttribute('data-origem') || '';
+    tr.style.display = (!v || v === o) ? '' : 'none';
+  });
+  atualizarInfoQuickActions();
+}
+
+function _ajustarContadorAba(abaKey, delta) {
+  if (!delta) return;
+  document.querySelectorAll(`.modern-tabs .nav-link[data-aba="${abaKey}"]`).forEach((link) => {
+    const count = link.querySelector('.tab-count');
+    if (!count) return;
+    const atual = parseInt((count.textContent || '0').replace(/\D+/g, ''), 10) || 0;
+    count.textContent = String(Math.max(0, atual + delta));
+  });
+}
+
+function _definirContadorAba(abaKey, valor) {
+  const normalizado = Math.max(0, parseInt(valor, 10) || 0);
+  document.querySelectorAll(`.modern-tabs .nav-link[data-aba="${abaKey}"]`).forEach((link) => {
+    const count = link.querySelector('.tab-count');
+    if (!count) return;
+    count.textContent = String(normalizado);
+  });
+}
+
+async function atualizarBadgesAbasAssincrono() {
+  if (DASHBOARD_TIPO) return;
+  try {
+    const params = new URLSearchParams({
+      aba: ABA_ATUAL || '',
+      meus: APENAS_MEUS ? '1' : '0',
+    });
+    const r = await fetch(`/api/clientes/badges?${params.toString()}`, {
+      headers: { 'Accept': 'application/json' },
+    });
+    const j = await r.json();
+    if (!j || !j.ok || !j.badges) return;
+    const b = j.badges;
+    _definirContadorAba('pendentes', b.pendentes);
+    _definirContadorAba('ativos', b.ativos);
+    _definirContadorAba('retornar', b.retornar);
+    // Na aba Oracle, preserva o contador renderizado no servidor
+    // para manter consistÃªncia com o painel de estat?sticas exibido.
+    if (ABA_ATUAL !== 'oracle') {
+      _definirContadorAba('oracle', b.oracle);
+    }
+    _definirContadorAba('inativos', b.inativos);
+    _definirContadorAba('proximos_inativacao', b.proximos_inativacao);
+    _definirContadorAba('construtoras', b.construtoras);
+  } catch (erro) {
+    console.warn('Falha ao atualizar badges das abas:', erro);
+  }
+}
+
+function _mostrarSkeletonTrocaAba() {
+  if (document.getElementById('tabSwitchSkeleton')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'tabSwitchSkeleton';
+  wrap.className = 'tab-switch-skeleton';
+  wrap.innerHTML = '<div class="tab-switch-skeleton-top"></div><div class="tab-switch-skeleton-body"></div>';
+  document.body.appendChild(wrap);
+}
+
+function _removerSkeletonTrocaAba() {
+  const el = document.getElementById('tabSwitchSkeleton');
+  if (el) el.remove();
+  document.body.classList.remove('tab-switching');
+}
+
+function _normalizarHrefAba(href) {
+  try {
+    return new URL(href, window.location.origin).toString();
+  } catch (_) {
+    return String(href || '');
+  }
+}
+
+function _resolverAbaDoHref(href) {
+  try {
+    const u = new URL(_normalizarHrefAba(href));
+    return String(u.searchParams.get('aba') || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
+
+function _ttlCacheParaAba(aba) {
+  const key = String(aba || '').trim();
+  if (key === 'oracle') return 6000;
+  if (key === 'inativos' || key === 'proximos_inativacao' || key === 'construtoras') return 8000;
+  if (key === 'pendentes' || key === 'contatados' || key === 'retornar') return 15000;
+  return TAB_HTML_CACHE_TTL_DEFAULT_MS;
+}
+
+function _cacheAbaGet(href) {
+  const key = _normalizarHrefAba(href);
+  const item = _tabHtmlCache.get(key);
+  if (!item) return null;
+  const ttl = parseInt(item.ttl || TAB_HTML_CACHE_TTL_DEFAULT_MS, 10) || TAB_HTML_CACHE_TTL_DEFAULT_MS;
+  if ((Date.now() - item.ts) > ttl) {
+    _tabHtmlCache.delete(key);
+    return null;
+  }
+  return item.html || null;
+}
+
+function _cacheAbaSet(href, html) {
+  const key = _normalizarHrefAba(href);
+  if (!key || !html) return;
+  const aba = _resolverAbaDoHref(key);
+  const ttl = _ttlCacheParaAba(aba);
+  _tabHtmlCache.set(key, { html, ts: Date.now(), ttl });
+}
+
+function _cacheAbasLimpar() {
+  _tabHtmlCache.clear();
+}
+
+async function _baixarHtmlAba(href) {
+  const url = _normalizarHrefAba(href);
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'text/html',
+      'X-Requested-With': 'fetch-tab',
+    },
+    credentials: 'same-origin',
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const html = await response.text();
+  _cacheAbaSet(url, html);
+  return html;
+}
+
+function _prefetchAba(href) {
+  const url = _normalizarHrefAba(href);
+  if (!url) return;
+  if (_cacheAbaGet(url)) return;
+  if (_tabPrefetchInflight.has(url)) return;
+  const p = _baixarHtmlAba(url).catch(() => null).finally(() => {
+    _tabPrefetchInflight.delete(url);
+  });
+  _tabPrefetchInflight.set(url, p);
+}
+
+function _atualizarAbaAtualPeloDOM() {
+  const root = document.getElementById('meusClientesRoot');
+  if (root && root.dataset.abaAtual) {
+    ABA_ATUAL = root.dataset.abaAtual;
+    return;
+  }
+  const ativa = document.querySelector('.modern-tabs .nav-link.active[data-aba]');
+  if (ativa && ativa.dataset.aba) ABA_ATUAL = ativa.dataset.aba;
+}
+
+function _sincronizarClasseAbaAtiva() {
+  const aba = String(ABA_ATUAL || '').trim();
+  if (!aba) return;
+  const links = Array.from(document.querySelectorAll('.modern-tabs .nav-link[data-aba]'));
+  if (!links.length) return;
+  links.forEach((link) => {
+    const ativa = String(link.dataset.aba || '').trim() === aba;
+    link.classList.toggle('active', ativa);
+    if (ativa) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  });
+}
+
+function _rebindPosTrocaParcial(skipBadgeUpdate = false) {
+  inicializarModaisPagina();
+  _atualizarAbaAtualPeloDOM();
+  _sincronizarClasseAbaAtiva();
+  _habilitarTransicaoAbas();
+  _iniciarDebounceFiltros();
+  _restaurarGruposAbertos();
+  atualizarInfoQuickActions();
+  // Durante troca de aba via fetch, nao atualiza badges via AJAX
+  // pois o HTML ja vem com os valores corretos do servidor
+  if (!skipBadgeUpdate) {
+    atualizarBadgesAbasAssincrono();
+  }
+  if (ABA_ATUAL === 'inativos') {
+    sincronizarIndicadoresInativos();
+  }
+}
+
+async function _navegarAbaComFetch(href) {
+  if (_tabFetchEmAndamento) return;
+  _tabFetchEmAndamento = true;
+  document.body.classList.add('tab-switching');
+  try {
+    let html = _cacheAbaGet(href);
+    if (!html) {
+      _mostrarSkeletonTrocaAba();
+      const inflight = _tabPrefetchInflight.get(_normalizarHrefAba(href));
+      html = inflight ? (await inflight) : (await _baixarHtmlAba(href));
+    }
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const novoRoot = doc.getElementById('meusClientesRoot');
+    const atualRoot = document.getElementById('meusClientesRoot');
+    if (!novoRoot || !atualRoot) throw new Error('Root parcial nao encontrado');
+
+    const novaTopbarControls = doc.querySelector('.topbar-client-controls');
+    const atualTopbarControls = document.querySelector('.topbar-client-controls');
+    if (novaTopbarControls && atualTopbarControls) {
+      atualTopbarControls.replaceWith(novaTopbarControls);
+    }
+    atualRoot.replaceWith(novoRoot);
+    history.pushState({ tipo: 'aba' }, '', href);
+    _rebindPosTrocaParcial(true); // skipBadgeUpdate = true
+    _removerSkeletonTrocaAba();
+  } catch (erro) {
+    console.warn('Falha na troca de aba por fetch, aplicando fallback:', erro);
+    window.location.href = href;
+  } finally {
+    _tabFetchEmAndamento = false;
+  }
+}
+
+function _destacarAbaDestino(abaKey) {
+  document.querySelectorAll(`.modern-tabs .nav-link[data-aba="${abaKey}"]`).forEach((link) => {
+    link.classList.add('shadow');
+    link.style.boxShadow = '0 0 0 3px rgba(37,99,235,.22), 0 8px 20px rgba(37,99,235,.25)';
+    setTimeout(() => {
+      link.classList.remove('shadow');
+      link.style.boxShadow = '';
+    }, 1400);
+  });
+}
+
+function _removerClienteDaTela(clienteId, cdClienteOracle = '') {
+  const id = String(clienteId || '').trim();
+  const cd = String(cdClienteOracle || '').trim();
+  if (!id && !cd) return;
+  const rows = [
+    ...(id ? Array.from(document.querySelectorAll(`tr[data-cliente-id="${id}"]`)) : []),
+    ...(cd ? Array.from(document.querySelectorAll(`tr[data-cd-cliente-oracle="${cd}"]`)) : []),
+  ];
+  const rowsUnicos = Array.from(new Set(rows));
+  rowsUnicos.forEach((row) => {
+    const tbody = row.closest('tbody');
+    row.remove();
+    if (!tbody) return;
+    const aindaTemClientes = tbody.querySelector('tr[data-cliente-id], tr[data-cd-cliente-oracle]');
+    if (!aindaTemClientes) {
+      tbody.innerHTML = "<tr><td colspan='8' class='text-center text-muted py-3'>Sem clientes neste grupo.</td></tr>";
+    }
+  });
+}
+
+function _habilitarTransicaoAbas() {
+  document.querySelectorAll('.modern-tabs .nav-link[data-aba]').forEach((link) => {
+    if (link.dataset.tabTransitionBound === '1') return;
+    link.dataset.tabTransitionBound = '1';
+    const href = link.getAttribute('href');
+    if (href) {
+      link.addEventListener('mouseenter', () => _prefetchAba(href), { passive: true });
+      link.addEventListener('focus', () => _prefetchAba(href), { passive: true });
+      link.addEventListener('touchstart', () => _prefetchAba(href), { passive: true, once: true });
+    }
+    link.addEventListener('click', (ev) => {
+      if (ev.defaultPrevented) return;
+      if (ev.button !== 0) return;
+      if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+      const hrefLocal = link.getAttribute('href');
+      if (!hrefLocal || link.classList.contains('active')) return;
+      ev.preventDefault();
+      _navegarAbaComFetch(hrefLocal);
+    });
+  });
+}
+
+function _atualizarLinhaEmPlace(clienteId, novaProximaLigacaoIso, cdClienteOracle = '') {
+  const id = String(clienteId || '').trim();
+  const cd = String(cdClienteOracle || '').trim();
+  if (!id && !cd) return;
+  const rowAtivaValida = _rowLigacaoAtiva && document.body.contains(_rowLigacaoAtiva) ? _rowLigacaoAtiva : null;
+  const rows = [
+    ...(rowAtivaValida ? [rowAtivaValida] : []),
+    ...(id ? Array.from(document.querySelectorAll(`tr[data-cliente-id="${id}"]`)) : []),
+    ...(cd ? Array.from(document.querySelectorAll(`tr[data-cd-cliente-oracle="${cd}"]`)) : []),
+  ];
+  const rowsUnicos = Array.from(new Set(rows));
+  const row = rowsUnicos.length ? rowsUnicos[0] : null;
+  if (!row) return;
+
+  row.dataset.especialContatoMensalStatus = 'mes_atual';
+  row.dataset.especialContatoMensalLabel = 'Ligado neste mes';
+
+  const totalAtual = parseInt(row.dataset.totalLigacoes || '0', 10);
+  const novoTotal = totalAtual + 1;
+  row.dataset.totalLigacoes = String(novoTotal);
+  const badge = row.querySelector('.badge-count');
+  if (badge) badge.textContent = String(novoTotal);
+  _garantirBotaoHistoricoNaLinha(row, id);
+
+  const agora = new Date();
+  const p2 = n => String(n).padStart(2, '0');
+  const isoStr = `${agora.getFullYear()}-${p2(agora.getMonth()+1)}-${p2(agora.getDate())} ${p2(agora.getHours())}:${p2(agora.getMinutes())}:${p2(agora.getSeconds())}`;
+  const fmtDt  = d => `${p2(d.getDate())}/${p2(d.getMonth()+1)}/${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+
+  row.dataset.ultimaLigacao = isoStr;
+  const tdUltima = row.querySelector('td[data-col="ultima-ligacao"]');
+  if (tdUltima) tdUltima.innerHTML = `<span style="font-size:.8rem;">${fmtDt(agora)}</span>`;
+
+  if (novaProximaLigacaoIso !== undefined) {
+    try {
+      if (novaProximaLigacaoIso) {
+        const proxData = new Date(novaProximaLigacaoIso);
+        if (!isNaN(proxData.getTime())) {
+          row.dataset.proximaLigacao = novaProximaLigacaoIso.replace('T', ' ').slice(0, 19);
+          const atrasado = agora >= proxData;
+          row.dataset.retornoAtrasado = atrasado ? '1' : '0';
+          const tdProxima = row.querySelector('td[data-col="proxima-ligacao"]');
+          if (tdProxima) {
+            const fmtProx = fmtDt(proxData);
+            tdProxima.innerHTML = atrasado
+              ? `<span class="text-danger fw-bold" style="font-size:.8rem;"><i class="bi bi-exclamation-triangle-fill me-1"></i>${fmtProx}</span>`
+              : `<span style="font-size:.8rem;">${fmtProx}</span>`;
+          }
+        }
+      } else {
+        row.dataset.proximaLigacao = '';
+        row.dataset.retornoAtrasado = '0';
+        const tdProxima = row.querySelector('td[data-col="proxima-ligacao"]');
+        if (tdProxima) tdProxima.innerHTML = '-';
+      }
+    } catch (_) {}
+  }
+
+  atualizarIndicadorRetornoNaLinha(row, row.dataset.proximaLigacao || '');
+  _atualizarBotaoHistoricoMensalNaLinha(row);
+}
+
+function _classesHistoricoMensal(status) {
+  const statusMensal = String(status || '').trim().toLowerCase();
+  if (statusMensal === 'mes_atual') {
+    return 'action-btn btn btn-outline-success action-btn-monthly action-btn-monthly--current';
+  }
+  if (statusMensal === 'mes_anterior') {
+    return 'action-btn btn btn-outline-warning action-btn-monthly action-btn-monthly--previous';
+  }
+  if (statusMensal === 'atrasado' || statusMensal === 'sem_historico') {
+    return 'action-btn btn btn-outline-danger action-btn-monthly action-btn-monthly--late';
+  }
+  return 'action-btn btn btn-outline-secondary';
+}
+
+function _atualizarBotaoHistoricoMensalNaLinha(row) {
+  if (!row) return;
+  const btn = row.querySelector('.col-acoes button[data-action="historico"], td:last-child button[data-action="historico"]');
+  if (!btn) return;
+  btn.className = _classesHistoricoMensal(row.dataset.especialContatoMensalStatus);
+  btn.setAttribute('title', `HistÃ³rico. ${row.dataset.especialContatoMensalLabel || ''}`.trim());
+}
+
+function _garantirBotaoHistoricoNaLinha(row, clienteId) {
+  if (!row) return;
+  const id = parseInt(String(clienteId || '0'), 10);
+  if (!Number.isFinite(id) || id <= 0) return;
+
+  const acoes = row.querySelector('.col-acoes .d-flex.gap-1, td:last-child .d-flex.gap-1');
+  if (!acoes) return;
+
+  const jaTemHistorico = acoes.querySelector('button[data-action="historico"], button[onclick^="historico("]');
+  if (jaTemHistorico) return;
+
+  let classes = _classesHistoricoMensal(row.dataset.especialContatoMensalStatus);
+  const titulo = `HistÃ³rico. ${row.dataset.especialContatoMensalLabel || ''}`.trim();
+
+  const btn = document.createElement('button');
+  btn.className = classes;
+  btn.dataset.action = 'historico';
+  btn.setAttribute('title', titulo);
+  btn.innerHTML = '<i class="bi bi-clock-history"></i>';
+  btn.addEventListener('click', () => historico(id));
+  acoes.appendChild(btn);
+}
+
+function atualizarIndicadorRetornoNaLinha(row, proximaLigacaoIso) {
+  if (!row) return;
+  const statusCell = row.querySelector('.col-status > div');
+  const countCell = row.querySelector('.badge-count')?.parentElement || null;
+  const host = statusCell || countCell;
+  if (!host) return;
+
+  let indicador = host.querySelector('.js-retorno-indicator');
+  const valor = String(proximaLigacaoIso || '').trim();
+  const mostrar = Boolean(valor);
+  if (!mostrar) {
+    if (indicador) indicador.remove();
+    return;
+  }
+
+  // Determinar cores baseadas no status mensal
+  const statusMensal = String(row.dataset.especialContatoMensalStatus || '').trim().toLowerCase();
+  const labelMensal = String(row.dataset.especialContatoMensalLabel || '').trim();
+  let bgColor = '#fff7ed', borderColor = '#fed7aa', textColor = '#9a3412';
+
+  if (statusMensal === 'mes_atual') {
+    bgColor = '#ecfdf5';
+    borderColor = '#bbf7d0';
+    textColor = '#047857';
+  } else if (statusMensal === 'mes_anterior') {
+    bgColor = '#fef3c7';
+    borderColor = '#fcd34d';
+    textColor = '#92400e';
+  } else if (statusMensal === 'atrasado' || statusMensal === 'sem_historico') {
+    bgColor = '#fee2e2';
+    borderColor = '#fecaca';
+    textColor = '#dc2626';
+  }
+
+  if (!indicador) {
+    indicador = document.createElement('span');
+    indicador.className = 'js-retorno-indicator';
+    indicador.innerHTML = '<i class="bi bi-clock-history"></i> Ret.';
+    host.appendChild(indicador);
+  }
+
+  indicador.style.cssText = `display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:999px;background:${bgColor};border:1px solid ${borderColor};color:${textColor};font-size:.66rem;font-weight:700;`;
+  indicador.title = labelMensal ? `Retorno agendado - ${labelMensal}` : 'Retorno agendado';
+}
+
+function normalizarNumeroWhatsApp(telefone) {
+  let numero = (telefone || '').toString().replace(/\D+/g, '');
+  if (!numero) return null;
+
+  numero = numero.replace(/^0+/, '');
+  if (!numero.startsWith('55')) numero = `55${numero}`;
+  return numero;
+}
+
+function abrirWhatsApp(telefone, nomeCliente = '') {
+  const numero = normalizarNumeroWhatsApp(telefone);
+  if (!numero) {
+    alert('Telefone invÃ¡lido para WhatsApp.');
+    return false;
+  }
+
+  // Usa clique sintÃ©tico em anchor para evitar bloqueio de popup.
+  const a = document.createElement('a');
+  a.href = `https://wa.me/${numero}`;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  return true;
+}
+
+let ABA_ATUAL = '{{ aba|e }}';
+const APENAS_MEUS = {{ 'true' if current_user.tipo in ('consultor', 'televendas') else 'false' }};
+const DASHBOARD_TIPO = '{{ request.args.get("dashboard_tipo", "")|e }}';
+const STORAGE_OPEN_GROUPS_KEY = 'meus_clientes_open_groups_v1';
+let _tabFetchEmAndamento = false;
+const TAB_HTML_CACHE_TTL_DEFAULT_MS = 12000;
+const _tabHtmlCache = new Map();
+const _tabPrefetchInflight = new Map();
+
+async function reservarAtendimentoCliente(clienteId, { forcar = false, aba = '', cdClienteOracle = '' } = {}) {
+  const id = Number(clienteId);
+  if (!Number.isFinite(id) || id <= 0) return false;
+
+  try {
+    const r = await fetch(`/api/clientes/${id}/iniciar-contato`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrf_token')
+      },
+      body: JSON.stringify({
+        forcar: !!forcar,
+        aba: aba || '',
+        cd_cliente_oracle: (cdClienteOracle || '').toString().trim()
+      })
+    });
+
+    let j = {};
+    try {
+      j = await r.json();
+    } catch (_) {
+      return false;
+    }
+
+    if (!j.ok && j.bloqueado && !forcar) {
+      const ate = j.em_atendimento_ate ? ` ate ${j.em_atendimento_ate}` : '';
+      const msg = `${j.em_atendimento_por_nome || 'Outro usuÃ¡rio'} estÃ¡ atendendo este cliente${ate}.\n\nDeseja assumir o atendimento mesmo assim?`;
+      if (confirm(msg)) {
+        return await reservarAtendimentoCliente(id, { forcar: true, aba, cdClienteOracle });
+      }
+      return { ok: false, cancelado: true };
+    }
+
+    if (!j.ok) {
+      alert(j.mensagem || 'NÃ£o foi possÃ­vel reservar o cliente.');
+      return false;
+    }
+
+    return j;
+  } catch (erro) {
+    console.warn('NÃ£o foi possÃ­vel reservar atendimento:', erro);
+    return false;
+  }
+}
+
+function marcarEmAtendimentoNoDOM({ clienteId, cdClienteOracle = '', porNome = 'Outro usuÃ¡rio', ate = '' }) {
+  const id = Number(clienteId);
+  const seletorPorId = Number.isFinite(id) && id > 0 ? `tr[data-cliente-id="${id}"]` : null;
+  const seletorPorCd = cdClienteOracle ? `tr[data-cd-cliente-oracle="${cdClienteOracle}"]` : null;
+  const rows = [
+    ...(seletorPorId ? document.querySelectorAll(seletorPorId) : []),
+    ...(seletorPorCd ? document.querySelectorAll(seletorPorCd) : []),
+  ];
+  if (!rows.length) return;
+
+  rows.forEach((row) => atualizarIndicadorAtendimentoNaLinha(row, {
+    ativo: true,
+    por_nome: porNome,
+    ate
+  }));
+}
+
+function atualizarIndicadorAtendimentoNaLinha(row, lockInfo) {
+  if (!row) return;
+  const statusCell = row.querySelector('.col-status > div');
+  if (!statusCell) return;
+
+  let indicador = statusCell.querySelector('.js-atendimento-indicator');
+  if (!lockInfo || !lockInfo.ativo) {
+    if (indicador) indicador.remove();
+    return;
+  }
+
+  const porNome = lockInfo.por_nome || 'Outro usuÃ¡rio';
+  const ate = lockInfo.ate || '';
+  if (!indicador) {
+    indicador = document.createElement('span');
+    indicador.className = 'js-atendimento-indicator';
+    indicador.innerHTML = '<i class="bi bi-telephone-fill"></i>';
+    statusCell.appendChild(indicador);
+  }
+  indicador.title = `Em atendimento por ${porNome}${ate ? ` ate ${ate}` : ''}`;
+}
+
+let _syncLocksCarteirasTimer = null;
+let _syncLocksCarteirasBusy = false;
+const LOCKS_CARTEIRAS_SYNC_INTERVAL_MS = 10000;
+let _syncLocksCarteirasLastAt = 0;
+let _syncLocksCarteirasLastSignature = '';
+
+function _abaUsaIndicadorAtendimento() {
+  return ABA_ATUAL === 'inativos' || ABA_ATUAL === 'ativos' || ABA_ATUAL === 'construtoras';
+}
+
+async function sincronizarIndicadoresInativos({ force = false } = {}) {
+  if (!_abaUsaIndicadorAtendimento()) return;
+  if (_syncLocksCarteirasBusy) return;
+
+  const rows = Array.from(document.querySelectorAll('tr[data-cd-cliente-oracle]'))
+    .filter((row) => (row.getAttribute('data-cd-cliente-oracle') || '').trim().length > 0);
+  if (!rows.length) return;
+
+  const cds = Array.from(new Set(
+    rows.map((row) => (row.getAttribute('data-cd-cliente-oracle') || '').trim()).filter(Boolean)
+  ));
+  if (!cds.length) return;
+
+  const signature = cds.join('|');
+  const now = Date.now();
+  if (!force && signature === _syncLocksCarteirasLastSignature && (now - _syncLocksCarteirasLastAt) < LOCKS_CARTEIRAS_SYNC_INTERVAL_MS) {
+    return;
+  }
+
+  _syncLocksCarteirasBusy = true;
+  _syncLocksCarteirasLastAt = now;
+  _syncLocksCarteirasLastSignature = signature;
+  try {
+    const r = await fetch('/api/inativos/locks', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrf_token')
+      },
+      body: JSON.stringify({ cds })
+    });
+    const j = await r.json();
+    if (!j || !j.ok) return;
+
+    const locks = j.locks || {};
+    rows.forEach((row) => {
+      const cd = (row.getAttribute('data-cd-cliente-oracle') || '').trim();
+      atualizarIndicadorAtendimentoNaLinha(row, cd ? (locks[cd] || null) : null);
+    });
+  } catch (erro) {
+    console.warn('Falha ao sincronizar locks das carteiras:', erro);
+  } finally {
+    _syncLocksCarteirasBusy = false;
+  }
+}
+
+function iniciarAutoSyncIndicadoresInativos() {
+  if (!_abaUsaIndicadorAtendimento()) return;
+  if (_syncLocksCarteirasTimer) return;
+
+  sincronizarIndicadoresInativos({ force: true });
+  _syncLocksCarteirasTimer = setInterval(() => {
+    if (document.hidden) return;
+    sincronizarIndicadoresInativos();
+  }, LOCKS_CARTEIRAS_SYNC_INTERVAL_MS);
+}
+
+async function garantirClienteLocalOracle({ clienteId, cdClienteOracle, nomeCliente = '', telefone = '' }) {
+  const id = Number(clienteId);
+  if (Number.isFinite(id) && id > 0) return id;
+
+  const cd = (cdClienteOracle || '').toString().trim();
+  if (!cd) return null;
+
+  try {
+    const r = await fetch('/garantir-cliente-local-oracle', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrf_token')
+      },
+      body: JSON.stringify({
+        cd_cliente_oracle: cd,
+        nome: nomeCliente || `Cliente Oracle ${cd}`,
+        telefone: telefone || ''
+      })
+    });
+    const j = await r.json();
+    if (j && j.success && j.cliente && j.cliente.id) {
+      return Number(j.cliente.id);
+    }
+    return null;
+  } catch (erro) {
+    console.warn('Falha ao garantir cliente local:', erro);
+    return null;
+  }
+}
+
+async function iniciarContatoCliente({ clienteId, cdClienteOracle = '', telefone, nomeCliente = '', canal = 'telefone' }) {
+  const tel = (telefone || '').toString().trim();
+  if (!tel) {
+    alert('Telefone nÃ£o informado para este cliente.');
+    return false;
+  }
+
+  const confirmaMsg = canal === 'whatsapp'
+    ? 'Você deseja iniciar uma conversa no WhatsApp'
+    : 'Você deseja iniciar uma ligação';
+  if (!confirm(confirmaMsg)) {
+    return false;
+  }
+
+  if (canal === 'whatsapp' && !normalizarNumeroWhatsApp(tel)) {
+    const tentarLigacao = confirm('Número inválido para WhatsApp. Deseja tentar ligação normal');
+    if (tentarLigacao) {
+      abrirCanalContato('telefone', tel, nomeCliente);
+    }
+    return false;
+  }
+
+  const idLocal = await garantirClienteLocalOracle({
+    clienteId,
+    cdClienteOracle,
+    nomeCliente,
+    telefone: tel
+  });
+  if (!idLocal) {
+    alert('NÃ£o foi possÃ­vel preparar o cliente local para bloqueio de atendimento.');
+    return false;
+  }
+
+  const reservado = await reservarAtendimentoCliente(idLocal, {
+    forcar: false,
+    aba: ABA_ATUAL,
+    cdClienteOracle
+  });
+  if (!reservado) {
+    alert('NÃ£o foi possÃ­vel reservar este cliente agora.');
+    return false;
+  }
+  if (reservado.cancelado) {
+    return false;
+  }
+  marcarEmAtendimentoNoDOM({
+    clienteId: idLocal,
+    cdClienteOracle,
+    porNome: (reservado.em_atendimento_por_nome || nomeCliente || 'Outro usuÃ¡rio'),
+    ate: (reservado.em_atendimento_ate || ''),
+  });
+
+  if (canal === 'whatsapp') {
+    return abrirWhatsApp(tel, nomeCliente);
+  }
+
+  window.location.href = `tel:${tel}`;
+  return false;
+}
+
+function escaparAspasSimples(valor) {
+  return (valor || '').toString().replace(/'/g, "\\'");
+}
+
+function renderContatoItem(telefone, nomeCliente = '', clienteId = null, cdClienteOracle = '') {
+  if (!telefone) return '';
+  const tel = telefone.toString();
+  const telEsc = escaparAspasSimples(tel);
+  const nomeEsc = escaparAspasSimples(nomeCliente);
+  const clienteIdEsc = Number.isFinite(Number(clienteId)) ? Number(clienteId) : 'null';
+  const cdClienteOracleEsc = escaparAspasSimples(cdClienteOracle || '');
+
+  return `
+    <div class="contact-inline">
+      <a href="#" class="tel-link" onclick="iniciarContatoCliente({ clienteId: ${clienteIdEsc}, cdClienteOracle: '${cdClienteOracleEsc}', telefone: '${telEsc}', nomeCliente: '${nomeEsc}', canal: 'telefone' }); return false;"><i class="bi bi-telephone-fill"></i> ${tel}</a>
+      <a href="#" class="wa-link" onclick="iniciarContatoCliente({ clienteId: ${clienteIdEsc}, cdClienteOracle: '${cdClienteOracleEsc}', telefone: '${telEsc}', nomeCliente: '${nomeEsc}', canal: 'whatsapp' }); return false;" title="Chamar no WhatsApp">
+        <i class="bi bi-whatsapp"></i>
+      </a>
+    </div>
+  `;
+}
+
+async function removerCliente(id, nome) {
+  const motivo = prompt(`Deseja realmente remover "${nome}"\n\nMotivo (opcional):`);
+  if (motivo === null) return;
+  try {
+    const r = await fetch(`/remover-cliente/${id}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ motivo: motivo || '' })
+    });
+    const j = await r.json();
+    if (j.ok) { _cacheAbasLimpar(); alert(j.mensagem || 'Cliente removido!'); location.reload(); }
+    else       { alert(j.mensagem || 'Erro ao remover cliente'); }
+  } catch (erro) { console.error('Erro:', erro); alert('Erro ao remover cliente.'); }
+}
+
+// FILTRO MENSAL CONSULTORES
+async function aplicarFiltroMesConsultor() {
+  const select = document.getElementById('filtroMesConsultor');
+  const valor  = select.value;
+  if (!valor) { limparFiltroMesConsultor(); return; }
+  const [mes, ano] = valor.split('-');
+  const url = new URL(window.location);
+  if (mes && ano) { url.searchParams.set('mes', mes); url.searchParams.set('ano', ano); }
+  window.location.href = url.toString();
+}
+function limparFiltroMesConsultor() {
+  const url = new URL(window.location);
+  url.searchParams.delete('mes');
+  url.searchParams.delete('ano');
+  window.location.href = url.toString();
+}
+
+function _iniciarDebounceFiltros() {
+  const timers = new WeakMap();
+  const buscaInput = document.getElementById('buscaRapida');
+  const buscaStatus = document.getElementById('buscaStatus');
+  const valorInicialBusca = buscaInput ? (buscaInput.value || '') : '';
+
+  const setBuscaStatus = (msg, isWarning = false) => {
+    if (!buscaStatus) return;
+    buscaStatus.textContent = msg || '';
+    buscaStatus.classList.toggle('text-danger', !!isWarning);
+    buscaStatus.classList.toggle('text-muted', !isWarning);
+  };
+
+  const scheduleSubmit = (form, ms) => {
+    if (!form) return;
+    const prev = timers.get(form);
+    if (prev) clearTimeout(prev);
+    const timer = setTimeout(() => {
+      if (buscaInput && buscaStatus) {
+        const atual = (buscaInput.value || '').trim();
+        const inicial = (valorInicialBusca || '').trim();
+        if (atual !== inicial) {
+          setBuscaStatus('Buscando...');
+        }
+      }
+      document.body.classList.add('tab-switching');
+      _mostrarSkeletonTrocaAba();
+      form.submit();
+      timers.delete(form);
+    }, ms);
+    timers.set(form, timer);
+  };
+
+  document.querySelectorAll('.js-debounce-submit-control').forEach((control) => {
+    if (control.dataset.debounceBound === '1') return;
+    control.dataset.debounceBound = '1';
+    const ms = Math.max(120, parseInt(control.dataset.debounceMs || '250', 10) || 250);
+    control.addEventListener('change', () => {
+      scheduleSubmit(control.form, ms);
+    });
+  });
+
+  document.querySelectorAll('.js-auto-submit-search').forEach((input) => {
+    if (input.dataset.debounceBound === '1') return;
+    input.dataset.debounceBound = '1';
+    const ms = Math.max(180, parseInt(input.dataset.debounceMs || '380', 10) || 380);
+    input.addEventListener('input', () => {
+      scheduleSubmit(input.form, ms);
+    });
+  });
+}
+
+function _atualizarStatusBuscaTela() {
+  const buscaInput = document.getElementById('buscaRapida');
+  const buscaStatus = document.getElementById('buscaStatus');
+  if (!buscaInput || !buscaStatus) return;
+  const termo = (buscaInput.value || '').trim();
+  if (!termo) {
+    buscaStatus.textContent = 'Digite para buscar automaticamente.';
+    buscaStatus.classList.remove('text-danger');
+    buscaStatus.classList.add('text-muted');
+    return;
+  }
+  const visiveis = _contarClientesExibidos();
+  buscaStatus.textContent = `Busca por "${termo}": ${visiveis} resultado(s).`;
+  const semResultado = visiveis === 0;
+  buscaStatus.classList.toggle('text-danger', semResultado);
+  buscaStatus.classList.toggle('text-muted', !semResultado);
+}
+
+// CARREGAR DADOS DO MÊS SELECIONADO
+document.addEventListener('DOMContentLoaded', async function() {
+  _atualizarAbaAtualPeloDOM();
+  _sincronizarClasseAbaAtiva();
+  _habilitarTransicaoAbas();
+  _iniciarDebounceFiltros();
+  _restaurarGruposAbertos();
+  iniciarAutoSyncIndicadoresInativos();
+  iniciarMonitorSyncOracle();
+  atualizarInfoQuickActions();
+  _atualizarStatusBuscaTela();
+  atualizarBadgesAbasAssincrono();
+
+  const mesFiltro = '{{ mes_filtro }}';
+  const anoFiltro = '{{ ano_filtro }}';
+  if (mesFiltro && anoFiltro && mesFiltro !== 'None' && anoFiltro !== 'None') {
+    const resultadosDiv = document.getElementById('resultadosMesSelecionado');
+    if (resultadosDiv) {
+      resultadosDiv.style.display = 'block';
+      try {
+        const response = await fetch(`/api/minhas-ligacoes-por-mes?mes=${mesFiltro}&ano=${anoFiltro}`);
+        const data     = await response.json();
+        if (data.ok) {
+          const stats = data.estatisticas;
+          resultadosDiv.innerHTML = `
+            <div class="row g-3">
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Total ${TERMO_INTERACOES}</div><div class="stat-value">${stats.total_ligacoes}</div></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Positivo</div><div class="stat-value" style="color:#2563eb;">${stats.positivos || 0}</div><small class="text-muted">${stats.taxa_positiva || 0}%</small></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Converteu</div><div class="stat-value" style="color:#16a34a;">${stats.vendas}</div></div></div></div>
+              <div class="col-md-2"><div class="card stat-card"><div class="card-body"><div class="text-muted">Conversão</div><div class="stat-value">${stats.taxa_conversao}%</div></div></div></div>
+              <div class="col-md-4"><div class="card stat-card"><div class="card-body"><div class="text-muted">Receita</div><div class="stat-value" style="font-size:1.1rem;">${stats.receita_fmt}</div></div></div></div>
+            </div>
+            ${data.ligacoes.length > 0 ? `
+              <div class="mt-3">
+                <div style="font-size:.85rem;font-weight:700;color:var(--text-1);margin-bottom:10px;">
+                  <i class="bi bi-telephone me-1"></i>${TERMO_INTERACOES} do Periodo
+                </div>
+                <div class="rep-table-wrap"><table class="table rep-table">
+                  <thead><tr><th>Data</th><th>Cliente</th><th>Resultado</th><th>Valor</th><th class="text-end">Acoes</th></tr></thead>
+                  <tbody>
+                    ${data.ligacoes.map(lig => `
+                      <tr>
+                        <td style="font-size:.8rem;">${lig.data_hora}</td>
+                        <td style="font-size:.8rem;">${lig.cliente_nome}</td>
+                        <td><span class="${lig.resultado === 'comprou' ? 'badge-liberado' : 'badge-semconceito'}">${lig.resultado}</span></td>
+                        <td style="font-size:.8rem;">${lig.valor_venda_fmt}</td>
+                        <td class="text-end">
+                          ${lig.id
+                            ? `<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" title="Editar ${TERMO_INTERACAO}" onclick="editarLigacaoCompleta(${Number(lig.id)})"><i class="bi bi-pencil-square"></i></button>`
+                            : '<span class="text-muted">-</span>'}
+                        </td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table></div>
+              </div>` : `<div class="alert alert-warning mt-3">Nenhuma ${TERMO_INTERACAO} encontrada no PerÃ­odo.</div>`}
+          `;
+        } else {
+          resultadosDiv.innerHTML = `<div class="alert alert-danger">Erro: ${data.erro}</div>`;
+        }
+      } catch (error) {
+        resultadosDiv.innerHTML = `<div class="alert alert-danger">Erro ao carregar dados do MÊS.</div>`;
+      }
+    }
+  }
+});
+
+window.addEventListener('popstate', () => {
+  window.location.reload();
+});
+
+// BUSCA EM TEMPO REAL
+let buscaTimeout;
+let ultimoTermoBusca = null;
+const buscaInput = document.getElementById('buscaRapida');
+if (buscaInput) {
+  buscaInput.addEventListener('input', function() {
+    clearTimeout(buscaTimeout);
+    const termo = this.value.trim();
+    buscaTimeout = setTimeout(() => {
+      if (termo.length >= 2 || termo.length === 0) buscarClientesTempoReal(termo);
+    }, 300);
+  });
+}
+
+async function buscarClientesTempoReal(termo) {
+  try {
+    const aba = ABA_ATUAL;
+    // Oracle/Inativos usam renderizacao server-side agrupada.
+    // Para essas abas, aplica busca via querystring preservando filtros atuais.
+    if (aba === 'oracle' || aba === 'inativos' || aba === 'construtoras') {
+      if (ultimoTermoBusca === (termo || '')) return;
+      ultimoTermoBusca = termo || '';
+      const url = new URL(window.location.href);
+      url.searchParams.set('aba', aba);
+      if (termo) url.searchParams.set('q', termo);
+      else url.searchParams.delete('q');
+      document.body.classList.add('tab-switching');
+      _mostrarSkeletonTrocaAba();
+      window.location.href = url.toString();
+      return;
+    }
+    const params = new URLSearchParams({ q: termo, aba, meus: APENAS_MEUS ? '1' : '0' });
+    const response = await fetch(`/api/busca-clientes?${params}`);
+    const data = await response.json();
+    if (data.ok) {
+      atualizarTabelaClientes(data.clientes);
+    }
+  } catch (error) { console.error('Erro ao buscar clientes:', error); }
+}
+
+function atualizarTabelaClientes(clientes) {
+  const tbody = document.getElementById('tbodyClientes');
+  if (!clientes || clientes.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="bi bi-inbox"></i><p class="fw-semibold mb-0">Nenhum cliente encontrado.</p></div></td></tr>';
+    atualizarInfoQuickActions();
+    return;
+  }
+  const toIsoFromBr = (valor) => {
+    if (!valor || typeof valor !== 'string') return '';
+    const m = valor.match(/^(\d{2})\/(\d{2})\/(\d{4})(?: (\d{2}):(\d{2}))?$/);
+    if (!m) return valor;
+    const hh = m[4] || '00';
+    const mm = m[5] || '00';
+    return `${m[3]}-${m[2]}-${m[1]} ${hh}:${mm}:00`;
+  };
+
+  tbody.innerHTML = clientes.map(c => `
+    <tr
+      data-origem="${c.origem || ''}"
+      data-cliente-id="${c.id || ''}"
+      data-cd-cliente-oracle="${c.cd_cliente_oracle || ''}"
+      data-total-ligacoes="${Number(c.total_ligacoes || 0)}"
+      data-tem-telefone="${(c.telefone || c.telefone2) ? '1' : '0'}"
+      data-valor="${Number(c.valor_total_365dias || c.valor_ultimo_pedido || 0)}"
+      data-ultima-ligacao="${toIsoFromBr(c.ultima_ligacao || '')}"
+      data-proxima-ligacao="${toIsoFromBr(c.proxima_ligacao || '')}"
+      data-retorno-atrasado="${c.retorno_atrasado ? '1' : '0'}"
+      data-especial-contato-mensal-status="${c.especial_contato_mensal_status || ''}"
+      data-especial-contato-mensal-label="${c.especial_contato_mensal_label || ''}"
+    >
+      <td>
+        <div class="fw-bold" style="font-size:.84rem;">${c.nome}</div>
+        <div class="mt-1">
+          ${c.origem === 'manual' ? '<span class="badge-manual">Manual</span>' : ''}
+          ${c.origem === 'importado_csv' ? '<span class="badge-importado">Importado</span>' : ''}
+        </div>
+      </td>
+      <td><code>${c.cnpj || '-'}</code></td>
+      <td>${renderContatoItem(c.telefone || c.telefone2, c.nome, c.id, c.cd_cliente_oracle) || '-'}</td>
+      <td><small style="color:var(--text-2);">${c.representante_nome || '-'}</small></td>
+      {% if aba != 'pendentes' %}
+      <td data-col="ultima-ligacao" style="font-size:.8rem;">${c.ultima_ligacao || '-'}</td>
+      {% endif %}
+      {% if aba == 'retornar' %}
+      <td data-col="proxima-ligacao" style="font-size:.8rem;">
+        ${c.retorno_atrasado ? 
+          `<span class="text-danger fw-bold">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            ${c.proxima_ligacao || '-'}
+          </span>` : 
+          c.proxima_ligacao || '-'
+        }
+      </td>
+      {% endif %}
+      <td><span class="badge-count">${c.total_ligacoes}</span></td>
+      <td>
+        <div class="d-flex gap-1">
+          <button class="action-btn btn btn-outline-secondary" onclick="abrirDetalhesClienteComSync(${c.id}, '${(c.cd_cliente_oracle || '').replace(/'/g,"\\'")}', '${(c.cnpj || '').replace(/'/g,"\\'")}')" title="Ver Detalhes Oracle"><i class="bi bi-eye"></i></button>
+          <button class="action-btn btn btn-primary" onclick="abrirForm(${c.id}, '${c.nome.replace(/'/g,"\\'")}', '${(c.telefone || '').replace(/'/g,"\\'")}', '${(c.cd_cliente_oracle || '').replace(/'/g,"\\'")}')" title="Registrar ligação"><i class="bi bi-telephone-plus"></i></button>
+          ${_renderBotaoHistoricoMensal(c)}
+          <button class="action-btn btn btn-outline-danger" onclick="removerCliente(${c.id}, '${c.nome.replace(/'/g,"\\'")}')"><i class="bi bi-trash"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  if (_filtroCriticosAtivo) aplicarFiltroCriticosTabela();
+  atualizarInfoQuickActions();
+
+  if (ABA_ATUAL === 'inativos') {
+    sincronizarIndicadoresInativos({ force: true });
+  }
+}
+
+let _filtroCriticosAtivo = false;
+
+function _linhasClientesTabela() {
+  return Array.from(
+    document.querySelectorAll(
+      '#tbodyClientes tr[data-cliente-id], #tbodyClientes tr[data-cd-cliente-oracle], .rep-table tbody tr[data-cliente-id], .rep-table tbody tr[data-cd-cliente-oracle]'
+    )
+  ).filter(r => !r.querySelector('.empty-state'));
+}
+
+function _linhaVisivel(row) {
+  return row.style.display !== 'none' && row.offsetParent !== null;
+}
+
+function _renderBotaoHistoricoMensal(c) {
+  if (!c || !c.id) return '';
+  if (Number(c.total_ligacoes || 0) <= 0) return '';
+
+  const origem = String(c.origem || '').trim().toLowerCase();
+  const status = String(c.especial_contato_mensal_status || '').trim().toLowerCase();
+  let classes = 'action-btn btn btn-outline-secondary';
+  let titulo = 'Histórico';
+
+  if (status) {
+    titulo = `Histórico. ${c.especial_contato_mensal_label || ''}`.trim();
+    if (status === 'mes_atual') {
+      classes = 'action-btn btn btn-outline-success action-btn-monthly action-btn-monthly--current';
+    } else if (status === 'mes_anterior') {
+      classes = 'action-btn btn btn-outline-warning action-btn-monthly action-btn-monthly--previous';
+    } else if (status === 'atrasado' || status === 'sem_historico') {
+      classes = 'action-btn btn btn-outline-danger action-btn-monthly action-btn-monthly--late';
+    }
+  }
+
+  return `<button class="${classes}" data-action="historico" onclick="historico(${c.id})" title="${String(titulo).replace(/"/g, '&quot;')}"><i class="bi bi-clock-history"></i></button>`;
+}
+
+function _contarClientesExibidos() {
+  if (_filtroCriticosAtivo) {
+    const rowsCriticos = _linhasClientesTabela();
+    return rowsCriticos.filter(_linhaVisivel).length;
+  }
+  const cards = Array.from(document.querySelectorAll('.rep-card'));
+  const cardsVisiveis = cards.filter((card) => card.style.display !== 'none' && card.offsetParent !== null);
+  if (cardsVisiveis.length > 0) {
+    return cardsVisiveis.reduce((acc, card) => acc + (parseInt(card.dataset.totalClientes || '0', 10) || 0), 0);
+  }
+  const rows = _linhasClientesTabela();
+  return rows.filter(_linhaVisivel).length;
+}
+
+function atualizarInfoQuickActions() {
+  const info = document.getElementById('quickActionInfo');
+  if (!info) return;
+  const visiveis = _contarClientesExibidos();
+  info.textContent = _filtroCriticosAtivo
+    ? `Filtro criticos ativo: ${visiveis} cliente(s)`
+    : `Mostrando ${visiveis} cliente(s)`;
+  _atualizarStatusBuscaTela();
+}
+
+function _ehLinhaCritica(row) {
+  if (!row) return false;
+  return _avaliarCriticidadeLinha(row).critico;
+}
+
+function _parseDataLinha(valor) {
+  if (!valor) return null;
+  const normalizado = String(valor).trim().replace(' ', 'T');
+  const data = new Date(normalizado);
+  if (Number.isNaN(data.getTime())) return null;
+  return data;
+}
+
+function _avaliarCriticidadeLinha(row) {
+  const agora = new Date();
+  const texto = (row.textContent || '').toUpperCase();
+  const totalLigacoes = Number(row.dataset.totalLigacoes || 0);
+  const temTelefone = row.dataset.temTelefone === '1' || !!row.querySelector('.tel-link');
+  const valor = Number(row.dataset.valor || 0);
+  const retornoAtrasado = row.dataset.retornoAtrasado === '1' || !!row.querySelector('.bi-exclamation-triangle-fill');
+  const ultimaLigacao = _parseDataLinha(row.dataset.ultimaLigacao);
+  const proximaLigacao = _parseDataLinha(row.dataset.proximaLigacao);
+
+  let score = 0;
+  const motivos = [];
+
+  if (retornoAtrasado) {
+    score += 80;
+    motivos.push('retorno atrasado');
+  }
+  if (!temTelefone) {
+    score += 45;
+    motivos.push('sem telefone');
+  }
+
+  if (totalLigacoes === 0) {
+    if (valor >= 5000) {
+      score += 45;
+      motivos.push('pendente alto valor');
+    } else if (valor >= 1000) {
+      score += 30;
+      motivos.push('pendente com valor');
+    } else {
+      score += 15;
+      motivos.push('pendente sem contato');
+    }
+  }
+
+  if (ultimaLigacao) {
+    const diasSemContato = Math.floor((agora - ultimaLigacao) / 86400000);
+    if (diasSemContato >= 60) {
+      score += 45;
+      motivos.push('60+ dias sem contato');
+    } else if (diasSemContato >= 30) {
+      score += 30;
+      motivos.push('30+ dias sem contato');
+    } else if (diasSemContato >= 14) {
+      score += 15;
+      motivos.push('14+ dias sem contato');
+    }
+  }
+
+  if (proximaLigacao && !retornoAtrasado) {
+    const horasParaRetorno = (proximaLigacao - agora) / 3600000;
+    if (horasParaRetorno >= 0 && horasParaRetorno <= 24) {
+      score += 20;
+      motivos.push('retorno em ate 24h');
+    }
+  }
+
+  if (row.classList.contains('row-inadimplente') || texto.includes('INADIMPLENTE') || texto.includes('ATRASADO')) {
+    score += 50;
+    motivos.push('inadimplencia/atraso');
+  }
+
+  const critico = score >= 50;
+  return { critico, score, motivos };
+}
+
+function aplicarFiltroCriticosTabela() {
+  const rows = _linhasClientesTabela();
+  rows.forEach(r => {
+    const avaliacao = _avaliarCriticidadeLinha(r);
+    r.classList.toggle('row-critical', avaliacao.critico);
+    r.title = avaliacao.motivos.length ? `Criticidade ${avaliacao.score}: ${avaliacao.motivos.join(', ')}` : '';
+    r.style.display = avaliacao.critico ? '' : 'none';
+  });
+  atualizarInfoQuickActions();
+}
+
+function filtrarClientesCriticos() {
+  _filtroCriticosAtivo = true;
+  aplicarFiltroCriticosTabela();
+}
+
+function limparFiltroCriticos() {
+  _filtroCriticosAtivo = false;
+  const rows = _linhasClientesTabela();
+  rows.forEach(r => {
+    r.style.display = '';
+    r.classList.remove('row-critical');
+    r.removeAttribute('title');
+  });
+  atualizarInfoQuickActions();
+}
+
+// SINCRONIZACAO ORACLE
+let _syncOracleStatusTimer = null;
+let _syncOracleAutoReloadPending = false;
+let _syncOracleWasRunning = false;
+
+function atualizarStatusSyncOracle() {
+  const badge = document.getElementById('syncOracleStatusBadge');
+  if (!badge) return;
+
+  fetch('/sincronizar-oracle-status')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        badge.className = 'badge text-bg-secondary align-self-center';
+        badge.textContent = 'Sync Oracle: indisponivel';
+        return;
+      }
+
+      if (data.running) {
+        _syncOracleWasRunning = true;
+        badge.className = 'badge text-bg-warning align-self-center';
+        badge.textContent = 'Sync Oracle: em andamento (' + (data.started_at || '--') + ')';
+        return;
+      }
+
+      if (data.last_success === true) {
+        badge.className = 'badge text-bg-success align-self-center';
+        badge.textContent = 'Sync Oracle: ok (' + (data.finished_at || '--') + ')';
+        if (_syncOracleAutoReloadPending && _syncOracleWasRunning) {
+          _syncOracleAutoReloadPending = false;
+          _syncOracleWasRunning = false;
+          window.location.reload();
+        }
+        return;
+      }
+
+      if (data.last_success === false) {
+        badge.className = 'badge text-bg-danger align-self-center';
+        badge.textContent = 'Sync Oracle: erro (' + (data.finished_at || '--') + ')';
+        if (_syncOracleAutoReloadPending && _syncOracleWasRunning) {
+          _syncOracleAutoReloadPending = false;
+          _syncOracleWasRunning = false;
+          alert('A sincronizaÃ§Ã£o terminou com erro. Verifique os logs e tente novamente.');
+        }
+        return;
+      }
+
+      badge.className = 'badge text-bg-secondary align-self-center';
+      badge.textContent = 'Sync Oracle: aguardando';
+    })
+    .catch(() => {
+      badge.className = 'badge text-bg-secondary align-self-center';
+      badge.textContent = 'Sync Oracle: indisponivel';
+    });
+}
+
+function iniciarMonitorSyncOracle() {
+  const badge = document.getElementById('syncOracleStatusBadge');
+  if (!badge) return;
+  atualizarStatusSyncOracle();
+  if (_syncOracleStatusTimer) return;
+  _syncOracleStatusTimer = setInterval(atualizarStatusSyncOracle, 5000);
+}
+
+function sincronizarOracle() {
+  const btn = document.getElementById('btnSincronizarOracle');
+  if (!btn) return;
+  if (!confirm('Deseja sincronizar os clientes com Oracle agora\n\nEsta aÃ§Ã£o pode levar alguns minutos.')) return;
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i> Sincronizando...';
+
+  fetch('/sincronizar-oracle-async', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrf_token') }
+  })
+    .then(r => r.json())
+    .then(data => {
+      const ok = !!(data.success || data.ok);
+      const msg = data.message || data.mensagem || 'SincronizaÃ§Ã£o iniciada.';
+      if (ok) {
+        _syncOracleAutoReloadPending = true;
+        _syncOracleWasRunning = false;
+        atualizarStatusSyncOracle();
+        alert('' + msg + '\n\nA pÃ¡gina serÃ¡ atualizada automaticamente quando a sincronizaÃ§Ã£o concluir.');
+      } else {
+        alert('' + msg);
+      }
+    })
+    .catch(() => alert('Erro ao sincronizar com Oracle.'))
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    });
+}
+
+function sincronizarClientesManuaisOracle() {
+  const btn = document.getElementById('btnSyncManuaisOracle');
+  if (!btn) return;
+  if (!confirm('Deseja sincronizar os clientes manuais com o Oracle agora?')) return;
+
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i> Sincronizando...';
+
+  fetch('/clientes/sincronizar-manuais-oracle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrf_token') }
+  })
+    .then(r => r.json())
+    .then(data => {
+      const ok = !!(data.ok || data.success);
+      alert(data.mensagem || (ok ? 'Sync concluido.' : 'Erro ao sincronizar clientes manuais.'));
+      if (ok) location.reload();
+    })
+    .catch(() => alert('Erro ao sincronizar clientes manuais com Oracle.'))
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    });
+}
+
+async function abrirDetalhesClienteComSync(clienteId, cdClienteOracle = '', cnpj = '') {
+  let cdAtual = (cdClienteOracle || '').toString().trim();
+  const id = parseInt(String(clienteId || '0'), 10) || 0;
+  const cnpjDigits = limpaDigitos(cnpj || '');
+
+  if (!IS_SUPERVISOR) {
+    detalhesClienteOracle(id || null, cdAtual);
+    return;
+  }
+
+  if (!id) {
+    detalhesClienteOracle(null, cdAtual);
+    return;
+  }
+
+  try {
+    const r = await fetch(`/clientes/${id}/sincronizar-oracle`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrf_token')
+      },
+      body: JSON.stringify({
+        cd_cliente_oracle: cdAtual,
+        cnpj: cnpjDigits
+      })
+    });
+    const j = await r.json();
+    if (r.ok && j.ok && j.cliente && j.cliente.cd_cliente_oracle) {
+      cdAtual = String(j.cliente.cd_cliente_oracle || '').trim();
+    }
+  } catch (err) {
+    console.warn('Falha ao sincronizar cliente com Oracle antes dos detalhes:', err);
+  }
+
+  detalhesClienteOracle(id, cdAtual);
+}
+
+// DETALHES CLIENTE ORACLE
+function detalhesClienteOracle(clienteId, cdClienteOracle) {
+  const modal = new bootstrap.Modal(document.getElementById('modalDetalhesOracle'));
+  modal.show();
+  document.getElementById('detalhesOracleContent').innerHTML = `
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Carregando dados do Oracle...</p>
+    </div>`;
+
+  const urlDetalhes = clienteId
+    ? `/detalhes-cliente-oracle/${clienteId}`
+    : `/detalhes-cliente-oracle-cd/${encodeURIComponent(cdClienteOracle || '')}`;
+  const janelaDiasDetalhes = ABA_ATUAL === 'construtoras' ? 1800 : (ABA_ATUAL === 'inativos' ? 1095 : 365);
+
+  const paramsDetalhes = new URLSearchParams({ janela_dias: String(janelaDiasDetalhes) });
+  if (clienteId && cdClienteOracle) {
+    paramsDetalhes.set('cd_cliente_oracle', String(cdClienteOracle).trim());
+  }
+
+  fetch(`${urlDetalhes}?${paramsDetalhes.toString()}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) renderizarDetalhesOracle(data);
+      else document.getElementById('detalhesOracleContent').innerHTML =
+        `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Erro: ${data.message}</div>`;
+    })
+    .catch(() => {
+      document.getElementById('detalhesOracleContent').innerHTML =
+        `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Erro ao carregar detalhes.</div>`;
+    });
+}
+
+function renderizarDetalhesOracle(data) {
+  const cliente = data.cliente;
+  const pedidos = data.pedidos_oracle || [];
+  const itens = data.itens_oracle || [];
+  const janelaDias = Number(data.janela_dias || 365);
+  const labelJanela = janelaDias >= 1095 ? '36 meses' : (janelaDias >= 730 ? '24 meses' : '365 dias');
+  const situacaoPedidoMap = {
+    S: 'Faturado',
+    F: 'Faturado',
+    A: 'Aprovado',
+    C: 'Cancelado',
+    L: 'Liberado',
+    P: 'Pendente',
+    FATURADO: 'Faturado',
+    APROVADO: 'Aprovado',
+    CANCELADO: 'Cancelado',
+    LIBERADO: 'Liberado',
+    PENDENTE: 'Pendente'
+  };
+  const formatarSituacaoPedido = (sigla) => {
+    const s = String(sigla || '').trim().toUpperCase();
+    if (!s) return '-';
+    if (situacaoPedidoMap[s]) return situacaoPedidoMap[s];
+    return s.charAt(0) + s.slice(1).toLowerCase();
+  };
+
+  const conceitoBadge = cliente.conceito === 'LIBERADO'
+    ? '<span class="badge-liberado">Liberado</span>'
+    : cliente.conceito === 'INADIMPLENTE'
+    ? '<span class="badge-inadimplente">! Inadimplente</span>'
+    : '<span class="badge-semconceito">Sem Conceito</span>';
+
+  let html = `
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="panel-card" style="margin-bottom:0;">
+          <div class="panel-header" style="font-size:.82rem;padding:10px 16px;">
+            <i class="bi bi-person"></i> Dados do Cliente
+          </div>
+          <div class="panel-body" style="padding:14px 16px;">
+            <table class="table table-sm table-borderless" style="font-size:.83rem;margin:0;">
+              <tr><td class="fw-bold text-muted" style="width:40%">Nome</td><td>${cliente.nome}</td></tr>
+              <tr><td class="fw-bold text-muted">CNPJ</td><td><code>${cliente.cnpj || '-'}</code></td></tr>
+              <tr><td class="fw-bold text-muted">Telefone</td><td>
+                ${renderContatoItem(cliente.telefone, cliente.nome, cliente.id, cliente.cd_cliente_oracle)}
+                ${renderContatoItem(cliente.telefone2, cliente.nome, cliente.id, cliente.cd_cliente_oracle)}
+                ${!cliente.telefone && !cliente.telefone2 ? '-' : ''}
+              </td></tr>
+              <tr><td class="fw-bold text-muted">Municipio/UF</td><td>${cliente.municipio || '-'}${cliente.uf ? `/${cliente.uf}` : ''}</td></tr>
+              <tr><td class="fw-bold text-muted">Contato</td><td>${cliente.contato || '-'}</td></tr>
+              ${cliente.cd_cliente_oracle ? `<tr><td class="fw-bold text-muted">Cod. Oracle</td><td><code>${cliente.cd_cliente_oracle}</code></td></tr>` : ''}
+              ${cliente.cd_centralizado ? `<tr><td class="fw-bold text-muted">Centralizadora</td><td><code>${cliente.cd_centralizado}</code>${cliente.nome_centralizadora ? ` - ${cliente.nome_centralizadora}` : ''}</td></tr>` : ''}
+              ${cliente.representante_oracle ? `<tr><td class="fw-bold text-muted">Representante</td><td>${cliente.representante_oracle}</td></tr>` : ''}
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="panel-card" style="margin-bottom:0;">
+          <div class="panel-header" style="font-size:.82rem;padding:10px 16px;">
+            <i class="bi bi-shield-check"></i> Dados de Credito
+          </div>
+          <div class="panel-body" style="padding:14px 16px;">
+            <table class="table table-sm table-borderless" style="font-size:.83rem;margin:0;">
+              <tr><td class="fw-bold text-muted" style="width:40%">Conceito</td><td>${conceitoBadge}</td></tr>
+              ${cliente.categoria_consultor ? `<tr><td class="fw-bold text-muted">Consultor Oracle</td><td><small>${cliente.categoria_consultor}</small></td></tr>` : ''}
+              ${cliente.ultimo_pedido_oracle ? `<tr><td class="fw-bold text-muted">Último Pedido</td><td>${cliente.ultimo_pedido_oracle}</td></tr>` : ''}
+              ${cliente.valor_ultimo_pedido ? `<tr><td class="fw-bold text-muted">Valor</td><td style="font-weight:700;color:#16a34a;">${parseFloat(cliente.valor_ultimo_pedido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>` : ''}
+              ${(cliente.pagamento_medio_dias !== null && cliente.pagamento_medio_dias !== undefined) ? `<tr><td class="fw-bold text-muted">Pgto Medio</td><td><span class="badge" style="${(Number(cliente.pagamento_medio_dias) >= 0 && Number(cliente.pagamento_medio_dias) <= 30) ? 'background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;' : 'background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;'}">${Math.round(Number(cliente.pagamento_medio_dias))}d</span></td></tr>` : ''}
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+
+  if (itens.length > 0) {
+    const itensUnicos = [];
+    const vistos = new Set();
+    itens.forEach(item => {
+      const chave = `${item.cd_pedido}_${item.sequencia}_${item.idproduto}_${item.quantidade}_${item.precounitario}_${item.pe_desconto}`;
+      if (!vistos.has(chave)) {
+        vistos.add(chave);
+        itensUnicos.push(item);
+      }
+    });
+
+    const itensPorPedido = {};
+    itensUnicos.forEach(item => {
+      const pedido = item.cd_pedido || 'sem-pedido';
+      if (!itensPorPedido[pedido]) itensPorPedido[pedido] = {
+        dt_pedido: item.dt_pedido,
+        cd_pedido: item.cd_pedido,
+        situacao: item.situacao,
+        itens: []
+      };
+      itensPorPedido[pedido].itens.push(item);
+    });
+
+    html += `<div class="panel-card mt-3" style="margin-bottom:0;">
+      <div class="panel-header" style="font-size:.82rem;padding:10px 16px;">
+        <i class="bi bi-cart"></i> Itens dos Pedidos (${labelJanela})
+        <span style="margin-left:auto;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 10px;font-size:.7rem;">${Object.keys(itensPorPedido).length} pedido(s)</span>
+      </div>
+      <div class="panel-body">`;
+
+    Object.values(itensPorPedido).forEach(pedido => {
+      const dataPedido = pedido.dt_pedido ? new Date(pedido.dt_pedido).toLocaleDateString('pt-BR') : '-';
+      const situacaoPedido = formatarSituacaoPedido(pedido.situacao);
+      html += `
+        <div style="margin-bottom:16px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);">
+          <div style="font-size:.82rem;font-weight:700;color:var(--brand-700);margin-bottom:10px;">
+            <i class="bi bi-receipt me-1"></i>Pedido #${pedido.cd_pedido || '-'} - ${dataPedido} - ${situacaoPedido}
+          </div>
+          <div class="row g-2">`;
+
+      pedido.itens.forEach(item => {
+        const nome = item.nome_produto || item.idproduto || '-';
+        const qtd = item.quantidade || 0;
+        const preco = item.precounitario
+          ? parseFloat(item.precounitario).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+          : '-';
+        const descontoNum = (item.pe_desconto !== null && item.pe_desconto !== undefined && item.pe_desconto !== '')
+          ? Number(item.pe_desconto)
+          : null;
+        const descontoTxt = descontoNum !== null && !Number.isNaN(descontoNum)
+          ? `${descontoNum.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`
+          : null;
+
+        html += `<div class="col-md-6 col-lg-4">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;">
+            <i class="bi bi-box-seam" style="color:#16a34a;"></i>
+            <div>
+              <div style="font-size:.8rem;font-weight:600;">${nome}</div>
+              <div style="font-size:.73rem;color:var(--text-2);">${qtd} unid | ${preco}${descontoTxt ? ` | Desc.: ${descontoTxt}` : ''}</div>
+            </div>
+          </div>
+        </div>`;
+      });
+
+      html += `</div></div>`;
+    });
+
+    html += `</div></div>`;
+  } else if (pedidos.length > 0) {
+    html += `<div class="panel-card mt-3" style="margin-bottom:0;">
+      <div class="panel-header" style="font-size:.82rem;padding:10px 16px;">
+        <i class="bi bi-receipt"></i> Pedidos (${labelJanela})
+        <span style="margin-left:auto;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 10px;font-size:.7rem;">${pedidos.length} pedido(s)</span>
+      </div>
+      <div class="panel-body">`;
+
+    pedidos.forEach(pedido => {
+      const dataPedido = pedido.dt_pedido ? new Date(pedido.dt_pedido).toLocaleDateString('pt-BR') : '-';
+      const valorPedido = (pedido.total_pedido !== null && pedido.total_pedido !== undefined)
+        ? Number(pedido.total_pedido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        : '-';
+      const situacaoPedido = formatarSituacaoPedido(pedido.situacao);
+      html += `
+        <div style="margin-bottom:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);display:flex;gap:10px;justify-content:space-between;align-items:center;">
+          <div style="font-size:.82rem;">
+            <div style="font-weight:700;color:var(--brand-700);">Pedido em ${dataPedido}</div>
+            <div style="color:var(--text-2);">SituaÃ§Ã£o: ${situacaoPedido}</div>
+          </div>
+          <div style="font-size:.82rem;font-weight:700;color:#16a34a;">${valorPedido}</div>
+        </div>`;
+    });
+
+    html += `</div></div>`;
+  }
+
+  const dadosOracleConsultadosEm = data.dados_oracle_consultados_em || cliente.data_ultima_sincronizacao;
+  if (dadosOracleConsultadosEm) {
+    html += `<div class="alert alert-primary mt-3" style="border-radius:8px;font-size:.8rem;">
+      <i class="bi bi-info-circle me-1"></i>
+      Dados consultados no Oracle em <strong>${dadosOracleConsultadosEm}</strong>
+    </div>`;
+  }
+
+  document.getElementById('detalhesOracleContent').innerHTML = html;
+  window.clienteDetalhesAtual = cliente.id || null;
+}
+
+function registrarLigacaoDesdeDetalhes() {
+  if (window.clienteDetalhesAtual) {
+    const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalDetalhesOracle'));
+    modalDetalhes.hide();
+    fetch(`/detalhes-cliente-oracle/${window.clienteDetalhesAtual}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) abrirForm(data.cliente.id, data.cliente.nome, data.cliente.telefone, data.cliente.cd_cliente_oracle || '');
+      });
+  }
+}
+
+// TOGGLE REPRESENTANTES
+function _carregarMapaGruposAbertos() {
+  try {
+    const raw = localStorage.getItem(STORAGE_OPEN_GROUPS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function _salvarGrupoAberto(grupoKey, aberto) {
+  const key = String(grupoKey || '').trim();
+  if (!key) return;
+  const mapa = _carregarMapaGruposAbertos();
+  const listaAtual = Array.isArray(mapa[ABA_ATUAL]) ? mapa[ABA_ATUAL] : [];
+  const setAtual = new Set(listaAtual.map((item) => String(item)));
+  if (aberto) setAtual.add(key);
+  else setAtual.delete(key);
+  mapa[ABA_ATUAL] = Array.from(setAtual);
+  try {
+    localStorage.setItem(STORAGE_OPEN_GROUPS_KEY, JSON.stringify(mapa));
+  } catch (_) {}
+}
+
+function _grupoEstaAbertoSalvo(grupoKey) {
+  const key = String(grupoKey || '').trim();
+  if (!key) return false;
+  const mapa = _carregarMapaGruposAbertos();
+  const listaAtual = Array.isArray(mapa[ABA_ATUAL]) ? mapa[ABA_ATUAL] : [];
+  return listaAtual.map((item) => String(item)).includes(key);
+}
+
+function _atualizarAriaExpanded(index, aberto) {
+  const header = document.getElementById(`rep-header-${index}`);
+  if (!header) return;
+  header.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+}
+
+function _restaurarGruposAbertos() {
+  const dropdowns = document.querySelectorAll('.rep-dropdown[data-group-key]');
+  dropdowns.forEach((div) => {
+    const groupKey = String(div.dataset.groupKey || '').trim();
+    if (!groupKey || !_grupoEstaAbertoSalvo(groupKey)) return;
+    const id = (div.id || '').replace('representante-', '');
+    if (!id) return;
+    toggleRepresentante(id, true, { animate: false, persist: false });
+  });
+}
+
+function _montarUrlGrupoLazy(div, offset) {
+  const url = new URL(div.dataset.lazyUrl, window.location.origin);
+  url.searchParams.set('offset', String(offset || 0));
+  url.searchParams.set('limit', div.dataset.lazyLimit || '150');
+  return url.toString();
+}
+
+function _aplicarPaginaGrupoLazy(div, html, append) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const loadedDropdown = doc.querySelector('.rep-dropdown');
+  const loadedTbody = doc.querySelector('.rep-dropdown tbody');
+  const currentTbody = div.querySelector('tbody');
+  if (loadedDropdown) {
+    div.dataset.lazyNextOffset = loadedDropdown.dataset.lazyNextOffset || '';
+    div.dataset.lazyTotal = loadedDropdown.dataset.lazyTotal || '';
+    div.dataset.lazyHasMore = loadedDropdown.dataset.lazyHasMore || '0';
+  }
+  if (loadedTbody && currentTbody) {
+    if (append) {
+      currentTbody.querySelectorAll('.grupo-lazy-more').forEach((row) => row.remove());
+      Array.from(loadedTbody.children).forEach((row) => currentTbody.appendChild(row));
+    } else {
+      currentTbody.innerHTML = loadedTbody.innerHTML;
+    }
+  } else if (!append) {
+    div.innerHTML = html;
+  }
+  div.dataset.lazyLoaded = '1';
+  if (window.getComputedStyle(div).display !== 'none') {
+    div.style.maxHeight = '';
+    div.style.overflow = '';
+  }
+  if (typeof inicializarTooltips === 'function') inicializarTooltips();
+  atualizarInfoQuickActions();
+}
+
+function _buscarPaginaGrupoLazy(div, offset, append) {
+  if (!div || !div.dataset.lazyUrl || div.dataset.lazyLoading === '1') {
+    return Promise.resolve();
+  }
+  div.dataset.lazyLoading = '1';
+  return fetch(_montarUrlGrupoLazy(div, offset), { credentials: 'same-origin' })
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.text();
+    })
+    .then((html) => {
+      _aplicarPaginaGrupoLazy(div, html, append);
+      div.dataset.lazyLoading = '0';
+    })
+    .catch(() => {
+      div.dataset.lazyLoading = '0';
+      const tbody = div.querySelector('tbody');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3">NÃ£o foi possÃ­vel carregar este grupo.</td></tr>';
+      }
+    });
+}
+
+function _carregarGrupoLazy(div) {
+  if (!div || !div.dataset.lazyUrl || div.dataset.lazyLoaded === '1') return;
+  _buscarPaginaGrupoLazy(div, 0, false);
+}
+
+async function _carregarTodasPaginasGrupoLazy(div) {
+  if (!div || !div.dataset.lazyUrl) return;
+  if (div.dataset.lazyLoaded !== '1') {
+    await _buscarPaginaGrupoLazy(div, 0, false);
+  }
+  let guard = 0;
+  while (div.dataset.lazyHasMore === '1' && guard < 200) {
+    const offset = parseInt(div.dataset.lazyNextOffset || '0', 10) || 0;
+    await _buscarPaginaGrupoLazy(div, offset, true);
+    guard += 1;
+  }
+}
+
+function carregarMaisGrupoLazy(btn) {
+  const div = btn ? btn.closest('.rep-dropdown') : null;
+  if (!div || div.dataset.lazyLoading === '1') return;
+  const offset = parseInt(div.dataset.lazyNextOffset || '0', 10) || 0;
+  btn.disabled = true;
+  btn.textContent = 'Carregando...';
+  _buscarPaginaGrupoLazy(div, offset, true);
+}
+
+function carregarMaisTabelaPadrao(btn) {
+  const tbody = document.getElementById('tbodyClientes');
+  const row = btn ? btn.closest('.tabela-lazy-more') : null;
+  if (!tbody || !row || row.dataset.loading === '1') return;
+  row.dataset.loading = '1';
+  const url = new URL('/api/clientes/tabela-html', window.location.origin);
+  const params = new URLSearchParams(window.location.search);
+  params.forEach((value, key) => url.searchParams.set(key, value));
+  url.searchParams.set('offset', row.dataset.nextOffset || '0');
+  url.searchParams.set('limit', '150');
+  btn.disabled = true;
+  btn.textContent = 'Carregando...';
+  fetch(url.toString(), { credentials: 'same-origin' })
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.text();
+    })
+    .then((html) => {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const loadedTbody = doc.querySelector('#tbodyClientes');
+      if (!loadedTbody) throw new Error('tbody nÃ£o encontrado');
+      row.remove();
+      Array.from(loadedTbody.children).forEach((tr) => tbody.appendChild(tr));
+      atualizarInfoQuickActions();
+      if (typeof inicializarTooltips === 'function') inicializarTooltips();
+    })
+    .catch(() => {
+      row.dataset.loading = '0';
+      btn.disabled = false;
+      btn.textContent = 'Carregar mais';
+    });
+}
+
+async function _carregarTodasPaginasTabelaPadrao() {
+  const tbody = document.getElementById('tbodyClientes');
+  if (!tbody) return;
+  let guard = 0;
+  while (guard < 200) {
+    const row = tbody.querySelector('.tabela-lazy-more');
+    if (!row) return;
+    const url = new URL('/api/clientes/tabela-html', window.location.origin);
+    const params = new URLSearchParams(window.location.search);
+    params.forEach((value, key) => url.searchParams.set(key, value));
+    url.searchParams.set('offset', row.dataset.nextOffset || '0');
+    url.searchParams.set('limit', '150');
+    const response = await fetch(url.toString(), { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const html = await response.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const loadedTbody = doc.querySelector('#tbodyClientes');
+    if (!loadedTbody) throw new Error('tbody nÃ£o encontrado');
+    row.remove();
+    Array.from(loadedTbody.children).forEach((tr) => tbody.appendChild(tr));
+    guard += 1;
+  }
+}
+
+function toggleRepresentante(index, forceOpen = null, options = {}) {
+  const div = document.getElementById(`representante-${index}`);
+  const icone = document.getElementById(`icone-${index}`);
+  if (!div || !icone) return;
+  if (div.dataset.animating === '1') return;
+  const animate = options.animate !== false;
+  const persist = options.persist !== false;
+  const OPEN_MS = 430;
+  const CLOSE_MS = 320;
+
+  const aberto = window.getComputedStyle(div).display !== 'none';
+  const vaiAbrir = typeof forceOpen === 'boolean' ? forceOpen : !aberto;
+  const groupKey = String(div.dataset.groupKey || '').trim();
+
+  if (vaiAbrir === aberto) {
+    if (persist && groupKey) _salvarGrupoAberto(groupKey, aberto);
+    _atualizarAriaExpanded(index, aberto);
+    return;
+  }
+
+  if (!vaiAbrir) {
+    div.dataset.animating = '1';
+    if (!animate) {
+      div.style.display = 'none';
+      div.style.maxHeight = '';
+      div.style.opacity = '';
+      div.style.transform = '';
+      div.style.transition = '';
+      div.style.overflow = '';
+      div.dataset.animating = '0';
+    } else {
+      const alturaAtual = div.scrollHeight;
+      div.style.overflow = 'hidden';
+      div.style.maxHeight = `${alturaAtual}px`;
+      div.style.opacity = '1';
+      div.style.transform = 'translateY(0)';
+      div.style.transition = `max-height ${CLOSE_MS}ms ease, opacity ${Math.round(CLOSE_MS * 0.75)}ms ease, transform ${Math.round(CLOSE_MS * 0.75)}ms ease`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        div.style.maxHeight = '0px';
+        div.style.opacity = '0';
+        div.style.transform = 'translateY(-4px)';
+      }));
+      setTimeout(() => {
+        div.style.display = 'none';
+        div.style.maxHeight = '';
+        div.style.opacity = '';
+        div.style.transform = '';
+        div.style.transition = '';
+        div.style.overflow = '';
+        div.dataset.animating = '0';
+      }, CLOSE_MS + 20);
+    }
+    icone.classList.remove('open');
+    _atualizarAriaExpanded(index, false);
+    if (persist && groupKey) _salvarGrupoAberto(groupKey, false);
+  } else {
+    div.dataset.animating = '1';
+    div.style.display = 'block';
+    _carregarGrupoLazy(div);
+    if (!animate) {
+      div.style.overflow = '';
+      div.style.maxHeight = '';
+      div.style.opacity = '';
+      div.style.transform = '';
+      div.style.transition = '';
+      div.style.willChange = '';
+      div.dataset.animating = '0';
+    } else {
+      const alturaFinal = div.scrollHeight;
+      div.style.overflow = 'hidden';
+      div.style.maxHeight = '0px';
+      div.style.opacity = '0';
+      div.style.transform = 'translateY(-6px)';
+      div.style.transition = `max-height ${OPEN_MS}ms ease, opacity ${Math.round(OPEN_MS * 0.75)}ms ease, transform ${Math.round(OPEN_MS * 0.75)}ms ease`;
+      div.style.willChange = 'max-height, opacity, transform';
+      void div.offsetHeight;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        div.style.maxHeight = `${alturaFinal}px`;
+        div.style.opacity = '1';
+        div.style.transform = 'translateY(0)';
+      }));
+      setTimeout(() => {
+        div.style.maxHeight = '';
+        div.style.opacity = '';
+        div.style.transform = '';
+        div.style.transition = '';
+        div.style.overflow = '';
+        div.style.willChange = '';
+        div.dataset.animating = '0';
+      }, OPEN_MS + 30);
+    }
+    icone.classList.add('open');
+    _atualizarAriaExpanded(index, true);
+    if (persist && groupKey) _salvarGrupoAberto(groupKey, true);
+  }
+  atualizarInfoQuickActions();
+}
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+/* ============================================================
+   ORDENAÇÃO DE COLUNAS NAS TABELAS
+   ============================================================ */
+function _getCellValue(tr, idx) {
+  var cell = tr.cells[idx];
+  if (!cell) return '';
+  return (cell.innerText || cell.textContent || '').trim();
+}
+
+function _comparer(idx, asc) {
+  return function(a, b) {
+    var va = _getCellValue(a, idx);
+    var vb = _getCellValue(b, idx);
+    // tenta comparar como nÃºmero
+    var na = parseFloat(va.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    var nb = parseFloat(vb.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na;
+    // tenta comparar como data dd/mm/yyyy
+    var da = va.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    var db = vb.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (da && db) {
+      var dta = new Date(da[3], da[2]-1, da[1]);
+      var dtb = new Date(db[3], db[2]-1, db[1]);
+      return asc ? dta - dtb : dtb - dta;
+    }
+    return asc ? va.localeCompare(vb, 'pt-BR') : vb.localeCompare(va, 'pt-BR');
+  };
+}
+
+function _applySortToTbody(tbody, th, colIdx) {
+  var table = th.closest('table');
+  var allThs = table.querySelectorAll('thead th.th-sort');
+  allThs.forEach(function(t) {
+    if (t !== th) { t.classList.remove('asc', 'desc'); }
+  });
+  var asc = !th.classList.contains('asc');
+  th.classList.toggle('asc', asc);
+  th.classList.toggle('desc', !asc);
+  var rows = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort(_comparer(colIdx, asc));
+  rows.forEach(function(r) { tbody.appendChild(r); });
+}
+
+function sortRepTable(th, colIdx) {
+  var tbody = th.closest('table').querySelector('tbody');
+  if (!tbody) return;
+  _applySortToTbody(tbody, th, colIdx);
+}
+
+function sortFlatTable(th, colIdx) {
+  var tbody = document.getElementById('tbodyClientes');
+  if (!tbody) return;
+  _applySortToTbody(tbody, th, colIdx);
+}
+
+/* ============================================================
+   SINCRONIZAÇÃO DE CLIENTES MANUAIS COM ORACLE
+   ============================================================ */
+function sincronizarClientesManuais() {
+  const btn = document.getElementById('btnSincManuais');
+  if (!btn) return;
+  
+  if (!confirm('Sincronizar todos os clientes manuais com o Oracle?\n\nIsso pode demorar alguns minutos.')) {
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Sincronizando...';
+  
+  fetch('/clientes/sincronizar-manuais-oracle', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrf_token')
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.ok) {
+      let msg = `SINCRONIZAÇÃO concluída!\n\n` +
+            `Total: ${data.total_base || 0}\n` +
+            `Atualizados: ${data.atualizados || 0}\n` +
+            `Não encontrados: ${data.nao_encontrados || 0}\n` +
+            `Sem CNPJ: ${data.sem_cnpj || 0}`;
+      
+      // Mostrar lista de não encontrados para debug
+      if (data.nao_encontrados_lista && data.nao_encontrados_lista.length > 0) {
+        msg += `\n\nNão encontrados (primeiros 10):\n${data.nao_encontrados_lista.join('\n')}`;
+      }
+      
+      alert(msg);
+      location.reload();
+    } else {
+      alert('Erro ao sincronizar: ' + (data.mensagem || 'Erro desconhecido'));
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Sincronizar com Oracle';
+    }
+  })
+  .catch(error => {
+    console.error('Erro:', error);
+    alert('Erro ao sincronizar clientes: ' + error.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Sincronizar com Oracle';
+  });
+}
+
+function _escapeHtmlForPdf(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function exportarListaAtualPDF() {
+  const btn = document.getElementById("btnExportarPdfLista");
+  if (btn) {
+    btn.disabled = true;
+  }
+
+  try {
+    const secaoClientes = document.getElementById("secao-clientes");
+    if (!secaoClientes) {
+      alert("NÃ£o foi possÃ­vel localizar a seÃ§Ã£o de clientes.");
+      return;
+    }
+
+    const abaLabel = (
+      document.querySelector(".modern-tabs .nav-link.active .tab-label") ||
+      document.querySelector(".modern-tabs .nav-link.active")
+    );
+    const nomeAba = (abaLabel ? abaLabel.textContent : "Lista de Clientes") || "Lista de Clientes";
+    const nomeAbaLimpo = String(nomeAba).replace(/\s+/g, " ").trim();
+    const geradoEm = new Date().toLocaleString("pt-BR");
+    await _carregarTodasPaginasTabelaPadrao();
+
+    const cards = Array.from(secaoClientes.querySelectorAll(".rep-card"));
+    const tabelaFlat = secaoClientes.querySelector("#tbodyClientes") ? secaoClientes.querySelector(".rep-table") : null;
+    let corpoHtml = "";
+
+    if (cards.length > 0) {
+      const container = document.createElement("div");
+      cards.forEach((card) => {
+        const clone = card.cloneNode(true);
+        clone.querySelectorAll(".rep-dropdown").forEach((dropdown) => {
+          dropdown.style.display = "block";
+          dropdown.style.maxHeight = "none";
+          dropdown.style.opacity = "1";
+          dropdown.style.transform = "none";
+          dropdown.style.overflow = "visible";
+        });
+        clone.querySelectorAll(".rep-chevron").forEach((icon) => icon.remove());
+        clone.querySelectorAll(".rep-metrics").forEach((el) => el.remove());
+        clone.querySelectorAll("[onclick]").forEach((el) => el.removeAttribute("onclick"));
+        clone.querySelectorAll(".col-acoes, th:last-child, td:last-child").forEach((el) => {
+          if (el.closest("table")) el.remove();
+        });
+        container.appendChild(clone);
+      });
+      corpoHtml = container.innerHTML;
+    } else if (tabelaFlat) {
+      const wrap = document.createElement("div");
+      const tableClone = tabelaFlat.cloneNode(true);
+      tableClone.querySelectorAll("[onclick]").forEach((el) => el.removeAttribute("onclick"));
+      tableClone.querySelectorAll("th:last-child, td:last-child").forEach((el) => el.remove());
+      wrap.appendChild(tableClone);
+      corpoHtml = wrap.innerHTML;
+    } else {
+      alert("NÃ£o hÃ¡ lista disponÃ­vel para exportar no momento.");
+      return;
+    }
+
+    const popup = window.open("", "_blank");
+    if (!popup) {
+      alert("Bloqueio de pop-up detectado. Libere pop-ups para gerar o PDF.");
+      return;
+    }
+
+    const titulo = _escapeHtmlForPdf(nomeAbaLimpo);
+    const dataGeracao = _escapeHtmlForPdf(geradoEm);
+
+    popup.document.open();
+    popup.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Lista - ${titulo}</title>
+  <style>
+    @page { size: A4 portrait; margin: 10mm; }
+    * { box-sizing: border-box; box-shadow: none !important; }
+    html, body { width: 100%; height: auto; writing-mode: horizontal-tb !important; transform: none !important; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #0f172a; margin: 0; padding: 0; background: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pdf-header { margin-bottom: 12px; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
+    .pdf-title { font-size: 18px; font-weight: 700; margin: 0 0 4px 0; }
+    .pdf-meta { font-size: 12px; margin: 2px 0; color: #334155; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10px; }
+    th, td { border: 1px solid #cbd5e1; padding: 5px; text-align: left; vertical-align: top; word-wrap: break-word; }
+    th { background: #1d4ed8; color: #ffffff; font-weight: 700; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .rep-card { border: 1px solid #dbe3ef; border-radius: 8px; margin-bottom: 10px; overflow: hidden; background: #ffffff; }
+    .rep-header { background: #eff6ff; padding: 8px; border-bottom: 1px solid #dbe3ef; }
+    .rep-name { font-size: 13px; font-weight: 700; color: #1e3a8a; }
+    .rep-meta { font-size: 11px; margin-top: 2px; color: #334155; }
+    .rep-dropdown { display: block !important; }
+    .rep-metrics, .rep-consultores { padding: 6px 8px; font-size: 11px; color: #334155; }
+    .action-btn, .wa-link, .tel-link { text-decoration: none !important; }
+    .rep-badge, .badge, [class*="badge-"] { border: 1px solid #bfdbfe !important; background: #eff6ff !important; color: #1e3a8a !important; }
+    .rep-card, .rep-card *, .rep-table, .rep-table *, table, thead, tbody, tr, th, td {
+      transform: none !important;
+      writing-mode: horizontal-tb !important;
+      text-orientation: mixed !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="pdf-header">
+    <p class="pdf-title">${titulo}</p>
+    <p class="pdf-meta"><strong>Gerado em:</strong> ${dataGeracao}</p>
+  </div>
+  ${corpoHtml}
+</body>
+</html>`);
+    popup.document.close();
+    try {
+      popup.history.replaceState({}, "", "/meus-clientes/exportacao-pdf");
+    } catch (e) {
+      // sem impacto se o navegador bloquear replaceState na janela de impressao
+    }
+    popup.focus();
+
+    setTimeout(() => {
+      popup.print();
+    }, 350);
+  } catch (error) {
+    console.error("Erro ao exportar PDF:", error);
+    alert("Erro ao exportar PDF da lista. Tente novamente.");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+    }
+  }
+}
+
+async function exportarListaGrupoPDF(index, triggerBtn = null) {
+  const btn = triggerBtn;
+  if (btn) {
+    btn.disabled = true;
+  }
+
+  try {
+    const card = document.querySelector(`#rep-header-${index}`)?.closest(".rep-card");
+    if (!card) {
+      alert("NÃ£o foi possÃ­vel localizar a lista selecionada.");
+      return;
+    }
+    const dropdownOriginal = card.querySelector(".rep-dropdown");
+    if (dropdownOriginal && dropdownOriginal.dataset.lazyUrl) {
+      if (btn) btn.textContent = "Carregando...";
+      await _carregarTodasPaginasGrupoLazy(dropdownOriginal);
+    }
+
+    const abaLabel = (
+      document.querySelector(".modern-tabs .nav-link.active .tab-label") ||
+      document.querySelector(".modern-tabs .nav-link.active")
+    );
+    const nomeAba = (abaLabel ? abaLabel.textContent : "Lista de Clientes") || "Lista de Clientes";
+    const nomeAbaLimpo = String(nomeAba).replace(/\s+/g, " ").trim();
+    const geradoEm = new Date().toLocaleString("pt-BR");
+
+    const clone = card.cloneNode(true);
+    clone.querySelectorAll(".rep-dropdown").forEach((dropdown) => {
+      dropdown.style.display = "block";
+      dropdown.style.maxHeight = "none";
+      dropdown.style.opacity = "1";
+      dropdown.style.transform = "none";
+      dropdown.style.overflow = "visible";
+    });
+    clone.querySelectorAll(".rep-chevron").forEach((icon) => icon.remove());
+    clone.querySelectorAll(".rep-metrics").forEach((el) => el.remove());
+    clone.querySelectorAll("button").forEach((button) => button.remove());
+    clone.querySelectorAll("[onclick]").forEach((el) => el.removeAttribute("onclick"));
+    clone.querySelectorAll(".col-acoes, th:last-child, td:last-child").forEach((el) => {
+      if (el.closest("table")) el.remove();
+    });
+
+    const tituloGrupo = (clone.querySelector(".rep-name")?.textContent || "Lista").replace(/\s+/g, " ").trim();
+    const popup = window.open("", "_blank");
+    if (!popup) {
+      alert("Bloqueio de pop-up detectado. Libere pop-ups para gerar o PDF.");
+      return;
+    }
+
+    const titulo = _escapeHtmlForPdf(`${nomeAbaLimpo} - ${tituloGrupo}`);
+    const dataGeracao = _escapeHtmlForPdf(geradoEm);
+
+    popup.document.open();
+    popup.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Lista - ${titulo}</title>
+  <style>
+    @page { size: A4 portrait; margin: 10mm; }
+    * { box-sizing: border-box; box-shadow: none !important; }
+    html, body { width: 100%; height: auto; writing-mode: horizontal-tb !important; transform: none !important; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #0f172a; margin: 0; padding: 0; background: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pdf-header { margin-bottom: 12px; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
+    .pdf-title { font-size: 18px; font-weight: 700; margin: 0 0 4px 0; }
+    .pdf-meta { font-size: 12px; margin: 2px 0; color: #334155; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10px; }
+    th, td { border: 1px solid #cbd5e1; padding: 5px; text-align: left; vertical-align: top; word-wrap: break-word; }
+    th { background: #1d4ed8; color: #ffffff; font-weight: 700; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .rep-card { border: 1px solid #dbe3ef; border-radius: 8px; margin-bottom: 10px; overflow: hidden; background: #ffffff; }
+    .rep-header { background: #eff6ff; padding: 8px; border-bottom: 1px solid #dbe3ef; }
+    .rep-name { font-size: 13px; font-weight: 700; color: #1e3a8a; }
+    .rep-meta { font-size: 11px; margin-top: 2px; color: #334155; }
+    .rep-dropdown { display: block !important; }
+    .rep-metrics, .rep-consultores { padding: 6px 8px; font-size: 11px; color: #334155; }
+    .action-btn, .wa-link, .tel-link { text-decoration: none !important; }
+    .rep-badge, .badge, [class*="badge-"] { border: 1px solid #bfdbfe !important; background: #eff6ff !important; color: #1e3a8a !important; }
+    .rep-card, .rep-card *, .rep-table, .rep-table *, table, thead, tbody, tr, th, td {
+      transform: none !important;
+      writing-mode: horizontal-tb !important;
+      text-orientation: mixed !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="pdf-header">
+    <p class="pdf-title">${titulo}</p>
+    <p class="pdf-meta"><strong>Gerado em:</strong> ${dataGeracao}</p>
+  </div>
+  ${clone.outerHTML}
+</body>
+</html>`);
+    popup.document.close();
+    try {
+      popup.history.replaceState({}, "", "/meus-clientes/exportacao-pdf");
+    } catch (e) {
+      // sem impacto se o navegador bloquear replaceState na janela de impressao
+    }
+    popup.focus();
+    setTimeout(() => popup.print(), 350);
+  } catch (error) {
+    console.error("Erro ao exportar PDF da lista:", error);
+    alert("Erro ao exportar PDF desta lista. Tente novamente.");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-file-earmark-pdf me-1"></i>PDF';
+    }
+  }
+}
+
+(function bindCollapseToggleText() {
+  const buttons = document.querySelectorAll('.js-collapse-toggle[data-bs-toggle="collapse"]');
+  if (!buttons.length) return;
+
+  const syncText = (btn) => {
+    const expanded = String(btn.getAttribute('aria-expanded') || 'false') === 'true';
+    const txtCollapsed = btn.getAttribute('data-text-collapsed') || 'Ver lista';
+    const txtExpanded = btn.getAttribute('data-text-expanded') || 'Fechar lista';
+    btn.textContent = expanded ? txtExpanded : txtCollapsed;
+  };
+
+  buttons.forEach((btn) => {
+    const targetSel = btn.getAttribute('data-bs-target');
+    const target = targetSel ? document.querySelector(targetSel) : null;
+    syncText(btn);
+    if (!target) return;
+    target.addEventListener('shown.bs.collapse', () => syncText(btn));
+    target.addEventListener('hidden.bs.collapse', () => syncText(btn));
+  });
+})();
+
+</script>

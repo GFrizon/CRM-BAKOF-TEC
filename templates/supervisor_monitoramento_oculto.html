@@ -1,0 +1,383 @@
+{% extends "layout.html" %}
+{% block title %}Painel Desenvolvedor{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+  <div>
+    <h2 class="m-0"><i class="bi bi-terminal me-2 text-primary"></i>Painel Desenvolvedor</h2>
+    <p class="mb-0 mt-1">Acesso restrito. Atualizado em {{ atualizado_em.strftime('%d/%m/%Y %H:%M:%S') }}</p>
+  </div>
+  {% if not bloqueado %}
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-primary btn-sm" onclick="executarSyncEspeciais()">
+      <i class="bi bi-arrow-repeat me-1"></i>Sync Especiais Agora
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
+      <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{% if bloqueado %}
+<div class="row mt-3">
+  <div class="col-md-6 col-lg-4">
+    <div class="card border-warning">
+      <div class="card-header"><strong>Senha do Painel</strong></div>
+      <div class="card-body">
+        <form method="post">
+          <label class="form-label">Informe a senha</label>
+          <input type="password" class="form-control mb-2" name="senha_painel" autocomplete="off" required>
+          <button class="btn btn-primary btn-sm" type="submit">Entrar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="row g-3 mt-2">
+  <div class="col-6 col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Clientes Especiais</div><div class="h4 m-0">{{ totais.especiais }}</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card h-100 border-warning"><div class="card-body"><div class="text-muted small">Especiais Sem Sync</div><div class="h4 m-0 text-warning">{{ totais.especiais_sem_sync }}</div></div></div></div>
+  <div class="col-6 col-md-2"><div class="card h-100 border-success"><div class="card-body"><div class="text-muted small">Taxa Sync</div><div class="h5 m-0 text-success">{{ totais.taxa_sync_especiais }}%</div></div></div></div>
+  <div class="col-6 col-md-2"><div class="card h-100 border-danger"><div class="card-body"><div class="text-muted small">CNPJ Incompleto</div><div class="h5 m-0 text-danger">{{ especiais_cnpj_incompleto }}</div></div></div></div>
+  <div class="col-6 col-md-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">90-150d</div><div class="h5 m-0">{{ totais.sem_pedido_90_150 }}</div></div></div></div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+    <strong>Sincronização Oracle</strong>
+    <span id="devSyncOracleStatusBadge" class="badge text-bg-secondary">Sync Oracle: --</span>
+  </div>
+  <div class="card-body">
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-outline-secondary btn-sm" type="button" id="btnDevSincronizarOracle" onclick="sincronizarOracleDev()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Sincronizar Oracle geral
+      </button>
+      <button class="btn btn-outline-primary btn-sm" type="button" id="btnDevSyncEspeciais" onclick="executarSyncEspeciais()">
+        <i class="bi bi-person-check me-1"></i>Sincronizar manuais
+      </button>
+      <button class="btn btn-outline-dark btn-sm" type="button" id="btnDevTestarOracle" onclick="testarConexaoOracleDev()">
+        <i class="bi bi-plug me-1"></i>Testar Oracle
+      </button>
+      <button class="btn btn-outline-info btn-sm" type="button" onclick="atualizarStatusSyncOracleDev(true)">
+        <i class="bi bi-activity me-1"></i>Atualizar status
+      </button>
+    </div>
+    <div class="small text-muted mt-2" id="devSyncOracleMensagem">
+      Use esta área para operações de sincronização que não devem aparecer na tela normal.
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-header"><strong>Ações Sensíveis</strong></div>
+  <div class="card-body d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-success btn-sm" href="{{ url_for('importar_clientes_view') }}">
+      <i class="bi bi-cloud-upload me-1"></i>Importar CSV
+    </a>
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('gerenciar_usuarios') }}">
+      <i class="bi bi-people-fill me-1"></i>Usuários
+    </a>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('gerenciar_banners') }}">
+      <i class="bi bi-megaphone-fill me-1"></i>Banners
+    </a>
+    <a class="btn btn-outline-info btn-sm" href="{{ url_for('gerenciar_supervisores_representante') }}">
+      <i class="bi bi-diagram-3 me-1"></i>Supervisor Representante
+    </a>
+    <a class="btn btn-outline-dark btn-sm" href="{{ url_for('testar_scheduler') }}">
+      <i class="bi bi-clock-history me-1"></i>Scheduler
+    </a>
+    <a class="btn btn-outline-warning btn-sm" href="{{ url_for('premiacao_extra_configuracao') }}">
+      <i class="bi bi-trophy me-1"></i>Premiacao Extra
+    </a>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><strong>Usuários Ativos Recentemente (20 min)</strong></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Usuário</th><th>Perfil</th><th>Último acesso</th><th>IP</th><th>Rota</th></tr></thead>
+            <tbody>
+              {% if usuários_online %}
+                {% for u in usuários_online %}
+                <tr>
+                  <td>{{ u.nome or ('ID ' ~ u.user_id) }}</td>
+                  <td><span class="badge text-bg-secondary">{{ u.tipo or '-' }}</span></td>
+                  <td>{{ u.last_seen.strftime('%d/%m %H:%M:%S') if u.last_seen else '-' }}</td>
+                  <td><code>{{ u.ip or '-' }}</code></td>
+                  <td><code>{{ u.path or '-' }}</code></td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="5" class="text-muted">Nenhum usuário ativo recentemente.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><strong>Tendência Inativos (7 dias)</strong></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Data</th><th class="text-end">Entraram</th><th class="text-end">Saíram</th><th class="text-end">Total</th></tr></thead>
+            <tbody>
+              {% if tendencia_sync %}
+                {% for t in tendencia_sync %}
+                <tr><td>{{ t.data_ref }}</td><td class="text-end text-danger">{{ t.inativos_entraram }}</td><td class="text-end text-success">{{ t.inativos_sairam }}</td><td class="text-end">{{ t.total_inativos }}</td></tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="4" class="text-muted">Sem histórico recente.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <div class="card h-100">
+      <div class="card-header"><strong>Atividade Recente (Ligações e Notas)</strong></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Quando</th><th>Tipo</th><th>Usuário</th><th>Cliente</th><th>Detalhe</th></tr></thead>
+            <tbody>
+              {% if atividade_recente %}
+                {% for a in atividade_recente %}
+                <tr>
+                  <td>{{ a.quando.strftime('%d/%m %H:%M:%S') if a.quando else '-' }}</td>
+                  <td>{% if a.tipo == 'ligacao' %}<span class="badge text-bg-primary">ligação</span>{% else %}<span class="badge text-bg-info">nota</span>{% endif %}</td>
+                  <td>{{ a.usuario }} <small class="text-muted">({{ a.usuario_tipo }})</small></td>
+                  <td>{{ a.cliente }}</td>
+                  <td class="small text-muted">{{ a.detalhe }}</td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="5" class="text-muted">Sem atividade recente.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><strong>Pendências Por Consultor</strong></div>
+      <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Consultor</th><th class="text-end">Pendentes</th></tr></thead><tbody>{% if top_pendencias %}{% for item in top_pendencias %}<tr><td>{{ item.consultor_nome }}</td><td class="text-end">{{ item.pendentes }}</td></tr>{% endfor %}{% else %}<tr><td colspan="2" class="text-muted">Sem pendências no momento.</td></tr>{% endif %}</tbody></table></div></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><strong>Pendentes Críticos (amostra)</strong></div>
+      <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>ID</th><th>Cliente</th><th>Origem</th><th>CNPJ</th><th>Oracle</th></tr></thead><tbody>{% if pendentes_criticos %}{% for c in pendentes_criticos %}<tr><td>{{ c.id }}</td><td>{{ c.nome }}</td><td>{{ c.origem }}</td><td><code>{{ c.cnpj or '-' }}</code></td><td>{% if c.cd_cliente_oracle %}<code>{{ c.cd_cliente_oracle }}</code>{% else %}-{% endif %}</td></tr>{% endfor %}{% else %}<tr><td colspan="5" class="text-muted">Sem pend?ncias cr?ticas.</td></tr>{% endif %}</tbody></table></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><strong>Duplicados Por CNPJ + Razão Social</strong></div>
+      <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>CNPJ</th><th class="text-end">Qtd</th><th>Exemplos</th></tr></thead><tbody>{% if duplicados_cnpj_completo %}{% for d in duplicados_cnpj_completo %}<tr><td><code>{{ d.cnpj }}</code></td><td class="text-end">{{ d.quantidade }}</td><td class="small text-muted">{% for c in d.clientes %}#{{ c.id }} {{ c.nome }}{% if not loop.last %}; {% endif %}{% endfor %}</td></tr>{% endfor %}{% else %}<tr><td colspan="3" class="text-muted">Sem duplicados por CNPJ + Razão Social.</td></tr>{% endif %}</tbody></table></div></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><strong>Duplicados Por CNPJ Raiz + Razão Social (múltiplos CNPJs)</strong></div>
+      <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>CNPJ Raiz</th><th class="text-end">Qtd</th><th>Exemplos</th></tr></thead><tbody>{% if duplicados_por_raiz %}{% for d in duplicados_por_raiz %}<tr><td><code>{{ d.cnpj_raiz }}</code></td><td class="text-end">{{ d.quantidade }}</td><td class="small text-muted">{% for c in d.clientes %}#{{ c.id }} {{ c.nome }}{% if not loop.last %}; {% endif %}{% endfor %}</td></tr>{% endfor %}{% else %}<tr><td colspan="3" class="text-muted">Sem duplicados por CNPJ raiz + Razão Social.</td></tr>{% endif %}</tbody></table></div></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% if not bloqueado %}
+<script>
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+let _devSyncOracleTimer = null;
+let _devSyncOracleAutoReloadPending = false;
+let _devSyncOracleWasRunning = false;
+
+function setMensagemSyncDev(texto, tipo = 'muted') {
+  const el = document.getElementById('devSyncOracleMensagem');
+  if (!el) return;
+  el.className = `small mt-2 text-${tipo}`;
+  el.textContent = texto;
+}
+
+function atualizarStatusSyncOracleDev(manual = false) {
+  const badge = document.getElementById('devSyncOracleStatusBadge');
+  if (!badge) return;
+
+  fetch('/sincronizar-oracle-status')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        badge.className = 'badge text-bg-secondary';
+        badge.textContent = 'Sync Oracle: indisponível';
+        if (manual) setMensagemSyncDev(data.mensagem || 'Status indisponível.', 'warning');
+        return;
+      }
+
+      if (data.running) {
+        _devSyncOracleWasRunning = true;
+        badge.className = 'badge text-bg-warning';
+        badge.textContent = 'Sync Oracle: em andamento';
+        setMensagemSyncDev(`Sincronização em andamento desde ${data.started_at || '--'}.`, 'warning');
+        return;
+      }
+
+      if (data.last_success === true) {
+        badge.className = 'badge text-bg-success';
+        badge.textContent = 'Sync Oracle: ok';
+        setMensagemSyncDev(`Última sincronização concluída em ${data.finished_at || '--'}.`, 'success');
+        if (_devSyncOracleAutoReloadPending && _devSyncOracleWasRunning) {
+          _devSyncOracleAutoReloadPending = false;
+          _devSyncOracleWasRunning = false;
+          window.location.reload();
+        }
+        return;
+      }
+
+      if (data.last_success === false) {
+        badge.className = 'badge text-bg-danger';
+        badge.textContent = 'Sync Oracle: erro';
+        setMensagemSyncDev(data.last_error || `Falha na sincronização em ${data.finished_at || '--'}.`, 'danger');
+        if (_devSyncOracleAutoReloadPending && _devSyncOracleWasRunning) {
+          _devSyncOracleAutoReloadPending = false;
+          _devSyncOracleWasRunning = false;
+        }
+        return;
+      }
+
+      badge.className = 'badge text-bg-secondary';
+      badge.textContent = 'Sync Oracle: aguardando';
+      if (manual) setMensagemSyncDev('Nenhuma sincronização recente em execução.', 'muted');
+    })
+    .catch(() => {
+      badge.className = 'badge text-bg-secondary';
+      badge.textContent = 'Sync Oracle: indisponível';
+      if (manual) setMensagemSyncDev('Erro ao consultar status da sincronização.', 'danger');
+    });
+}
+
+function iniciarMonitorSyncOracleDev() {
+  const badge = document.getElementById('devSyncOracleStatusBadge');
+  if (!badge) return;
+  atualizarStatusSyncOracleDev();
+  if (_devSyncOracleTimer) return;
+  _devSyncOracleTimer = setInterval(() => atualizarStatusSyncOracleDev(), 5000);
+}
+
+async function sincronizarOracleDev() {
+  const btn = document.getElementById('btnDevSincronizarOracle');
+  if (!btn) return;
+  if (!confirm('Deseja sincronizar os clientes com Oracle agora?\n\nEsta ação pode levar alguns minutos.')) return;
+
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Sincronizando...';
+
+  try {
+    const r = await fetch('/sincronizar-oracle-async', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrf_token') }
+    });
+    const data = await r.json();
+    const ok = !!(data.success || data.ok);
+    const msg = data.message || data.mensagem || 'Sincronização iniciada.';
+    setMensagemSyncDev(msg, ok ? 'success' : 'danger');
+    if (ok) {
+      _devSyncOracleAutoReloadPending = true;
+      _devSyncOracleWasRunning = false;
+      atualizarStatusSyncOracleDev(true);
+    }
+  } catch (e) {
+    setMensagemSyncDev('Erro ao iniciar sincronização Oracle.', 'danger');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+
+async function executarSyncEspeciais() {
+  const btn = document.getElementById('btnDevSyncEspeciais');
+  if (!confirm('Executar sincronização de clientes especiais não sincronizados agora?')) return;
+  const originalText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Sincronizando...';
+  }
+  try {
+    const r = await fetch('/clientes/sincronizar-manuais-oracle', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json','X-CSRFToken': getCookie('csrf_token')}
+    });
+    const data = await r.json();
+    setMensagemSyncDev(data.mensagem || (data.ok ? 'Sync concluído.' : 'Falha no sync.'), data.ok ? 'success' : 'danger');
+    if (data.ok) location.reload();
+  } catch (e) {
+    setMensagemSyncDev('Erro ao executar sync de especiais.', 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+}
+
+async function testarConexaoOracleDev() {
+  const btn = document.getElementById('btnDevTestarOracle');
+  if (!btn) return;
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Testando...';
+  try {
+    const r = await fetch('/test-oracle');
+    const data = await r.json();
+    const ok = !!data.success;
+    setMensagemSyncDev(data.message || 'Teste executado.', ok ? 'success' : 'danger');
+  } catch (e) {
+    setMensagemSyncDev('Erro ao testar conexão com Oracle.', 'danger');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  iniciarMonitorSyncOracleDev();
+});
+</script>
+{% endif %}
+{% endblock %}

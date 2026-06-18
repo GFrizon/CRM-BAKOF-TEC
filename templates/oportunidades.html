@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+
+{% block title %}Pipeline de Oportunidades - CRM Bakof{% endblock %}
+
+{% block content %}
+{% include "oportunidades/_header.html" %}
+{% include "oportunidades/_stats.html" %}
+{% include "oportunidades/_filtros.html" %}
+{% include "oportunidades/_kanban.html" %}
+{% include "oportunidades/_modal_excluir.html" %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% include "oportunidades/_scripts.html" %}
+{% endblock %}

@@ -1,0 +1,255 @@
+{% extends "layout.html" %}
+{% block title %}Meus Clientes{% endblock %}
+{% block content %}
+
+{% include "meus_clientes/_styles.html" %}
+
+<div id="meusClientesRoot" data-aba-atual="{{ aba }}">
+{% set visao_padrao = 'dashboard' if current_user.tipo in ('consultor', 'televendas', 'supervisor_repr', 'representante') else 'clientes' %}
+{% set visao_atual = visao|default(request.args.get('visao') or visao_padrao, true) %}
+{% set visao_televendas = (current_user.tipo == 'televendas') or (current_user.tipo == 'supervisor' and dashboard_tipo == 'televendas') %}
+{% include "meus_clientes/_modal_novidades.html" %}
+
+<div id="secao-dashboard" class="{% if visao_atual != 'dashboard' %}d-none{% endif %}">
+{% include "meus_clientes/_stats_cards.html" %}
+{% include "meus_clientes/_dashboard_charts.html" %}
+{% include "meus_clientes/_painel_supervisor_repr_dashboard.html" %}
+
+{% include "meus_clientes/_filtro_mensal_consultor.html" %}
+
+{% if visao_atual == 'clientes' %}
+{% include "meus_clientes/_filtro_oracle_periodo.html" %}
+{% endif %}
+
+{% if visao_atual == 'clientes' %}
+{% include "meus_clientes/_painel_stats_oracle.html" %}
+
+{% include "meus_clientes/_painel_stats_inativos.html" %}
+
+{% include "meus_clientes/_painel_stats_proximos_inativacao.html" %}
+{% endif %}
+</div>
+
+<div id="secao-clientes" class="{% if visao_atual != 'clientes' %}d-none{% endif %}" style="position:relative;">
+{% if visao_atual == 'clientes' %}
+{% if aba == 'inativos' and current_user.tipo == 'supervisor' %}
+<a
+  href="{{ url_for('configurar_cnpjs_raiz_ocultos_inativos', return_to=request.full_path, visao=visao|default(request.args.get('visao', 'clientes')), dashboard_tipo=dashboard_tipo|default(''), agrupar_por=agrupar_por|default(request.args.get('agrupar_por', '')), conceito_filtro=request.args.get('conceito_filtro', ''), consultor_filtro=request.args.get('consultor_filtro', '')) }}"
+  class="btn btn-light btn-sm position-absolute"
+  title="Configurar CNPJ raiz oculto"
+  aria-label="Configurar CNPJ raiz oculto"
+  style="top:6px; right:8px; width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:999px; z-index:3; border:1px solid rgba(148,163,184,.35);"
+>
+  <i class="bi bi-gear" style="font-size:.8rem;"></i>
+</a>
+{% endif %}
+
+<!-- ============================================================
+     LISTA AGRUPADA (oracle por representante / inativos por UF)
+     ============================================================ -->
+{% if aba in ('oracle', 'inativos', 'proximos_inativacao', 'construtoras') or usar_vista_agrupada|default(false) %}
+<div class="mt-2">
+  {% include "meus_clientes/_tabs_quick_actions_agrupado.html" %}
+
+  {% include "meus_clientes/_lista_agrupada.html" %}
+</div>
+
+{% else %}
+<!-- ============================================================
+     TABELA PADRAO (abas pendentes / contatados / retornar)
+     ============================================================ -->
+
+  {% include "meus_clientes/_tabs_quick_actions_tabela_padrao.html" %}
+
+  {% include "meus_clientes/_tabela_clientes_padrao.html" %}
+{% endif %}
+{% endif %}
+
+</div>
+
+{% include "meus_clientes/_modais.html" %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% include "meus_clientes/_scripts.html" %}
+{% if current_user.tipo in ('consultor', 'televendas') and stats and stats.chart_ligacoes_14d %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  (function () {
+    const evolucaoEl = document.getElementById('chartOperadorEvolucao');
+    const resultadosEl = document.getElementById('chartOperadorResultados');
+    if (!evolucaoEl || !resultadosEl || typeof Chart === 'undefined') return;
+
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#64748b';
+
+    const dias = {{ stats.chart_ligacoes_14d|tojson|safe }};
+    const resultados = {{ stats.chart_resultados_30d|tojson|safe }};
+
+    function renderizarMiniGraficosCards() {
+      const nodes = document.querySelectorAll('.stat-sparkline');
+      if (!nodes.length) return;
+
+      const parseSeries = (value) => {
+        try {
+          const parsed = JSON.parse(value || '[]');
+          return Array.isArray(parsed) ? parsed.map((n) => Number(n || 0)) : [];
+        } catch (_) {
+          return [];
+        }
+      };
+
+      nodes.forEach((node) => {
+        const current = parseSeries(node.dataset.series);
+        const previous = parseSeries(node.dataset.previous);
+        if (!current.length) return;
+
+        const color = node.dataset.color || '#2563eb';
+        const width = 180;
+        const height = 44;
+        const pad = 3;
+        const combined = current.concat(previous.length ? previous : []);
+        const max = Math.max(...combined, 1);
+        const min = Math.min(...combined, 0);
+        const span = Math.max(max - min, 1);
+        const stepCurrent = current.length > 1 ? (width - pad * 2) / (current.length - 1) : 0;
+        const stepPrevious = previous.length > 1 ? (width - pad * 2) / (previous.length - 1) : 0;
+
+        const makePath = (values, step) => values.map((value, index) => {
+          const x = pad + step * index;
+          const y = pad + ((max - value) / span) * (height - pad * 2);
+          return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+        }).join(' ');
+
+        const nowPath = makePath(current, stepCurrent);
+        const prevPath = previous.length ? makePath(previous, stepPrevious) : '';
+        const areaPath = nowPath ? `${nowPath} L ${width - pad} ${height - pad} L ${pad} ${height - pad} Z` : '';
+        node.innerHTML = `
+          <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+            ${areaPath ? `<path class="sparkline-area" d="${areaPath}" fill="${color}"></path>` : ''}
+            ${prevPath ? `<path class="sparkline-prev" d="${prevPath}"></path>` : ''}
+            <path class="sparkline-now" d="${nowPath}" stroke="${color}"></path>
+          </svg>
+        `;
+      });
+    }
+
+    renderizarMiniGraficosCards();
+
+    new Chart(evolucaoEl, {
+      type: 'line',
+      data: {
+        labels: dias.map((item) => item.label),
+        datasets: [{
+          label: "{{ 'Ligacoes' if current_user.tipo == 'televendas' else 'Interacoes' }}",
+          data: dias.map((item) => item.total),
+          borderColor: '#2563eb',
+          backgroundColor: (context) => {
+            const chart = context.chart;
+            const area = chart.chartArea;
+            if (!area) return 'rgba(37, 99, 235, 0.12)';
+            const gradient = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+            gradient.addColorStop(0, 'rgba(37, 99, 235, 0.22)');
+            gradient.addColorStop(1, 'rgba(37, 99, 235, 0)');
+            return gradient;
+          },
+          borderWidth: 2.5,
+          fill: true,
+          tension: 0.38,
+          pointRadius: 2.5,
+          pointHoverRadius: 5,
+          pointBackgroundColor: '#2563eb',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            borderColor: 'rgba(255,255,255,.12)',
+            borderWidth: 1,
+            displayColors: false,
+            padding: 10
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            border: { display: false },
+            ticks: {
+              precision: 0,
+              stepSize: 1,
+              padding: 8
+            },
+            grid: { color: 'rgba(148, 163, 184, 0.18)', drawTicks: false }
+          },
+          x: {
+            border: { display: false },
+            ticks: { maxRotation: 0, autoSkipPadding: 18 },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+
+    new Chart(resultadosEl, {
+      type: 'doughnut',
+      data: {
+        labels: ['Comprou', 'Nao comprou', 'Retornar', 'Sem interesse', 'Relacionamento', 'Cliente inativo'],
+        datasets: [{
+          data: [
+            resultados.comprou || 0,
+            resultados.nao_comprou || 0,
+            resultados.retornar || 0,
+            resultados.sem_interesse || 0,
+            resultados.relacionamento || 0,
+            resultados.cliente_inativo || 0
+          ],
+          backgroundColor: ['#10b981', '#94a3b8', '#f59e0b', '#ef4444', '#2563eb', '#475569'],
+          borderColor: '#ffffff',
+          borderWidth: 3,
+          hoverOffset: 5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '68%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              padding: 12,
+              font: { size: 11 },
+              usePointStyle: true,
+              pointStyle: 'circle',
+              boxWidth: 6,
+              boxHeight: 6
+            }
+          },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            callbacks: {
+              label: (context) => {
+                const total = context.dataset.data.reduce((soma, valor) => soma + Number(valor || 0), 0);
+                const pct = total ? ((Number(context.parsed || 0) / total) * 100).toFixed(1) : '0.0';
+                return `${context.label}: ${context.parsed} (${pct}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

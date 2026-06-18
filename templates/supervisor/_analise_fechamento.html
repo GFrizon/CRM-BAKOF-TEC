@@ -1,0 +1,64 @@
+﻿<div class="panel-card mt-3" id="cardAnaliseFechamento" style="display:none;">
+  <div class="panel-header">
+    <i class="bi bi-graph-up-arrow"></i>
+    <span>Leitura Gerencial do Fechamento</span>
+    <small id="analiseFechamentoPeriodoInfo">Comparativo mensal dos consultores</small>
+  </div>
+  <div class="panel-body">
+    <div class="row g-3 mb-3" id="analiseFechamentoCards"></div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-xl-4">
+        <div class="analise-box h-100">
+          <div class="analise-box-title"><i class="bi bi-arrow-up-circle text-success me-1"></i>Quem Melhorou</div>
+          <div id="analiseFechamentoMelhoraram" class="small text-muted">Carregando...</div>
+        </div>
+      </div>
+      <div class="col-xl-4">
+        <div class="analise-box h-100">
+          <div class="analise-box-title"><i class="bi bi-arrow-down-circle text-danger me-1"></i>Quem Piorou</div>
+          <div id="analiseFechamentoPioraram" class="small text-muted">Carregando...</div>
+        </div>
+      </div>
+      <div class="col-xl-4">
+        <div class="analise-box h-100">
+          <div class="analise-box-title"><i class="bi bi-exclamation-circle text-warning me-1"></i>Em Alerta</div>
+          <div id="analiseFechamentoAlertasConsultores" class="small text-muted">Carregando...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="analise-box mb-3">
+      <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+        <div class="analise-box-title mb-0"><i class="bi bi-arrow-left-right text-primary me-1"></i>Movimento das Carteiras no Mês</div>
+        <span class="small text-muted" id="analiseFechamentoMovimentoInfo">Entradas e saídas por consultor</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Operador</th>
+              <th class="text-center">Entraram 90-150</th>
+              <th class="text-center">Saíram 90-150</th>
+              <th class="text-center">Entraram Prox.</th>
+              <th class="text-center">Saíram Prox.</th>
+              <th class="text-center">Saldo 90-150</th>
+              <th class="text-center">Saldo Prox.</th>
+            </tr>
+          </thead>
+          <tbody id="analiseFechamentoMovimentoBody">
+            <tr><td colspan="7" class="text-center text-muted py-3">Carregando...</td></tr>
+          </tbody>
+          <tfoot id="analiseFechamentoMovimentoFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="analise-box">
+      <div class="analise-box-title"><i class="bi bi-bell text-primary me-1"></i>Alertas Automáticos do Período</div>
+      <div class="row g-3" id="analiseFechamentoAlertasGerais">
+        <div class="col-12"><div class="text-muted small">Carregando...</div></div>
+      </div>
+    </div>
+  </div>
+</div>

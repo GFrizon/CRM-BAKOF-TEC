@@ -1,0 +1,84 @@
+{% set is_meus_clientes_page = (request.endpoint == 'meus_clientes') %}
+{% if is_meus_clientes_page %}
+  {% set visao_padrao_topbar = 'dashboard' if current_user.tipo in ('consultor', 'televendas', 'supervisor_repr', 'representante') else 'clientes' %}
+  {% set visao_atual_topbar = visao|default(request.args.get('visao') or visao_padrao_topbar, true) %}
+{% endif %}
+<header class="app-topbar {{ 'topbar-with-client-controls' if is_meus_clientes_page and visao_atual_topbar == 'clientes' }}">
+  <div class="topbar-left">
+    {% if current_user.is_authenticated %}
+    <button type="button"
+            class="sidebar-toggle-btn"
+            id="sidebarToggle"
+            aria-label="Alternar menu lateral"
+            aria-pressed="false"
+            title="Ocultar menu lateral">
+      <i class="bi bi-layout-sidebar-inset-reverse"></i>
+    </button>
+    {% endif %}
+    <i class="bi bi-grid-3x3-gap-fill" style="color:var(--brand-400);font-size:1rem;"></i>
+    <span class="topbar-page-title">Bakof &mdash; Gestão de Relacionamento com Clientes</span>
+  </div>
+  <div class="topbar-right {{ 'topbar-client-controls-wrap' if is_meus_clientes_page and visao_atual_topbar == 'clientes' }}">
+    {% if current_user.is_authenticated and is_meus_clientes_page and visao_atual_topbar == 'clientes' %}
+    <div class="topbar-client-controls">
+      <form method="get" action="{{ url_for('meus_clientes') }}" class="header-search topbar-search">
+        <input type="hidden" name="aba" value="{{ aba }}">
+        <input type="hidden" name="visao" value="{{ visao|default(request.args.get('visao', 'clientes')) }}">
+        <input type="hidden" name="agrupar_por" value="{{ agrupar_por|default(request.args.get('agrupar_por', ''), true) }}">
+        {% if dashboard_tipo %}
+        <input type="hidden" name="dashboard_tipo" value="{{ dashboard_tipo }}">
+        {% endif %}
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" class="form-control js-auto-submit-search" name="q"
+                 placeholder="Buscar cliente, CNPJ, telefone ou representante..."
+                 value="{{ request.args.get('q','') }}"
+                 id="buscaRapida"
+                 data-debounce-ms="380"
+                 autocomplete="off">
+        </div>
+        <small id="buscaStatus" class="visually-hidden"></small>
+      </form>
+      <div class="header-actions topbar-actions d-flex gap-2">
+        {% if current_user.tipo in ('consultor', 'televendas', 'supervisor') %}
+        <button class="btn btn-warning btn-sm" onclick="abrirModalVendaRetroativa()">
+          <i class="bi bi-receipt-cutoff me-1"></i> Venda Retroativa
+        </button>
+        {% endif %}
+        {% if aba not in ('oracle', 'inativos') and current_user.tipo in ('consultor', 'supervisor') %}
+        <button class="btn btn-primary btn-sm" onclick="abrirModalAdicionar()">
+          <i class="bi bi-person-plus me-1"></i> Adicionar Cliente
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% if current_user.is_authenticated and current_user.tipo in ('supervisor', 'supervisor_repr') %}
+    <span id="sse-indicador-atividade"
+          class="d-none badge bg-success"
+          style="font-size:0.72rem;cursor:default;"
+          title="">
+      <i class="bi bi-activity me-1"></i>Atividade
+    </span>
+    {% endif %}
+    {% if current_user.is_authenticated %}
+    <span style="font-size:0.8rem;color:var(--text-3);">
+      <i class="bi bi-clock me-1"></i>
+      <span id="topbar-clock"></span>
+    </span>
+    {% endif %}
+  </div>
+</header>
+
+<script>
+  (function() {
+    var el = document.getElementById('topbar-clock');
+    if (!el) return;
+    function tick() {
+      var d = new Date();
+      el.textContent = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+    tick();
+    setInterval(tick, 30000);
+  })();
+</script>

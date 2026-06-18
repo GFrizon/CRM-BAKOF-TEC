@@ -1,0 +1,57 @@
+<!-- ============================================================
+     FILTRO ORACLE POR PERÍODO
+     ============================================================ -->
+{% set visao_atual_oracle = visao|default(request.args.get('visao', ''), true) %}
+{% set ocultar_filtro_oracle = (current_user.tipo == 'supervisor_repr' and visao_atual_oracle == 'dashboard') %}
+{% if aba == 'oracle' and not ocultar_filtro_oracle %}
+<div class="panel-card">
+  <div class="panel-header">
+    <i class="bi bi-funnel"></i>
+    <span>Filtrar por Período</span>
+  </div>
+  <div class="panel-body" style="padding-bottom:16px;">
+    <form method="get" action="{{ url_for('meus_clientes') }}" class="row g-3">
+      <input type="hidden" name="aba" value="oracle">
+      <input type="hidden" name="visao" value="{{ visao|default(request.args.get('visao', 'dashboard')) }}">
+      <input type="hidden" name="agrupar_por" value="{{ agrupar_por|default(request.args.get('agrupar_por', ''), true) }}">
+      {% if dashboard_tipo %}
+      <input type="hidden" name="dashboard_tipo" value="{{ dashboard_tipo }}">
+      {% endif %}
+      <div class="col-md-4">
+        <label class="form-label">Período sem Compra:</label>
+        <select class="form-select" name="periodo_oracle" onchange="this.form.submit()">
+          <option value="">Todos os períodos</option>
+          <option value="90"  {% if request.args.get('periodo_oracle') == '90'  %}selected{% endif %}>90 dias</option>
+          <option value="150" {% if request.args.get('periodo_oracle') == '150' %}selected{% endif %}>150 dias</option>
+          <option value="180" {% if request.args.get('periodo_oracle') == '180' %}selected{% endif %}>180 dias</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Status de Crédito:</label>
+        <select class="form-select js-debounce-submit-control" name="conceito_filtro" data-debounce-ms="260">
+          <option value="">Todos os status</option>
+          <option value="LIBERADO"     {% if request.args.get('conceito_filtro') == 'LIBERADO'     %}selected{% endif %}>Liberados</option>
+          <option value="INADIMPLENTE" {% if request.args.get('conceito_filtro') == 'INADIMPLENTE' %}selected{% endif %}>Inadimplentes</option>
+          <option value="SEM_CONCEITO" {% if request.args.get('conceito_filtro') == 'SEM_CONCEITO' %}selected{% endif %}>Sem Conceito</option>
+        </select>
+      </div>
+      {% if current_user.tipo != 'consultor' %}
+      <div class="col-md-4">
+        <label class="form-label">Consultor:</label>
+        <select class="form-select js-debounce-submit-control" name="consultor_filtro" data-debounce-ms="260">
+          <option value="">Todos os consultores</option>
+          {% for consultor in consultores_oracle %}
+          <option value="{{ consultor.nome }}" {% if request.args.get('consultor_filtro') == consultor.nome %}selected{% endif %}>
+            {{ consultor.nome }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <input type="hidden" name="consultor_filtro" value="">
+      {% endif %}
+    </form>
+  </div>
+</div>
+{% endif %}
+

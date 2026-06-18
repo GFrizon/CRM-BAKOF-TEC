@@ -1,0 +1,202 @@
+<script>
+let modalSupervisor, modalVinculos, modalAdicionarVinculo;
+
+document.addEventListener('DOMContentLoaded', function() {
+    modalSupervisor = new bootstrap.Modal(document.getElementById('modalSupervisor'));
+    modalVinculos = new bootstrap.Modal(document.getElementById('modalVinculos'));
+    modalAdicionarVinculo = new bootstrap.Modal(document.getElementById('modalAdicionarVinculo'));
+});
+
+function abrirModalCriar() {
+    document.getElementById('modalSupervisorTitulo').textContent = 'Novo Supervisor de Representante';
+    document.getElementById('formSupervisor').reset();
+    document.getElementById('supervisorId').value = '';
+    document.getElementById('supervisorSenha').required = true;
+    modalSupervisor.show();
+}
+
+function editarSupervisor(id) {
+    fetch(`/supervisor/usuarios`)
+        .then(r => r.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            alert('Funcionalidade de edição será implementada via API');
+        });
+}
+
+function salvarSupervisor() {
+    const id = document.getElementById('supervisorId').value;
+    const nome = document.getElementById('supervisorNome').value;
+    const email = document.getElementById('supervisorEmail').value;
+    const senha = document.getElementById('supervisorSenha').value;
+    const codigoTg650 = document.getElementById('supervisorCodigoTg650').value;
+
+    if (!nome || !email) {
+        alert('Nome e email são obrigatórios');
+        return;
+    }
+
+    if (!id && !senha) {
+        alert('Senha é obrigatória para novos usuários');
+        return;
+    }
+
+    const payload = {
+        nome: nome,
+        email: email,
+        tipo: 'supervisor_repr',
+        meta_diaria: 0
+    };
+
+    if (senha) {
+        payload.senha = senha;
+    }
+
+    fetch('/supervisor/usuarios/criar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            alert(data.mensagem);
+            modalSupervisor.hide();
+            location.reload();
+        } else {
+            alert('Erro: ' + data.mensagem);
+        }
+    })
+    .catch(err => alert('Erro ao salvar: ' + err));
+}
+
+function gerenciarVinculos(supervisorId, supervisorNome) {
+    document.getElementById('vinculosSupervisorId').value = supervisorId;
+    document.getElementById('vinculosSupervisorNome').textContent = supervisorNome;
+    
+    carregarVinculos(supervisorId);
+    modalVinculos.show();
+}
+
+function carregarVinculos(supervisorId) {
+    document.getElementById('listaVinculos').innerHTML = '<p class="text-center"><i class="bi bi-hourglass-split"></i> Carregando...</p>';
+    
+    fetch(`/supervisor/supervisores-representante/${supervisorId}/vinculos`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                renderizarVinculos(data.vinculos);
+            } else {
+                document.getElementById('listaVinculos').innerHTML = '<p class="text-danger">Erro ao carregar vínculos</p>';
+            }
+        })
+        .catch(err => {
+            document.getElementById('listaVinculos').innerHTML = '<p class="text-danger">Erro: ' + err + '</p>';
+        });
+}
+
+function renderizarVinculos(vinculos) {
+    if (!vinculos || vinculos.length === 0) {
+        document.getElementById('listaVinculos').innerHTML = '<p class="text-muted">Nenhum vínculo cadastrado</p>';
+        return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-sm table-hover">';
+    html += '<thead><tr><th>Código</th><th>Nome</th><th>Origem</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+    
+    vinculos.forEach(v => {
+        const origem = v.sincronizado_tg650 ? '<span class="badge bg-info">TG650</span>' : '<span class="badge bg-secondary">Manual</span>';
+        const status = v.ativo ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>';
+        
+        html += `<tr>
+            <td><strong>${v.codigo_representante}</strong></td>
+            <td>${v.nome_representante || '-'}</td>
+            <td>${origem}</td>
+            <td>${status}</td>
+            <td>
+                ${v.ativo ? `<button class="btn btn-sm btn-danger" onclick="removerVinculo(${v.id})"><i class="bi bi-trash"></i></button>` : ''}
+            </td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table></div>';
+    document.getElementById('listaVinculos').innerHTML = html;
+}
+
+function abrirModalAdicionarVinculo() {
+    document.getElementById('formAdicionarVinculo').reset();
+    modalAdicionarVinculo.show();
+}
+
+function salvarVinculo() {
+    const supervisorId = document.getElementById('vinculosSupervisorId').value;
+    const codigoRepresentante = document.getElementById('vinculoCodigoRepresentante').value;
+    const nomeRepresentante = document.getElementById('vinculoNomeRepresentante').value;
+
+    if (!codigoRepresentante) {
+        alert('Código do representante – obrigatório');
+        return;
+    }
+
+    fetch(`/supervisor/supervisores-representante/${supervisorId}/vinculos/adicionar`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            codigo_representante: codigoRepresentante,
+            nome_representante: nomeRepresentante
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            alert(data.mensagem);
+            modalAdicionarVinculo.hide();
+            carregarVinculos(supervisorId);
+        } else {
+            alert('Erro: ' + data.mensagem);
+        }
+    })
+    .catch(err => alert('Erro ao adicionar vínculo: ' + err));
+}
+
+function removerVinculo(vinculoId) {
+    if (!confirm('Deseja realmente remover este vínculo?')) return;
+
+    const supervisorId = document.getElementById('vinculosSupervisorId').value;
+
+    fetch(`/supervisor/supervisores-representante/${supervisorId}/vinculos/${vinculoId}/remover`, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            alert(data.mensagem);
+            carregarVinculos(supervisorId);
+        } else {
+            alert('Erro: ' + data.mensagem);
+        }
+    })
+    .catch(err => alert('Erro ao remover vínculo: ' + err));
+}
+
+function sincronizarTG650() {
+    const supervisorId = document.getElementById('vinculosSupervisorId').value;
+    
+    if (!confirm('Deseja sincronizar os vínculos da TG 650 do Oracle?')) return;
+
+    fetch(`/supervisor/supervisores-representante/${supervisorId}/sincronizar-tg650`, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            alert(data.mensagem);
+            carregarVinculos(supervisorId);
+        } else {
+            alert('Erro: ' + data.mensagem);
+        }
+    })
+    .catch(err => alert('Erro ao sincronizar: ' + err));
+}
+</script>

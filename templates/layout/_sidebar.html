@@ -1,0 +1,186 @@
+<aside class="app-sidebar">
+
+  <!-- Brand / Logo -->
+  <a class="sidebar-brand" href="{{ url_for('index') }}" title="CRM Bakof Tec">
+    <img
+      src="{{ url_for('static', filename='img/bakof-logo.png') }}"
+      alt="Bakof"
+      onerror="this.style.display='none'"
+    >
+    <div class="sidebar-brand-text">
+      <span class="main">CRM</span>
+      <span class="sub">Bakof Tec</span>
+    </div>
+  </a>
+
+  <!-- Navegação -->
+  <nav class="sidebar-nav">
+    {% if current_user.is_authenticated %}
+      {% set visao_sidebar_padrao = 'dashboard' if current_user.tipo in ('consultor', 'televendas', 'supervisor_repr', 'representante') else 'clientes' %}
+      {% set visao_sidebar = visao|default(request.args.get('visao') or visao_sidebar_padrao, true) %}
+
+      {% if current_user.tipo == 'consultor' %}
+        <span class="sidebar-section-label">Menu</span>
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'dashboard' %}active{% endif %}"
+           href="{{ url_for('meus_clientes', visao='dashboard', aba='pendentes') }}"
+           title="Dashboard">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'clientes' %}active{% endif %}"
+           href="{{ url_for('meus_clientes', visao='clientes', aba='pendentes') }}"
+           title="Clientes">
+          <i class="bi bi-people-fill"></i> Clientes
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'cranio_page' %}active{% endif %}"
+           href="{{ url_for('cranio_page') }}"
+           title="Crânio">
+          <i class="bi bi-robot"></i> Crânio
+        </a>
+        <a class="sidebar-link"
+           href="http://192.168.0.3:5174/"
+           target="_blank"
+           rel="noopener noreferrer"
+           title="Funil de Oportunidades"
+           style="opacity:.86;">
+          <i class="bi bi-box-arrow-up-right"></i> Funil
+        </a>
+        <a class="sidebar-link {% if request.endpoint in ('campanhas_index','campanha_reativacao_premiada','campanha_historico_premiacoes') %}active{% endif %}"
+           href="{{ url_for('campanhas_index') }}"
+           title="Campanhas">
+          <i class="bi bi-trophy-fill"></i> Campanhas
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'ajuda_suporte' %}active{% endif %}"
+           href="{{ url_for('ajuda_suporte') }}"
+           title="Ajuda">
+          <i class="bi bi-question-circle"></i> Ajuda
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'minha_conta' %}active{% endif %}"
+           href="{{ url_for('minha_conta') }}"
+           title="Minha Conta">
+          <i class="bi bi-person-circle"></i> Minha Conta
+        </a>
+
+      {% elif current_user.tipo == 'supervisor' %}
+        {% set supervisor_em_televendas = (request.endpoint == 'dashboard_supervisor_televendas') %}
+        {% set endpoint_dashboard_supervisor = 'dashboard_supervisor_televendas' if supervisor_em_televendas else 'dashboard_supervisor' %}
+        <span class="sidebar-section-label">Dashboard</span>
+        <a class="sidebar-link {% if request.endpoint in ('dashboard_supervisor', 'dashboard_supervisor_televendas') and request.args.get('secao') != 'fechamento' %}active{% endif %}"
+           href="{{ url_for(endpoint_dashboard_supervisor) }}"
+           title="Dashboard">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a class="sidebar-link {% if request.endpoint in ('dashboard_supervisor', 'dashboard_supervisor_televendas') and request.args.get('secao') == 'fechamento' %}active{% endif %}"
+           href="{{ url_for(endpoint_dashboard_supervisor, secao='fechamento') }}#resultadosFiltrados"
+           title="Fechamento">
+          <i class="bi bi-calendar-check"></i> Fechamento
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' %}active{% endif %}"
+           href="{{ url_for('meus_clientes') }}"
+           title="Clientes">
+          <i class="bi bi-people-fill"></i> Clientes
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'cranio_page' %}active{% endif %}"
+           href="{{ url_for('cranio_page') }}"
+           title="Crânio">
+          <i class="bi bi-robot"></i> Crânio
+        </a>
+
+        <a class="sidebar-link"
+           href="http://192.168.0.3:5174/"
+           target="_blank"
+           rel="noopener noreferrer"
+           title="Funil de Oportunidades"
+           style="opacity:.86;">
+          <i class="bi bi-box-arrow-up-right"></i> Funil
+        </a>
+
+        <span class="sidebar-section-label">Gerenciamento</span>
+        <a class="sidebar-link {% if request.endpoint in ('campanhas_index','campanha_reativacao_premiada','campanha_configuracao','campanha_historico_premiacoes') %}active{% endif %}"
+           href="{{ url_for('campanhas_index') }}"
+           title="Campanhas">
+          <i class="bi bi-trophy-fill"></i> Campanhas
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'ajuda_suporte' %}active{% endif %}"
+           href="{{ url_for('ajuda_suporte') }}"
+           title="Ajuda">
+          <i class="bi bi-question-circle"></i> Ajuda
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'minha_conta' %}active{% endif %}"
+           href="{{ url_for('minha_conta') }}"
+           title="Minha Conta">
+          <i class="bi bi-person-circle"></i> Minha Conta
+        </a>
+        {% if config.get('SUPERVISOR_SECRET_HEALTH_KEY') %}
+        <a class="sidebar-link" style="opacity:.62;font-size:.82rem;"
+           href="{{ url_for('supervisor_monitoramento_oculto', chave=config.get('SUPERVISOR_SECRET_HEALTH_KEY')) }}"
+           title="Painel desenvolvedor">
+          <i class="bi bi-code-square"></i> dev
+        </a>
+        {% endif %}
+
+      {% elif current_user.tipo == 'representante' %}
+        <span class="sidebar-section-label">Menu</span>
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'dashboard' %}active{% endif %}"
+           href="{{ url_for('meus_clientes', visao='dashboard', aba='oracle') }}"
+           title="Dashboard">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'clientes' %}active{% endif %}"
+           href="{{ url_for('meus_clientes', visao='clientes', aba='oracle') }}"
+           title="Clientes">
+          <i class="bi bi-people-fill"></i> Clientes
+        </a>
+
+      {% elif current_user.tipo in ('supervisor_repr', 'televendas') %}
+        <span class="sidebar-section-label">Menu</span>
+        {% set aba_padrao = 'inativos' if current_user.tipo == 'televendas' else 'oracle' %}
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'dashboard' %}active{% endif %}"
+           href="{{ url_for('meus_clientes', visao='dashboard', aba=aba_padrao) }}"
+           title="Dashboard">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'meus_clientes' and visao_sidebar == 'clientes' %}active{% endif %}"
+           href="{{ url_for('meus_clientes', visao='clientes', aba=aba_padrao) }}"
+           title="Clientes">
+          <i class="bi bi-people-fill"></i> Clientes
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'cranio_page' %}active{% endif %}"
+           href="{{ url_for('cranio_page') }}"
+           title="Crânio">
+          <i class="bi bi-robot"></i> Crânio
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'ajuda_suporte' %}active{% endif %}"
+           href="{{ url_for('ajuda_suporte') }}"
+           title="Ajuda">
+          <i class="bi bi-question-circle"></i> Ajuda
+        </a>
+        <a class="sidebar-link {% if request.endpoint == 'minha_conta' %}active{% endif %}"
+           href="{{ url_for('minha_conta') }}"
+           title="Minha Conta">
+          <i class="bi bi-person-circle"></i> Minha Conta
+        </a>
+
+      {% endif %}
+
+    {% endif %}
+  </nav>
+
+  <!-- Rodapé – usuário + logout -->
+  {% if current_user.is_authenticated %}
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">
+        {{ current_user.nome[0]|upper if current_user.nome else '?' }}
+      </div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" title="{{ current_user.nome }}">{{ current_user.nome }}</div>
+        <div class="sidebar-user-role">{{ current_user.tipo|capitalize }}</div>
+      </div>
+    </div>
+    <a class="sidebar-logout" href="{{ url_for('logout') }}">
+      <i class="bi bi-box-arrow-right"></i> Sair do sistema
+    </a>
+  </div>
+  {% endif %}
+
+</aside>

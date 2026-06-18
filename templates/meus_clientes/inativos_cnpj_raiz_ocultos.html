@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+{% block title %}Configuracao de CNPJ raiz oculto - CRM Bakof{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 860px;">
+  <nav aria-label="breadcrumb" style="font-size:.85rem;">
+    <ol class="breadcrumb mb-2">
+      <li class="breadcrumb-item"><a href="{{ return_to }}">Meus Clientes</a></li>
+      <li class="breadcrumb-item active" aria-current="page">CNPJ raiz oculto</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h4 class="fw-bold mb-1"><i class="bi bi-gear me-2"></i>Configurar exclusoes da Lista Publica</h4>
+      <div class="text-muted small">Supervisores podem ocultar matriz e filiais pela raiz do CNPJ.</div>
+    </div>
+    <a href="{{ return_to }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Voltar para lista
+    </a>
+  </div>
+
+  <form method="post" class="card border-0 shadow-sm">
+    <input type="hidden" name="return_to" value="{{ return_to }}">
+    <input type="hidden" name="visao" value="{{ request.args.get('visao', 'clientes') }}">
+    <input type="hidden" name="dashboard_tipo" value="{{ request.args.get('dashboard_tipo', '') }}">
+    <input type="hidden" name="agrupar_por" value="{{ request.args.get('agrupar_por', '') }}">
+    <input type="hidden" name="conceito_filtro" value="{{ request.args.get('conceito_filtro', '') }}">
+    <input type="hidden" name="consultor_filtro" value="{{ request.args.get('consultor_filtro', '') }}">
+
+    <div class="card-header bg-light">
+      <strong>Raizes bloqueadas da Lista Publica</strong>
+    </div>
+    <div class="card-body">
+      <label for="cnpjsRaiz" class="form-label">Digite 1 CNPJ raiz por linha</label>
+      <textarea
+        id="cnpjsRaiz"
+        name="cnpjs_raiz"
+        class="form-control"
+        rows="10"
+        placeholder="Exemplo: 12345678"
+        spellcheck="false"
+      >{{ cnpjs_raiz_texto }}</textarea>
+      <div class="form-text">
+        O sistema usa os 8 primeiros digitos. Se bloquear <code>12345678</code>, a matriz e as filiais dessa raiz saem da Lista Publica e da contagem de inativos.
+      </div>
+    </div>
+    <div class="card-footer bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="text-muted small">
+        Ativos agora: <strong>{{ cnpjs_raiz_ocultos|length }}</strong>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{{ return_to }}" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-save me-1"></i>Salvar configuracao
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {% if cnpjs_raiz_ocultos %}
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-header bg-light">
+      <strong>Raizes atualmente ocultas</strong>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>CNPJ raiz</th>
+            <th>Atualizado por</th>
+            <th>Atualizado em</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in cnpjs_raiz_ocultos %}
+          <tr>
+            <td><code>{{ item.cnpj_raiz }}</code></td>
+            <td>{{ item.atualizado_por.nome if item.atualizado_por else "-" }}</td>
+            <td>{{ item.atualizado_em.strftime('%d/%m/%Y %H:%M') if item.atualizado_em else "-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

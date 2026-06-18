@@ -1,0 +1,62 @@
+﻿{% macro stat_sparkline(item, color='#2563eb') -%}
+  {% if item %}
+  <div
+    class="stat-sparkline"
+    data-series='{{ item.serie|tojson }}'
+    data-previous='{{ item.anterior|tojson }}'
+    data-color="{{ color }}"
+  ></div>
+  <div class="stat-compare {{ item.classe or 'neutral' }}">{{ item.texto }}</div>
+  {% endif %}
+{%- endmacro %}
+
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card stat-card-with-sparkline">
+      <div class="stat-icon blue">
+        <i class="bi bi-people-fill"></i>
+      </div>
+      <div class="stat-value">{{ total_consultores }}</div>
+      <div class="stat-label">{{ dashboard_titulo }} Ativos</div>
+      {{ stat_sparkline((sparkline_cards or {}).get('consultores'), '#2563eb') }}
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="stat-card stat-card-with-sparkline">
+      <div class="stat-icon purple">
+        <i class="bi bi-building"></i>
+      </div>
+      <div class="stat-value">{{ total_clientes }}</div>
+      <div class="stat-label">Total de Clientes</div>
+      {{ stat_sparkline((sparkline_cards or {}).get('clientes'), '#7c3aed') }}
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="stat-card stat-card-with-sparkline">
+      <div class="stat-icon green">
+        <i class="bi bi-telephone-fill"></i>
+      </div>
+      <div class="stat-value">{{ total_ligacoes_periodo }}</div>
+      <div class="stat-label">{{ 'Interações' if dashboard_tipo == 'consultor' else 'Ligações' }} no {{ dashboard_periodo_texto_curto }}</div>
+      {{ stat_sparkline((sparkline_cards or {}).get('ligacoes_periodo'), '#16a34a') }}
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="stat-card stat-card-with-sparkline">
+      <div class="stat-icon orange">
+        <i class="bi bi-calendar-check"></i>
+      </div>
+      <div class="stat-value">{{ total_vendas_periodo }}</div>
+      <div class="stat-label">Compras no {{ dashboard_periodo_texto_curto }}</div>
+      {{ stat_sparkline((sparkline_cards or {}).get('vendas_periodo'), '#ea580c') }}
+      {% if total_vendas_periodo > 0 %}
+      <div class="stat-change positive">
+        <i class="bi bi-graph-up-arrow"></i> {{ taxa_conversao_periodo }}% conversão
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>

@@ -1,0 +1,114 @@
+{% macro stat_sparkline(item, color='#2563eb') -%}
+  {% if item %}
+  <div
+    class="stat-sparkline"
+    data-series='{{ item.serie|tojson }}'
+    data-previous='{{ item.anterior|tojson }}'
+    data-color="{{ color }}"
+  ></div>
+  <div class="stat-compare {{ item.classe or 'neutral' }}">{{ item.texto }}</div>
+  {% endif %}
+{%- endmacro %}
+
+{% if current_user.tipo in ('consultor', 'televendas') and stats %}
+{% set sparklines = stats.card_sparklines or {} %}
+<div class="row g-3 mb-4">
+  {% if current_user.tipo == 'consultor' %}
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-with-sparkline h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Clientes ativos</span>
+          <i class="bi bi-person-check"></i>
+        </div>
+        <div class="stat-value">{{ stats.total_clientes }}</div>
+        {{ stat_sparkline(sparklines.get('clientes'), '#2563eb') }}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if current_user.tipo == 'consultor' %}
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-with-sparkline h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">90-150 dias</span>
+          <i class="bi bi-arrow-repeat"></i>
+        </div>
+        <div class="stat-value">{{ stats.clientes_90_150 or total_oracle }}</div>
+        {{ stat_sparkline(sparklines.get('clientes_90_150'), '#0ea5e9') }}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-with-sparkline h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Hoje</span>
+          <i class="bi bi-telephone-outbound"></i>
+        </div>
+        <div class="stat-value">{{ stats.ligacoes_hoje }}</div>
+        <div class="progress mt-2"><div class="progress-bar" style="width:{{ stats.progresso_meta }}%"></div></div>
+        <small class="text-muted" style="font-size:.7rem;">Meta {{ stats.meta_diaria }} - {{ stats.progresso_meta }}%</small>
+        {{ stat_sparkline(sparklines.get('ligacoes_hoje'), '#ea580c') }}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-with-sparkline h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Ultimos 7 dias</span>
+          <i class="bi bi-calendar-week"></i>
+        </div>
+        <div class="stat-value">{{ stats.ligacoes_semana }}</div>
+        {{ stat_sparkline(sparklines.get('ligacoes_semana'), '#2563eb') }}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-with-sparkline h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Ultimos 30 dias</span>
+          <i class="bi bi-calendar3"></i>
+        </div>
+        <div class="stat-value">{{ stats.ligacoes_mes }}</div>
+        {{ stat_sparkline(sparklines.get('ligacoes_mes'), '#7c3aed') }}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-with-sparkline h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Positivo 30d</span>
+          <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <div class="stat-value" style="color:#2563eb;">{{ stats.positivos_30 or 0 }}</div>
+        <small class="text-muted" style="font-size:.7rem;">{{ stats.taxa_positiva_30 or 0 }}%</small>
+        {{ stat_sparkline(sparklines.get('positivos_30'), '#2563eb') }}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card stat-card stat-card-with-sparkline h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted">Converteu 30d</span>
+          <i class="bi bi-trophy"></i>
+        </div>
+        <div class="stat-value" style="color:#16a34a;">{{ stats.converteu_30 or 0 }}</div>
+        {{ stat_sparkline(sparklines.get('converteu_30'), '#16a34a') }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}

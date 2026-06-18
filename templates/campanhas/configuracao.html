@@ -1,0 +1,126 @@
+{% extends "layout.html" %}
+
+{% block title %}Configuração da Campanha - CRM Bakof{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">
+        <i class="bi bi-gear-fill text-primary me-2"></i>
+        Configuração da Campanha
+      </h1>
+      <p class="text-muted mb-0">
+        Defina o prêmio e a lista considerada na reativação premiada
+      </p>
+    </div>
+    <a href="{{ url_for('campanha_reativacao_premiada') }}" class="btn btn-outline-primary">
+      <i class="bi bi-arrow-left me-1"></i> Voltar para Campanha
+    </a>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header bg-white py-3">
+          <h5 class="mb-0"><i class="bi bi-sliders me-2"></i>Parâmetros da Campanha</h5>
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('campanha_configuracao') }}">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nome da Campanha</label>
+              <input type="text" name="campanha_nome" class="form-control"
+                     value="{{ campanha_config.campanha_nome }}" required>
+              <div class="form-text">Nome exibido nos relatórios e telas</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Valor da Premiação (R$)</label>
+              <div class="input-group">
+                <span class="input-group-text">R$</span>
+                <input type="number" name="valor_premiacao" class="form-control"
+                       value="{{ campanha_config.valor_premiacao }}" step="0.01" min="0" required>
+              </div>
+              <div class="form-text">Valor pago por cada reativação</div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold">Lista da Campanha</label>
+              <select name="tipo_lista" class="form-select" required>
+                {% for chave, lista in listas_campanha.items() %}
+                <option value="{{ chave }}" {% if campanha_config.tipo_lista == chave %}selected{% endif %}>
+                  {{ lista.nome }} ({{ lista.descricao }})
+                </option>
+                {% endfor %}
+              </select>
+              <div class="form-text">
+                A janela de dias é definida automaticamente pela lista selecionada.
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="ativo" id="ativo"
+                       {% if campanha_config.ativo %}checked{% endif %}>
+                <label class="form-check-label fw-bold" for="ativo">
+                  Campanha Ativa
+                </label>
+              </div>
+              <div class="form-text">Desative para pausar a campanha temporariamente</div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i> Salvar Configurações
+              </button>
+              <a href="{{ url_for('campanha_reativacao_premiada') }}" class="btn btn-outline-secondary">
+                Cancelar
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card bg-light">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Resumo Atual</h5>
+        </div>
+        <div class="card-body">
+          <ul class="list-group list-group-flush bg-transparent">
+            <li class="list-group-item bg-transparent d-flex justify-content-between">
+              <span>Status:</span>
+              <span class="badge {% if campanha_config.ativo %}bg-success{% else %}bg-secondary{% endif %}">
+                {% if campanha_config.ativo %}Ativa{% else %}Inativa{% endif %}
+              </span>
+            </li>
+            <li class="list-group-item bg-transparent d-flex justify-content-between">
+              <span>Nome:</span>
+              <strong>{{ campanha_config.campanha_nome }}</strong>
+            </li>
+            <li class="list-group-item bg-transparent d-flex justify-content-between">
+              <span>Valor Prêmio:</span>
+              <strong class="text-success">{{ formatar_moeda_br(campanha_config.valor_premiacao) }}</strong>
+            </li>
+            <li class="list-group-item bg-transparent d-flex justify-content-between">
+              <span>Lista:</span>
+              <strong>{{ lista_campanha.nome }}</strong>
+            </li>
+            <li class="list-group-item bg-transparent d-flex justify-content-between">
+              <span>Janela:</span>
+              <strong>{{ lista_campanha.descricao }}</strong>
+            </li>
+            {% if campanha_config.atualizado_em %}
+            <li class="list-group-item bg-transparent d-flex justify-content-between">
+              <span>Última Atualização:</span>
+              <small>{{ campanha_config.atualizado_em.strftime('%d/%m/%Y %H:%M') }}</small>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

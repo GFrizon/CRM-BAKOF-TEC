@@ -1,0 +1,1388 @@
+﻿{% extends "layout.html" %}
+
+{% block title %}Campanha Reativação Premiada - CRM Bakof{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">
+        <i class="bi bi-trophy-fill text-warning me-2"></i>
+        {{ campanha_config.campanha_nome }}
+      </h1>
+      <p class="text-muted mb-0">
+        Premiação de {{ formatar_moeda_br(valor_premio) }} por cliente reativado
+        na lista {{ lista_campanha.nome }} ({{ lista_campanha.descricao }})
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if eh_supervisor %}
+      <a href="{{ url_for('campanha_configuracao') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-gear me-1"></i> Configuração
+      </a>
+      {% endif %}
+      <a href="{{ url_for('campanha_historico_premiacoes') }}" class="btn btn-outline-primary">
+        <i class="bi bi-clock-history me-1"></i> Histórico
+      </a>
+    </div>
+  </div>
+
+  <!-- Cards de Totais -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card stat-card h-100">
+        <div class="card-body d-flex align-items-center">
+          <div class="stat-icon green">
+            <i class="bi bi-people-fill"></i>
+          </div>
+          <div class="ms-3">
+            <div class="stat-value">{{ total_geral.representantes }}</div>
+            <div class="stat-label">Representantes com reativação</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card h-100">
+        <div class="card-body d-flex align-items-center">
+          <div class="stat-icon blue">
+            <i class="bi bi-arrow-repeat"></i>
+          </div>
+          <div class="ms-3">
+            <div class="stat-value">{{ total_geral.reativacoes }}</div>
+            <div class="stat-label">Reativações</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card h-100">
+        <div class="card-body d-flex align-items-center">
+          <div class="stat-icon cyan">
+            <i class="bi bi-cart-check"></i>
+          </div>
+          <div class="ms-3">
+            <div class="stat-value">{{ formatar_moeda_br(total_geral.valor_pedidos) }}</div>
+            <div class="stat-label">Total em Pedidos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card h-100">
+        <div class="card-body d-flex align-items-center">
+          <div class="stat-icon orange">
+            <i class="bi bi-cash-coin"></i>
+          </div>
+          <div class="ms-3">
+            <div class="stat-value">{{ formatar_moeda_br(total_geral.premio_total) }}</div>
+            <div class="stat-label">Total em Prêmios ({{ formatar_moeda_br(valor_premio) }}/un)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtro de Período -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="GET" class="row g-3 align-items-end">
+        <div class="col-md-8">
+          <label class="form-label">Mês de Referência</label>
+          <input
+            type="month"
+            id="mesRefInput"
+            name="mes_ref"
+            class="form-control"
+            value="{{ mes_ref }}"
+            onclick="abrirSeletorMesRef()"
+            onfocus="abrirSeletorMesRef()"
+          >
+        </div>
+        <div class="col-md-4">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search me-1"></i> Consultar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lista de Representantes -->
+  <script>
+    function abrirSeletorMesRef() {
+      const input = document.getElementById('mesRefInput');
+      if (!input) return;
+      try {
+        if (typeof input.showPicker === 'function') {
+          input.showPicker();
+          return;
+        }
+      } catch (_) {}
+      input.focus();
+      input.click();
+    }
+  </script>
+
+  {% if representantes %}
+  <div class="campaign-panel-card">
+    <div class="campaign-panel-head">
+      <div>
+        <h5><i class="bi bi-list-stars me-2"></i>Representantes</h5>
+        <p>Reativações por período</p>
+      </div>
+      <div class="campaign-summary">
+        <span><strong>{{ total_geral.representantes }}</strong> reps com reativação</span>
+        <span><strong>{{ total_geral.reativacoes }}</strong> reativações</span>
+        <span><strong>{{ formatar_moeda_br(total_geral.premio_total) }}</strong> prêmio</span>
+      </div>
+    </div>
+
+    <div class="rep-list">
+      {% for rep in representantes %}
+      <div class="rep-summary-card rep-row" data-cd-rep="{{ rep.cd_representante }}">
+        <button type="button"
+                class="rep-eye toggle-details"
+                data-target-details="details-{{ loop.index }}"
+                title="Ver detalhes dos pedidos">
+          <i class="bi bi-eye-fill"></i>
+        </button>
+
+        <div class="rep-name-block">
+          <strong>{{ rep.nome_representante }}</strong>
+          <span>Cod. {{ rep.cd_representante }}</span>
+        </div>
+
+        <div class="rep-metric">
+          <span>Reativações</span>
+          <strong>{{ rep.total_reativacoes }}</strong>
+        </div>
+        <div class="rep-metric">
+          <span>Total pedidos</span>
+          <strong>{{ formatar_moeda_br(rep.total_pedidos) }}</strong>
+        </div>
+        <div class="rep-metric success">
+          <span>Prêmio</span>
+          <strong>{{ formatar_moeda_br(rep.total_premio) }}</strong>
+        </div>
+
+        <div class="rep-metric-proximos">
+          <span>Próx. Inativação</span>
+          <button type="button"
+                  class="btn-proximos-snapshot"
+                  data-cd-rep="{{ rep.cd_representante }}"
+                  data-nome-rep="{{ rep.nome_representante }}"
+                  data-ano="{{ ano_ref }}"
+                  data-mes="{{ mes_ref_num }}"
+                  title="Ver lista de clientes próximos da inativação no início do mês">
+            <i class="bi bi-hourglass-split me-1"></i>
+            <span class="proximos-count">...</span>
+          </button>
+        </div>
+
+        <div class="rep-status">
+          {% if rep.ja_pagos == rep.total_reativacoes %}
+            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Pago</span>
+          {% elif rep.pendentes > 0 %}
+            <span class="badge bg-warning text-dark">
+              <i class="bi bi-hourglass-split me-1"></i>
+              {{ rep.pendentes }} pendente{{ 's' if rep.pendentes > 1 else '' }}
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="rep-actions">
+          {% if eh_supervisor and rep.pendentes > 0 %}
+          <button type="button"
+                  class="btn btn-sm btn-outline-success btn-marcar-todos"
+                  data-cd-rep="{{ rep.cd_representante }}"
+                  data-nome-rep="{{ rep.nome_representante }}">
+            <i class="bi bi-check2 me-1"></i> Pagar pendentes
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="details-row d-none" id="details-{{ loop.index }}">
+                <div class="details-panel">
+                  <div class="details-panel-header">
+                    <div>
+                      <div class="details-title">
+                        <i class="bi bi-cart-check me-1"></i>
+                        Pedidos de Reativação
+                      </div>
+                      <div class="details-subtitle">{{ rep.nome_representante }}</div>
+                    </div>
+                    <div class="details-totals">
+                      <span>{{ rep.total_reativacoes }} pedido{{ 's' if rep.total_reativacoes != 1 else '' }}</span>
+                      <strong>{{ formatar_moeda_br(rep.total_pedidos) }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="pedido-card-grid">
+                    {% for pedido in rep.pedidos %}
+                    <article class="pedido-card pedido-row"
+                             data-cd-pedido="{{ pedido.cd_pedido }}"
+                             data-cd-rep="{{ rep.cd_representante }}">
+                      <div class="pedido-card-main">
+                        <div class="pedido-card-top">
+                          <div>
+                            <div class="pedido-code">{{ pedido.cd_pedido }}</div>
+                            <div class="pedido-date">{{ pedido.data_novo_pedido.strftime('%d/%m/%Y') if pedido.data_novo_pedido else '-' }}</div>
+                            <div class="pedido-controle">
+                              Controle {{ pedido.controle_novo_pedido or '-' }}{% if pedido.desc_controle_novo_pedido %} - {{ pedido.desc_controle_novo_pedido }}{% endif %}
+                            </div>
+                          </div>
+                          {% if pedido.conceito == 'LIBERADO' %}
+                            <span class="badge bg-success">Liberado</span>
+                          {% elif pedido.conceito == 'INADIMPLENTE' %}
+                            <span class="badge bg-danger">Inadimplente</span>
+                          {% else %}
+                            <span class="badge bg-secondary">{{ pedido.conceito or 'N/A' }}</span>
+                          {% endif %}
+                        </div>
+
+                        <div class="pedido-client">
+                          <strong>{{ pedido.nome_cliente }}</strong>
+                          <span>Cod. {{ pedido.cd_cliente }}{% if pedido.cnpj %} · CNPJ {{ pedido.cnpj }}{% endif %}</span>
+                        </div>
+
+                        <div class="pedido-meta-grid">
+                          <div>
+                            <span class="meta-label">Local</span>
+                            <strong>{{ pedido.municipio or '-' }}{% if pedido.uf %}/{{ pedido.uf }}{% endif %}</strong>
+                            {% if pedido.contato %}<small>Contato: {{ pedido.contato }}</small>{% endif %}
+                          </div>
+                          <div>
+                            <span class="meta-label">Anterior</span>
+                            <strong>{{ pedido.ultimo_pedido_antigo.strftime('%d/%m/%Y') if pedido.ultimo_pedido_antigo else '-' }}</strong>
+                            <small>
+                              {{ formatar_moeda_br(pedido.valor_ultimo_pedido_antigo) }}
+                              {% if pedido.controle_pedido_anterior %} - Ctrl. {{ pedido.controle_pedido_anterior }}{% if pedido.desc_controle_pedido_anterior %} {{ pedido.desc_controle_pedido_anterior }}{% endif %}{% endif %}
+                            </small>
+                          </div>
+                          <div>
+                            <span class="meta-label">Novo pedido</span>
+                            <strong>{{ formatar_moeda_br(pedido.valor_novo_pedido) }}</strong>
+                            <small>
+                              {{ pedido.situacao_novo_pedido or '-' }}{% if pedido.controle_novo_pedido %} - Ctrl. {{ pedido.controle_novo_pedido }}{% if pedido.desc_controle_novo_pedido %} {{ pedido.desc_controle_novo_pedido }}{% endif %}{% endif %}
+                              {% if pedido.cond_pagto_novo_pedido %} · {{ pedido.cond_pagto_novo_pedido }}{% endif %}
+                            </small>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="pedido-card-side">
+                        <div class="premio-chip">
+                          <span>Prêmio</span>
+                          <strong>{{ formatar_moeda_br(valor_premio) }}</strong>
+                        </div>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-primary btn-detalhes-cliente"
+                                data-cd-cliente="{{ pedido.cd_cliente }}"
+                                data-nome-cliente="{{ pedido.nome_cliente }}"
+                                title="Ver detalhes completos do cliente">
+                          <i class="bi bi-eye me-1"></i> Detalhes
+                        </button>
+                        {% if pedido.pago %}
+                          <span class="badge-pagamento-ok"><i class="bi bi-check2 me-1"></i>Pago</span>
+                        {% elif eh_supervisor %}
+                          <button type="button"
+                                  class="btn btn-sm btn-outline-success btn-marcar-pago"
+                                  data-cd-rep="{{ rep.cd_representante }}"
+                                  data-nome-rep="{{ rep.nome_representante }}"
+                                  data-cd-cliente="{{ pedido.cd_cliente }}"
+                                  data-nome-cliente="{{ pedido.nome_cliente }}"
+                                  data-cd-pedido="{{ pedido.cd_pedido }}"
+                                  data-data-pedido="{{ pedido.data_novo_pedido.strftime('%Y-%m-%d') if pedido.data_novo_pedido else '' }}"
+                                  data-valor-pedido="{{ pedido.valor_novo_pedido }}"
+                                  title="Marcar como pago">
+                            <i class="bi bi-check2 me-1"></i> Pagar
+                          </button>
+                        {% endif %}
+                      </div>
+                    </article>
+                    {% endfor %}
+                  </div>
+                </div>
+      </div>
+      {% endfor %}
+
+      <div class="campaign-grand-total">
+        <span>Total geral</span>
+        <strong>{{ total_geral.reativacoes }} reativações</strong>
+        <strong>{{ formatar_moeda_br(total_geral.valor_pedidos) }} em pedidos</strong>
+        <strong class="text-success">{{ formatar_moeda_br(total_geral.premio_total) }} em prêmios</strong>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    Nenhuma reativação encontrada no período selecionado.
+    <br><small>Clientes precisam estar na lista "{{ lista_campanha.nome }}" ({{ lista_campanha.descricao }}) e ter feito novo pedido no período.</small>
+  </div>
+  {% endif %}
+</div>
+
+<div class="modal fade" id="modalProximosSnapshot" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#0f172a;color:#fff;">
+        <div>
+          <h5 class="modal-title mb-0"><i class="bi bi-hourglass-split me-2"></i>Próximos da Inativação — início do mês</h5>
+          <small id="proximosSnapshotSubtitle" class="opacity-75"></small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0" id="proximosSnapshotContent">
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="mt-2 text-muted">Carregando snapshot...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalDetalhesCampanhaOracle" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Detalhes do Cliente Oracle</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detalhesCampanhaOracleContent">
+        <div class="text-center py-4">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="mt-2 text-muted">Carregando dados do Oracle...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.campaign-panel-card {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .06);
+  overflow: hidden;
+}
+.campaign-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5edf7;
+}
+.campaign-panel-head h5 {
+  margin: 0;
+  font-size: .98rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.campaign-panel-head p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: .72rem;
+}
+.campaign-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.campaign-summary span {
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: .69rem;
+  padding: 3px 8px;
+}
+.campaign-summary strong {
+  font-weight: 800;
+}
+.rep-list {
+  display: flex;
+  flex-direction: column;
+}
+.rep-summary-card {
+  display: grid;
+  grid-template-columns: 34px minmax(200px, 1fr) 92px 116px 104px 110px 116px 130px;
+  gap: 10px;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #e5edf7;
+  background: #fff;
+}
+.rep-summary-card:hover {
+  background: #f8fbff;
+}
+.rep-eye {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  color: #2563eb;
+  background: #eff6ff;
+}
+.rep-eye:hover {
+  color: #fff;
+  background: #2563eb;
+}
+.rep-name-block strong {
+  display: block;
+  color: #020617;
+  font-size: .82rem;
+  line-height: 1.25;
+}
+.rep-name-block span,
+.rep-metric span {
+  display: block;
+  color: #64748b;
+  font-size: .66rem;
+}
+.rep-metric {
+  text-align: right;
+}
+.rep-metric strong {
+  color: #0f172a;
+  font-size: .8rem;
+}
+.rep-metric.success strong {
+  color: #047857;
+}
+.rep-status {
+  text-align: center;
+}
+.rep-metric-proximos {
+  text-align: center;
+}
+.rep-metric-proximos > span {
+  display: block;
+  color: #64748b;
+  font-size: .66rem;
+  margin-bottom: 3px;
+}
+.btn-proximos-snapshot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fefce8;
+  border: 1px solid #fde047;
+  border-radius: 7px;
+  color: #854d0e;
+  font-size: .74rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background .15s;
+  white-space: nowrap;
+}
+.btn-proximos-snapshot:hover {
+  background: #fef08a;
+  border-color: #facc15;
+}
+.btn-proximos-snapshot.sem-dados {
+  opacity: .55;
+  cursor: default;
+}
+.rep-actions {
+  text-align: right;
+}
+.rep-actions .btn {
+  white-space: nowrap;
+  min-width: 118px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-size: .72rem;
+  font-weight: 700;
+}
+.campaign-grand-total {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  gap: 18px;
+  align-items: center;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border-top: 1px solid #dbe3ef;
+}
+.campaign-grand-total span {
+  color: #475569;
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.campaign-grand-total strong {
+  color: #0f172a;
+  font-size: .78rem;
+}
+.rep-summary-card .badge {
+  font-size: .68rem;
+  padding: 4px 8px;
+}
+.toggle-details {
+  transition: transform 0.2s;
+}
+.toggle-details.active i {
+  transform: scale(.92);
+}
+.details-row {
+  transition: all 0.3s ease;
+}
+.details-panel {
+  background: #f8fafc;
+  border-top: 1px solid #dbe3ef;
+  padding: 8px 16px 12px;
+}
+.details-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.details-title {
+  font-size: .86rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.details-subtitle {
+  color: #64748b;
+  font-size: .7rem;
+  margin-top: 2px;
+}
+.details-totals {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: .72rem;
+  color: #64748b;
+}
+.details-totals strong {
+  color: #047857;
+  font-size: .82rem;
+}
+.pedido-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.pedido-card {
+  display: grid;
+  grid-template-columns: 150px minmax(300px, 1fr) minmax(330px, 1.25fr) minmax(260px, auto);
+  gap: 10px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 7px;
+  padding: 8px 10px;
+  box-shadow: none;
+}
+.pedido-card-main {
+  display: contents;
+}
+.pedido-card-top {
+  margin: 0;
+}
+.pedido-code {
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+  font-size: .86rem;
+}
+.pedido-date,
+.pedido-controle,
+.pedido-client span,
+.pedido-meta-grid small {
+  color: #64748b;
+  font-size: .68rem;
+}
+.pedido-controle {
+  color: #1d4ed8;
+  font-weight: 800;
+}
+.pedido-client {
+  margin: 0;
+}
+.pedido-client strong {
+  display: block;
+  color: #020617;
+  font-size: .8rem;
+  line-height: 1.25;
+}
+.pedido-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 92px 1fr;
+  gap: 8px;
+}
+.pedido-meta-grid > div {
+  min-width: 0;
+  border-left: 2px solid #e2e8f0;
+  padding-left: 7px;
+}
+.pedido-meta-grid strong,
+.pedido-meta-grid small {
+  display: block;
+}
+.pedido-meta-grid strong {
+  color: #0f172a;
+  font-size: .76rem;
+}
+.meta-label {
+  display: block;
+  color: #64748b;
+  font-size: .6rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.pedido-card-side {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.pedido-card-side .btn {
+  width: auto;
+  white-space: nowrap;
+  min-width: 74px;
+  padding: 4px 7px;
+  border-radius: 7px;
+  font-size: .7rem;
+  font-weight: 700;
+}
+.btn-marcar-todos,
+.btn-marcar-pago {
+  background: #fff;
+  border-color: #86efac;
+  color: #15803d;
+}
+.btn-marcar-todos:hover,
+.btn-marcar-pago:hover {
+  background: #ecfdf5;
+  border-color: #4ade80;
+  color: #166534;
+}
+.premio-chip {
+  border: 1px solid #bbf7d0;
+  border-radius: 7px;
+  background: #f0fdf4;
+  min-width: 66px;
+  padding: 4px 7px;
+  text-align: center;
+}
+.premio-chip span {
+  display: block;
+  color: #15803d;
+  font-size: .58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.premio-chip strong {
+  color: #047857;
+  font-size: .76rem;
+}
+.pedido-card .badge {
+  justify-self: start;
+  font-size: .66rem;
+  padding: 4px 8px;
+}
+.pedido-row.pago {
+  background-color: rgba(25, 135, 84, 0.1) !important;
+}
+.pedido-row.pago .btn-marcar-pago {
+  display: none;
+}
+.badge-pagamento-ok {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  border: 1px solid #bbf7d0;
+  border-radius: 7px;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 4px 7px;
+}
+.badge-pago {
+  display: none;
+}
+.pedido-row.pago .badge-pago {
+  display: inline-flex;
+}
+.detalhes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+.detalhes-box {
+  border: 1px solid var(--border, #dee2e6);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+.detalhes-box h6 {
+  font-size: .86rem;
+  margin-bottom: 10px;
+}
+.detalhes-box table {
+  margin-bottom: 0;
+  font-size: .84rem;
+}
+@media (max-width: 900px) {
+  .campaign-panel-head,
+  .campaign-grand-total {
+    align-items: flex-start;
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+  .campaign-summary {
+    justify-content: flex-start;
+  }
+  .rep-summary-card {
+    grid-template-columns: 34px minmax(0, 1fr) 1fr;
+    gap: 10px;
+  }
+  .rep-name-block {
+    grid-column: span 2;
+  }
+  .rep-metric,
+  .rep-metric-proximos,
+  .rep-status,
+  .rep-actions {
+    text-align: left;
+  }
+  .rep-actions {
+    grid-column: 2 / -1;
+  }
+  .pedido-card-grid {
+    grid-template-columns: 1fr;
+  }
+  .pedido-card {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .pedido-card-main {
+    display: block;
+  }
+  .pedido-card-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .pedido-client {
+    margin-bottom: 10px;
+  }
+  .pedido-card-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .pedido-card-side .btn,
+  .premio-chip {
+    flex: 1 1 120px;
+  }
+}
+@media (max-width: 640px) {
+  .details-panel-header,
+  .details-totals {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .pedido-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<script>
+const _clientesReativados = new Set({{ representantes | map(attribute='pedidos') | sum(start=[]) | map(attribute='cd_cliente') | list | tojson }});
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Toggle detalhes
+  document.querySelectorAll('.toggle-details').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const detailsId = this.dataset.targetDetails;
+      const detailsRow = document.getElementById(detailsId);
+      if (!detailsRow) return;
+      
+      if (detailsRow.classList.contains('d-none')) {
+        detailsRow.classList.remove('d-none');
+        this.classList.add('active');
+        this.innerHTML = '<i class="bi bi-eye-slash-fill fs-5"></i>';
+      } else {
+        detailsRow.classList.add('d-none');
+        this.classList.remove('active');
+        this.innerHTML = '<i class="bi bi-eye-fill fs-5"></i>';
+      }
+    });
+  });
+
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-detalhes-cliente');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    abrirDetalhesClienteCampanha(
+      (btn.dataset.cdCliente || '').trim(),
+      btn.dataset.nomeCliente
+    );
+  });
+
+  // Marcar um pedido como pago
+  document.querySelectorAll('.btn-marcar-pago').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      
+      const data = {
+        cd_representante: this.dataset.cdRep,
+        nome_representante: this.dataset.nomeRep,
+        cd_cliente: this.dataset.cdCliente,
+        nome_cliente: this.dataset.nomeCliente,
+        cd_pedido: this.dataset.cdPedido,
+        data_pedido: this.dataset.dataPedido,
+        valor_pedido: this.dataset.valorPedido,
+        observacao: 'Marcado como pago via tela de campanha'
+      };
+
+      fetch('/campanhas/reativacao-premiada/marcar-pago', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+      .then(r => r.json())
+      .then(r => {
+        if (r.ok) {
+          // Marcar visualmente como pago
+          const row = this.closest('.pedido-row');
+          marcarPedidoComoPagoVisual(row);
+          
+          // Atualizar contadores
+          atualizarContadores(this.dataset.cdRep);
+          
+          showToast('success', 'Premiação marcada como paga!');
+        } else {
+          showToast('error', r.mensagem || 'Erro ao marcar como pago');
+        }
+      })
+      .catch(err => {
+        showToast('error', 'Erro de conexão');
+        console.error(err);
+      });
+    });
+  });
+
+  // Marcar todos os pedidos de um representante como pagos
+  document.querySelectorAll('.btn-marcar-todos').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      
+      if (!confirm('Confirmar pagamento de TODAS as reativações deste representante?')) {
+        return;
+      }
+
+      const cdRep = this.dataset.cdRep;
+      const nomeRep = this.dataset.nomeRep;
+      const pedidosRows = Array.from(document.querySelectorAll('.pedido-row[data-cd-rep="' + cdRep + '"]'))
+        .filter(row => row.querySelector('.btn-marcar-pago') && !row.classList.contains('pago'));
+      
+      let processados = 0;
+      let erros = 0;
+
+      if (pedidosRows.length === 0) {
+        showToast('success', 'Não há pagamentos pendentes para este representante.');
+        return;
+      }
+      
+      pedidosRows.forEach(row => {
+        const btnPago = row.querySelector('.btn-marcar-pago');
+        if (btnPago && !row.classList.contains('pago')) {
+          const data = {
+            cd_representante: cdRep,
+            nome_representante: nomeRep,
+            cd_cliente: btnPago.dataset.cdCliente,
+            nome_cliente: btnPago.dataset.nomeCliente,
+            cd_pedido: btnPago.dataset.cdPedido,
+            data_pedido: btnPago.dataset.dataPedido,
+            valor_pedido: btnPago.dataset.valorPedido,
+            observacao: 'Marcado como pago via botao "Marcar Todos"'
+          };
+
+          fetch('/campanhas/reativacao-premiada/marcar-pago', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          })
+          .then(r => r.json())
+          .then(r => {
+            if (r.ok) {
+              marcarPedidoComoPagoVisual(row);
+              processados++;
+            } else {
+              erros++;
+            }
+            
+            if (processados + erros === pedidosRows.length) {
+              atualizarContadores(cdRep);
+              showToast('success', `${processados} premiações marcadas como pagas!`);
+            }
+          })
+          .catch(() => {
+            erros++;
+            if (processados + erros === pedidosRows.length) {
+              atualizarContadores(cdRep);
+              showToast(erros ? 'error' : 'success', `${processados} premiações marcadas como pagas!`);
+            }
+          });
+        }
+      });
+    });
+  });
+
+  function marcarPedidoComoPagoVisual(row) {
+    if (!row) return;
+    row.classList.add('pago');
+    const btnPago = row.querySelector('.btn-marcar-pago');
+    if (!btnPago) return;
+    btnPago.outerHTML = '<span class="badge-pagamento-ok"><i class="bi bi-check2 me-1"></i>Pago</span>';
+  }
+
+  function atualizarContadores(cdRep) {
+    // Recarregar a página após um breve delay para atualizar os contadores
+    setTimeout(() => {
+      location.reload();
+    }, 1500);
+  }
+
+  function showToast(type, message) {
+    // Verificar se existe funcao global de toast
+    if (typeof window.showFlashMessage === 'function') {
+      window.showFlashMessage(type, message);
+    } else {
+      alert(message);
+    }
+  }
+});
+
+// ============================================================
+// Modal Próximos da Inativação (snapshot início do mês)
+// ============================================================
+(function() {
+  let _snapshotCache = null;
+  let _snapshotKey = null;
+
+  function abrirProximosSnapshot(cdRep, nomeRep, ano, mes) {
+    const modalEl = document.getElementById('modalProximosSnapshot');
+    const content = document.getElementById('proximosSnapshotContent');
+    const subtitle = document.getElementById('proximosSnapshotSubtitle');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    subtitle.textContent = '';
+    content.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Carregando snapshot...</p></div>`;
+    modal.show();
+
+    const cacheKey = `${ano}-${mes}`;
+
+    function renderizar(data) {
+      if (!data.disponivel) {
+        content.innerHTML = `<div class="alert alert-warning m-3"><i class="bi bi-exclamation-triangle me-2"></i>Nenhum snapshot disponível para este mês. O snapshot é gerado automaticamente no primeiro dia do mês.</div>`;
+        return;
+      }
+
+      const dataRef = data.data_ref || '';
+      const dataRefFmt = dataRef ? dataRef.split('-').reverse().join('/') : dataRef;
+      subtitle.textContent = `Snapshot de ${dataRefFmt} · ${data.total} cliente(s) total`;
+
+      // Aviso se snapshot não foi tirado no dia 1 do mês
+      const diaSnapshot = dataRef ? parseInt(dataRef.split('-')[2] || '0', 10) : 0;
+      let avisoHtml = '';
+      if (diaSnapshot > 1) {
+        avisoHtml = '<div class="alert alert-warning mx-3 mt-3 mb-1 py-2 d-flex gap-2 align-items-start" style="font-size:.82rem;line-height:1.5">'
+          + '<i class="bi bi-exclamation-triangle flex-shrink-0 mt-1"></i>'
+          + '<span><b>Atenção:</b> Este snapshot foi gerado em <b>' + _esc(dataRefFmt) + '</b> (não no 1º do mês). '
+          + 'Clientes que reativaram entre o dia 1 e ' + _esc(dataRefFmt) + ' não aparecem nesta lista, '
+          + 'pois já tinham saído da faixa de risco quando o snapshot foi criado. '
+          + 'A partir de julho o snapshot será gerado automaticamente no primeiro dia do mês.</span>'
+          + '</div>';
+      }
+
+      const todosItens = data.itens || [];
+      const itensRep = cdRep ? todosItens.filter(it => {
+        const rep = String(it.representante || '').trim();
+        const cd = String(cdRep).trim();
+        return rep === cd || rep.endsWith('- ' + cd) || rep.endsWith('-' + cd);
+      }) : todosItens;
+
+      const itensExibir = cdRep ? itensRep : todosItens;
+      const filtrando = !!cdRep;
+
+      if (itensExibir.length === 0) {
+        content.innerHTML = avisoHtml + `<div class="alert alert-info m-3"><i class="bi bi-info-circle me-2"></i>Nenhum cliente deste representante estava próximo da inativação no início do mês.</div>`;
+        return;
+      }
+
+      const linhas = itensExibir.map(it => {
+        const cdCli = String(it.cd_cliente || '').trim();
+        const reativado = _clientesReativados.has(cdCli);
+        return `
+        <tr${reativado ? ' class="table-success"' : ''}>
+          <td>
+            <strong>${_esc(it.cliente || it.cd_cliente || '-')}</strong>
+            ${reativado ? '<span class="badge bg-success ms-1" style="font-size:.65rem">Reativado</span>' : ''}
+            <br><small class="text-muted">${_esc(it.cnpj || '')}</small>
+          </td>
+          <td><code>${_esc(it.cd_cliente || '-')}</code></td>
+          <td>${_esc(it.municipio || '-')}${it.uf ? `/${_esc(it.uf)}` : ''}</td>
+          <td>${_esc(it.contato || '-')}</td>
+          <td>${_esc(it.dt_pedido || '-')}</td>
+          <td>
+            ${it.conceito === 'LIBERADO'
+              ? '<span class="badge bg-success">Liberado</span>'
+              : it.conceito === 'INADIMPLENTE'
+              ? '<span class="badge bg-danger">Inadimplente</span>'
+              : `<span class="badge bg-secondary">${_esc(it.conceito || '-')}</span>`}
+          </td>
+        </tr>`;
+      }).join('');
+
+      content.innerHTML = avisoHtml + `
+        <div class="px-3 pt-3 pb-1">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="fw-bold" style="font-size:.85rem">${filtrando ? _esc(nomeRep) : 'Todos os representantes'}</span>
+            <span class="badge bg-warning text-dark">${itensExibir.length} cliente(s)</span>
+            ${filtrando && itensRep.length < todosItens.length
+              ? `<small class="text-muted">de ${todosItens.length} total no snapshot</small>`
+              : ''}
+          </div>
+        </div>
+        <div class="table-responsive" style="max-height:520px;overflow-y:auto;">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>Cliente</th>
+                <th>Cód. Oracle</th>
+                <th>Município/UF</th>
+                <th>Contato</th>
+                <th>Último pedido</th>
+                <th>Conceito</th>
+              </tr>
+            </thead>
+            <tbody>${linhas}</tbody>
+          </table>
+        </div>`;
+    }
+
+    if (_snapshotKey === cacheKey && _snapshotCache) {
+      renderizar(_snapshotCache);
+      return;
+    }
+
+    fetch(`/campanhas/reativacao-premiada/proximos-snapshot?ano=${ano}&mes=${mes}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) throw new Error(data.mensagem || 'Erro');
+        _snapshotCache = data;
+        _snapshotKey = cacheKey;
+        renderizar(data);
+      })
+      .catch(err => {
+        content.innerHTML = `<div class="alert alert-danger m-3"><i class="bi bi-x-circle me-2"></i>Erro ao carregar snapshot: ${_esc(String(err))}</div>`;
+      });
+  }
+
+  function _esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  }
+
+  function carregarContagensProximos() {
+    const btns = document.querySelectorAll('.btn-proximos-snapshot');
+    if (!btns.length) return;
+
+    const primeiro = btns[0];
+    const ano = primeiro.dataset.ano;
+    const mes = primeiro.dataset.mes;
+
+    fetch(`/campanhas/reativacao-premiada/proximos-snapshot?ano=${ano}&mes=${mes}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok || !data.disponivel) {
+          btns.forEach(b => {
+            b.querySelector('.proximos-count').textContent = 'S/D';
+            b.classList.add('sem-dados');
+            b.disabled = true;
+          });
+          _snapshotCache = data;
+          _snapshotKey = `${ano}-${mes}`;
+          return;
+        }
+        _snapshotCache = data;
+        _snapshotKey = `${ano}-${mes}`;
+
+        const contPorCd = {};
+        (data.itens || []).forEach(it => {
+          const rep = String(it.representante || '').trim();
+          if (!rep) return;
+          const partes = rep.split('-');
+          const cd = partes[partes.length - 1].trim();
+          if (cd) contPorCd[cd] = (contPorCd[cd] || 0) + 1;
+        });
+
+        btns.forEach(b => {
+          const cdRep = String(b.dataset.cdRep || '').trim();
+          const total = contPorCd[cdRep] || 0;
+          b.querySelector('.proximos-count').textContent = total;
+        });
+      })
+      .catch(() => {
+        btns.forEach(b => { b.querySelector('.proximos-count').textContent = '?'; });
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    carregarContagensProximos();
+  });
+
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-proximos-snapshot');
+    if (!btn) return;
+    if (btn.disabled) return;
+    abrirProximosSnapshot(
+      (btn.dataset.cdRep || '').trim(),
+      btn.dataset.nomeRep || '',
+      btn.dataset.ano,
+      btn.dataset.mes
+    );
+  });
+})();
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
+}
+
+function formatarDataCampanha(value) {
+  if (!value) return '-';
+  const data = new Date(value);
+  if (Number.isNaN(data.getTime())) return String(value);
+  return data.toLocaleDateString('pt-BR');
+}
+
+function formatarMoedaCampanha(value) {
+  const numero = Number(value || 0);
+  if (!Number.isFinite(numero)) return '-';
+  return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function abrirDetalhesClienteCampanha(cdCliente, nomeCliente) {
+  const modalEl = document.getElementById('modalDetalhesCampanhaOracle');
+  const content = document.getElementById('detalhesCampanhaOracleContent');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+
+  if (!cdCliente) {
+    content.innerHTML = `<div class="alert alert-warning mb-0">Este cliente não possui código Oracle disponível para consulta.</div>`;
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Carregando dados do Oracle...</p>
+    </div>`;
+
+  const params = new URLSearchParams({ janela_dias: '1095' });
+  fetch(`/detalhes-cliente-oracle-cd/${encodeURIComponent(cdCliente || '')}?${params.toString()}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data || !data.success) {
+        content.innerHTML = `<div class="alert alert-danger mb-0">Não foi possível carregar os detalhes de ${escapeHtml(nomeCliente || 'cliente')}.</div>`;
+        return;
+      }
+      renderizarDetalhesClienteCampanha(data);
+    })
+    .catch(() => {
+      content.innerHTML = `<div class="alert alert-danger mb-0">Erro ao consultar detalhes no Oracle.</div>`;
+    });
+}
+
+function renderizarDetalhesClienteCampanha(data) {
+  const cliente = data.cliente || {};
+  const pedidos = (data.pedidos_oracle || []).slice().sort((a, b) => {
+    const da = new Date(a?.dt_pedido || 0).getTime();
+    const db = new Date(b?.dt_pedido || 0).getTime();
+    return db - da;
+  });
+  const itens = data.itens_oracle || [];
+  const itensPorPedido = {};
+
+  itens.forEach(item => {
+    const pedido = String(item.cd_pedido || '').trim() || 'sem-pedido';
+    if (!itensPorPedido[pedido]) itensPorPedido[pedido] = [];
+    itensPorPedido[pedido].push(item);
+  });
+
+  const conceito = String(cliente.conceito || '').toUpperCase();
+  const conceitoBadge = conceito === 'LIBERADO'
+    ? '<span class="badge bg-success">Liberado</span>'
+    : conceito === 'INADIMPLENTE'
+    ? '<span class="badge bg-danger">Inadimplente</span>'
+    : '<span class="badge bg-secondary">Sem conceito</span>';
+
+  const dadosCliente = `
+    <div class="detalhes-grid mb-3">
+      <div class="detalhes-box">
+        <h6><i class="bi bi-person me-1"></i>Dados do Cliente</h6>
+        <table class="table table-sm table-borderless">
+          <tr><td class="fw-bold text-muted">Nome</td><td>${escapeHtml(cliente.nome || '-')}</td></tr>
+          <tr><td class="fw-bold text-muted">Cod. Oracle</td><td><code>${escapeHtml(cliente.cd_cliente_oracle || '-')}</code></td></tr>
+          <tr><td class="fw-bold text-muted">CNPJ</td><td><code>${escapeHtml(cliente.cnpj || '-')}</code></td></tr>
+          <tr><td class="fw-bold text-muted">Telefone</td><td>${escapeHtml([cliente.telefone, cliente.telefone2].filter(Boolean).join(' / ') || '-')}</td></tr>
+          <tr><td class="fw-bold text-muted">Município/UF</td><td>${escapeHtml(cliente.municipio || '-')}${cliente.uf ? `/${escapeHtml(cliente.uf)}` : ''}</td></tr>
+          <tr><td class="fw-bold text-muted">Contato</td><td>${escapeHtml(cliente.contato || '-')}</td></tr>
+        </table>
+      </div>
+      <div class="detalhes-box">
+        <h6><i class="bi bi-shield-check me-1"></i>Credito e Carteira</h6>
+        <table class="table table-sm table-borderless">
+          <tr><td class="fw-bold text-muted">Conceito</td><td>${conceitoBadge}</td></tr>
+          <tr><td class="fw-bold text-muted">Consultor Oracle</td><td>${escapeHtml(cliente.categoria_consultor || '-')}</td></tr>
+          <tr><td class="fw-bold text-muted">Representante</td><td>${escapeHtml(cliente.representante_oracle || '-')}</td></tr>
+          <tr><td class="fw-bold text-muted">Centralizadora</td><td>${escapeHtml(cliente.cd_centralizado || '-')}${cliente.nome_centralizadora ? ` - ${escapeHtml(cliente.nome_centralizadora)}` : ''}</td></tr>
+          <tr><td class="fw-bold text-muted">Último pedido</td><td>${escapeHtml(cliente.ultimo_pedido_oracle || '-')}</td></tr>
+          <tr><td class="fw-bold text-muted">Valor último pedido</td><td class="text-success fw-bold">${cliente.valor_ultimo_pedido ? formatarMoedaCampanha(cliente.valor_ultimo_pedido) : '-'}</td></tr>
+          <tr><td class="fw-bold text-muted">Pgto médio</td><td>${cliente.pagamento_medio_dias !== null && cliente.pagamento_medio_dias !== undefined ? `${Math.round(Number(cliente.pagamento_medio_dias))} dias` : '-'}</td></tr>
+        </table>
+      </div>
+    </div>`;
+
+  const linhasPedidos = pedidos.map(pedido => `
+    <tr>
+      <td>${escapeHtml(formatarDataCampanha(pedido.dt_pedido))}</td>
+      <td><strong>${escapeHtml(pedido.cd_pedido || '-')}</strong></td>
+      <td>
+        <span class="badge bg-light text-primary border">${escapeHtml(pedido.controle || '-')}</span>
+        ${pedido.desc_controle ? `<small class="d-block text-muted mt-1">${escapeHtml(pedido.desc_controle)}</small>` : ''}
+      </td>
+      <td class="text-end">${formatarMoedaCampanha(pedido.total_pedido)}</td>
+      <td>${escapeHtml(pedido.situacao || '-')}</td>
+      <td>${escapeHtml(pedido.desc_cond_pagto || '-')}</td>
+    </tr>
+  `).join('');
+
+  const blocosItens = pedidos.map(pedido => {
+    const chave = String(pedido.cd_pedido || '').trim();
+    const itensPedido = itensPorPedido[chave] || [];
+    if (!itensPedido.length) return '';
+    const linhas = itensPedido.map(item => {
+      const qtd = Number(item.quantidade || 0);
+      const unitario = Number(item.precounitario || 0);
+      const peso = Number(item.peso || 0);
+      const desconto = item.pe_desconto !== null && item.pe_desconto !== undefined && item.pe_desconto !== ''
+        ? Number(item.pe_desconto)
+        : null;
+      const totalItem = qtd > 0 && unitario > 0
+        ? qtd * unitario * (desconto !== null && Number.isFinite(desconto) ? (1 - desconto / 100) : 1)
+        : null;
+      const pmk = peso > 0 && unitario > 0 ? unitario / peso : null;
+      return `
+        <tr>
+          <td>${escapeHtml(item.nome_produto || item.idproduto || '-')}</td>
+          <td class="text-center">${Number.isFinite(qtd) ? qtd : '-'}</td>
+          <td class="text-center">${peso > 0 ? peso.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : '-'}</td>
+          <td class="text-end">${pmk ? `${formatarMoedaCampanha(pmk)}/kg` : '-'}</td>
+          <td class="text-end">${unitario ? formatarMoedaCampanha(unitario) : '-'}</td>
+          <td class="text-center">${desconto !== null && Number.isFinite(desconto) ? `${desconto.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%` : '-'}</td>
+          <td class="text-end">${totalItem ? formatarMoedaCampanha(totalItem) : '-'}</td>
+        </tr>`;
+    }).join('');
+    return `
+      <div class="border rounded-2 p-2 mb-2">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Pedido #${escapeHtml(chave || '-')}</strong>
+          <span class="text-muted small">${escapeHtml(formatarDataCampanha(pedido.dt_pedido))}</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th class="text-center">Qtd</th>
+                <th class="text-center">Peso</th>
+                <th class="text-end">PMK</th>
+                <th class="text-end">Unitario</th>
+                <th class="text-center">Desconto</th>
+                <th class="text-end">Total item</th>
+              </tr>
+            </thead>
+            <tbody>${linhas}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('detalhesCampanhaOracleContent').innerHTML = `
+    ${dadosCliente}
+    <div class="detalhes-box mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0"><i class="bi bi-receipt me-1"></i>Pedidos</h6>
+        <span class="text-muted small">${pedidos.length} pedido(s)</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Pedido</th>
+              <th>Controle</th>
+              <th class="text-end">Valor</th>
+              <th>Situação</th>
+              <th>Condicao</th>
+            </tr>
+          </thead>
+          <tbody>${linhasPedidos || '<tr><td colspan="6" class="text-center text-muted py-3">Sem pedidos encontrados.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="detalhes-box">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0"><i class="bi bi-box-seam me-1"></i>Itens dos Pedidos</h6>
+        <span class="text-muted small">${itens.length} item(ns)</span>
+      </div>
+      ${blocosItens || '<div class="text-center text-muted py-3 border rounded-2">Sem itens detalhados.</div>'}
+    </div>`;
+}
+</script>
+{% endblock %}
+
+

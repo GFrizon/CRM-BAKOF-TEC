@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}CRM{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/icon.png') }}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <script>
+    (function() {
+      try {
+        if (localStorage.getItem('crmSidebarCollapsed') === '1') {
+          document.documentElement.classList.add('sidebar-collapsed');
+        }
+      } catch (_) {}
+    })();
+  </script>
+</head>
+<body class="{% if current_user.is_authenticated %}has-sidebar-toggle{% endif %}">
+  <div class="app-layout">
+
+    {% include "layout/_sidebar.html" %}
+
+    <main class="app-main">
+      {% include "layout/_topbar.html" %}
+
+      <div class="app-alerts">
+        {% include "layout/_alerts_banners.html" %}
+      </div>
+
+      <div class="app-content fade-in-up">
+        {% block content %}{% endblock %}
+
+        {% include "layout/_footer.html" %}
+      </div>
+    </main>
+
+  </div>
+
+  {% if current_user.is_authenticated and request.endpoint != 'cranio_page' and config.get('CRANIO_WIDGET_ENABLED') %}
+    {% include "layout/_cranio_widget.html" %}
+  {% endif %}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    (function() {
+      var root = document.documentElement;
+      var btn = document.getElementById('sidebarToggle');
+
+      function sync() {
+        var collapsed = root.classList.contains('sidebar-collapsed');
+        if (!btn) return;
+        btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
+        btn.setAttribute('title', collapsed ? 'Expandir menu lateral' : 'Ocultar menu lateral');
+        btn.innerHTML = collapsed
+          ? '<i class="bi bi-layout-sidebar-inset"></i>'
+          : '<i class="bi bi-layout-sidebar-inset-reverse"></i>';
+      }
+
+      if (btn) {
+        btn.addEventListener('click', function() {
+          root.classList.toggle('sidebar-collapsed');
+          try {
+            localStorage.setItem(
+              'crmSidebarCollapsed',
+              root.classList.contains('sidebar-collapsed') ? '1' : '0'
+            );
+          } catch (_) {}
+          sync();
+        });
+      }
+      sync();
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+
+  {% if current_user.is_authenticated %}
+  <script>
+  (function() {
+    var _sseSource = null;
+    var _sseReconnectDelay = 3000;
+    var _sseMaxDelay = 30000;
+
+    function conectarSSE() {
+      if (_sseSource) { try { _sseSource.close(); } catch(_) {} }
+      _sseSource = new EventSource("{{ url_for('sse.stream_eventos') }}");
+
+      _sseSource.onmessage = function(e) {
+        try {
+          var msg = JSON.parse(e.data);
+          tratarEvento(msg.evento, msg.dados);
+        } catch(_) {}
+      };
+
+      _sseSource.onerror = function() {
+        _sseSource.close();
+        _sseSource = null;
+        setTimeout(conectarSSE, _sseReconnectDelay);
+        _sseReconnectDelay = Math.min(_sseReconnectDelay * 2, _sseMaxDelay);
+      };
+
+      _sseSource.onopen = function() {
+        _sseReconnectDelay = 3000;
+      };
+    }
+
+    function tratarEvento(evento, dados) {
+      if (evento === 'ping') return;
+
+      if (evento === 'ligacao_registrada') {
+        var indicador = document.getElementById('sse-indicador-atividade');
+        if (indicador) {
+          indicador.title = 'Ligação registrada por ' + (dados.consultor || '?');
+          indicador.classList.remove('d-none');
+          indicador.classList.add('sse-pulse');
+          setTimeout(function() { indicador.classList.remove('sse-pulse'); }, 2000);
+        }
+        if (dados.cliente_id) {
+          var row = document.querySelector('[data-cliente-id="' + dados.cliente_id + '"]');
+          if (row) {
+            row.classList.add('sse-row-flash');
+            setTimeout(function() { row.classList.remove('sse-row-flash'); }, 2000);
+          }
+        }
+        document.dispatchEvent(new CustomEvent('crm:ligacao_registrada', { detail: dados }));
+      }
+
+      if (evento === 'lock_assumido') {
+        document.dispatchEvent(new CustomEvent('crm:lock_assumido', { detail: dados }));
+        var rows = document.querySelectorAll('[data-cd-cliente-oracle="' + dados.cd_cliente + '"]');
+        rows.forEach(function(row) {
+          var ind = row.querySelector('.js-atendimento-indicator');
+          if (ind) {
+            ind.title = 'Em atendimento por ' + (dados.usuario || 'Outro usuario');
+            ind.style.display = '';
+          } else {
+            var cell = row.querySelector('.col-status > div');
+            if (cell) {
+              var span = document.createElement('span');
+              span.className = 'js-atendimento-indicator js-atendimento-sse';
+              span.title = 'Em atendimento por ' + (dados.usuario || 'Outro usuario');
+              span.innerHTML = '<i class="bi bi-telephone-fill"></i>';
+              cell.appendChild(span);
+            }
+          }
+        });
+      }
+
+      if (evento === 'lock_liberado') {
+        document.dispatchEvent(new CustomEvent('crm:lock_liberado', { detail: dados }));
+        var rows = document.querySelectorAll('[data-cd-cliente-oracle="' + dados.cd_cliente + '"]');
+        rows.forEach(function(row) {
+          var ind = row.querySelector('.js-atendimento-indicator.js-atendimento-sse');
+          if (ind) { ind.remove(); }
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', conectarSSE);
+  })();
+  </script>
+
+  <style>
+    @keyframes sse-pulse-anim {
+      0%   { opacity: 1; transform: scale(1); }
+      50%  { opacity: 0.4; transform: scale(1.3); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .sse-pulse { animation: sse-pulse-anim 0.6s ease 3; }
+
+    @keyframes sse-row-flash-anim {
+      0%   { background-color: transparent; }
+      20%  { background-color: #dcfce7; }
+      100% { background-color: transparent; }
+    }
+    .sse-row-flash { animation: sse-row-flash-anim 2s ease forwards; }
+  </style>
+  {% endif %}
+
+</body>
+</html>

@@ -1,0 +1,89 @@
+<script>
+function abrirModalCriarBanner() {
+  const modal = new bootstrap.Modal(document.getElementById('modalCriarBanner'));
+  document.getElementById('formCriarBanner').reset();
+  modal.show();
+}
+
+// Criar Banner
+document.getElementById('formCriarBanner').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const formData = new FormData(this);
+  const data = Object.fromEntries(formData);
+  
+  try {
+    const response = await fetch('/supervisor/banners/criar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('modalCriarBanner')).hide();
+      location.reload();
+    } else {
+      alert('Erro: ' + result.mensagem);
+    }
+  } catch (error) {
+    alert('Erro ao criar banner: ' + error.message);
+  }
+});
+
+// Toggle Status
+async function toggleStatus(bannerId) {
+  if (!confirm('Tem certeza que deseja alterar o status deste banner')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/supervisor/banners/${bannerId}/toggle-status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      location.reload();
+    } else {
+      alert('Erro: ' + result.mensagem);
+    }
+  } catch (error) {
+    alert('Erro ao alterar status: ' + error.message);
+  }
+}
+
+// Excluir Banner
+async function excluirBanner(bannerId) {
+  if (!confirm('Tem certeza que deseja excluir este bannerEsta ação não pode ser desfeita.')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/supervisor/banners/${bannerId}/excluir`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      location.reload();
+    } else {
+      alert('Erro: ' + result.mensagem);
+    }
+  } catch (error) {
+    alert('Erro ao excluir banner: ' + error.message);
+  }
+}
+</script>
+

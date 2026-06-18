@@ -1,0 +1,219 @@
+import json
+from datetime import date, datetime
+from pathlib import Path
+
+
+def _storage_path() -> Path:
+    root = Path(__file__).resolve().parent.parent
+    data_dir = root / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return data_dir / "carteiras_movimento_diario.json"
+
+
+def _carregar_payload():
+    path = _storage_path()
+    if not path.exists():
+        return {"carteiras": {}}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(payload, dict):
+            return payload
+    except Exception:
+        pass
+    return {"carteiras": {}}
+
+
+def _to_iso_data(valor):
+    if isinstance(valor, datetime):
+        return valor.date().isoformat()
+    if isinstance(valor, date):
+        return valor.isoformat()
+    return str(valor or "")
+
+
+def salvar_movimento_carteira(
+    *,
+    carteira: str,
+    data_ref,
+    atualizado_em,
+    entraram,
+    sairam,
+    total,
+    codigos_presentes=None,
+):
+    carteira_key = str(carteira or "").strip().lower()
+    if not carteira_key:
+        return
+
+    path = _storage_path()
+    payload = {"carteiras": {}}
+    if path.exists():
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                payload = {"carteiras": {}}
+        except Exception:
+            payload = {"carteiras": {}}
+
+    carteiras = payload.get("carteiras")
+    if not isinstance(carteiras, dict):
+        carteiras = {}
+        payload["carteiras"] = carteiras
+
+    carteira_obj = carteiras.get(carteira_key)
+    if not isinstance(carteira_obj, dict):
+        carteira_obj = {"dias": {}}
+        carteiras[carteira_key] = carteira_obj
+
+    dias = carteira_obj.get("dias")
+    if not isinstance(dias, dict):
+        dias = {}
+        carteira_obj["dias"] = dias
+
+    chave = _to_iso_data(data_ref)
+    dias[chave] = {
+        "data_ref": chave,
+        "atualizado_em": (
+            atualizado_em.isoformat()
+            if isinstance(atualizado_em, datetime)
+            else str(atualizado_em or "")
+        ),
+        "entraram": list(entraram or []),
+        "sairam": list(sairam or []),
+        "total": int(total or 0),
+        "codigos_presentes": sorted(
+            {
+                str(cd or "").strip()
+                for cd in list(codigos_presentes or [])
+                if str(cd or "").strip()
+            }
+        ),
+    }
+
+    chaves_ordenadas = sorted(dias.keys(), reverse=True)
+    for antiga in chaves_ordenadas[60:]:
+        dias.pop(antiga, None)
+
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def carregar_movimento_carteira_anterior(carteira: str, data_ref):
+    carteira_key = str(carteira or "").strip().lower()
+    if not carteira_key:
+        return None
+    try:
+        payload = _carregar_payload()
+        carteiras = payload.get("carteiras") if isinstance(payload, dict) else None
+        if not isinstance(carteiras, dict):
+            return None
+        carteira_obj = carteiras.get(carteira_key)
+        dias = carteira_obj.get("dias") if isinstance(carteira_obj, dict) else None
+        if not isinstance(dias, dict) or not dias:
+            return None
+        chave_atual = _to_iso_data(data_ref)
+        chaves_anteriores = sorted(
+            [str(ch) for ch in dias.keys() if str(ch) < chave_atual],
+            reverse=True,
+        )
+        if not chaves_anteriores:
+            return None
+        return dias.get(chaves_anteriores[0])
+    except Exception:
+        return None
+
+
+def carregar_movimentos_carteira_mes(carteira: str, ano: int, mes: int):
+    carteira_key = str(carteira or "").strip().lower()
+    if not carteira_key:
+        return []
+    try:
+        payload = _carregar_payload()
+        carteiras = payload.get("carteiras") if isinstance(payload, dict) else None
+        if not isinstance(carteiras, dict):
+            return []
+        carteira_obj = carteiras.get(carteira_key)
+        dias = carteira_obj.get("dias") if isinstance(carteira_obj, dict) else None
+        if not isinstance(dias, dict):
+            return []
+        prefixo = f"{int(ano):04d}-{int(mes):02d}-"
+        itens = []
+        for chave, valor in dias.items():
+            if str(chave).startswith(prefixo) and isinstance(valor, dict):
+                itens.append(valor)
+        itens.sort(key=lambda x: str(x.get("data_ref") or ""))
+        return itens
+    except Exception:
+        return []
+
+
+def carregar_movimento_carteira(carteira: str, data_ref=None):
+    carteira_key = str(carteira or "").strip().lower()
+    if not carteira_key:
+        return None
+    try:
+        payload = _carregar_payload()
+        carteiras = payload.get("carteiras") if isinstance(payload, dict) else None
+        if not isinstance(carteiras, dict):
+            return None
+        carteira_obj = carteiras.get(carteira_key)
+        dias = carteira_obj.get("dias") if isinstance(carteira_obj, dict) else None
+        if not isinstance(dias, dict) or not dias:
+            return None
+        if data_ref is not None:
+            chave = _to_iso_data(data_ref)
+            return dias.get(chave)
+        chave_recente = sorted(dias.keys(), reverse=True)[0]
+        return dias.get(chave_recente)
+    except Exception:
+        return None
+
+
+def carregar_movimentos_carteira_todos(carteira: str):
+    carteira_key = str(carteira or "").strip().lower()
+    if not carteira_key:
+        return []
+    try:
+        payload = _carregar_payload()
+        carteiras = payload.get("carteiras") if isinstance(payload, dict) else None
+        if not isinstance(carteiras, dict):
+            return []
+        carteira_obj = carteiras.get(carteira_key)
+        dias = carteira_obj.get("dias") if isinstance(carteira_obj, dict) else None
+        if not isinstance(dias, dict):
+            return []
+        itens = [valor for valor in dias.values() if isinstance(valor, dict)]
+        itens.sort(key=lambda x: str(x.get("data_ref") or ""))
+        return itens
+    except Exception:
+        return []
+
+
+def atualizar_codigos_presentes_movimento_carteira(carteira: str, data_ref, codigos_presentes):
+    carteira_key = str(carteira or "").strip().lower()
+    if not carteira_key:
+        return False
+    try:
+        path = _storage_path()
+        payload = _carregar_payload()
+        carteiras = payload.get("carteiras") if isinstance(payload, dict) else None
+        if not isinstance(carteiras, dict):
+            return False
+        carteira_obj = carteiras.get(carteira_key)
+        dias = carteira_obj.get("dias") if isinstance(carteira_obj, dict) else None
+        if not isinstance(dias, dict):
+            return False
+        chave = _to_iso_data(data_ref)
+        atual = dias.get(chave)
+        if not isinstance(atual, dict):
+            return False
+        atual["codigos_presentes"] = sorted(
+            {
+                str(cd or "").strip()
+                for cd in list(codigos_presentes or [])
+                if str(cd or "").strip()
+            }
+        )
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return True
+    except Exception:
+        return False

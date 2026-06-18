@@ -1,0 +1,83 @@
+<!-- Lista de Banners -->
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-list-ul"></i> Banners Cadastrados
+      </div>
+      <div class="card-body">
+        {% if banners %}
+          <div class="table-container">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Mensagem</th>
+                  <th>Tipo</th>
+                  <th>Status</th>
+                  <th>Data Expiração</th>
+                  <th>Criado por</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for banner in banners %}
+                <tr>
+                  <td>
+                    <strong>{{ banner.titulo }}</strong>
+                  </td>
+                  <td>
+                    <span class="text-truncate d-inline-block" style="max-width: 300px;" title="{{ banner.mensagem }}">
+                      {{ banner.mensagem[:100] }}{% if banner.mensagem|length > 100 %}...{% endif %}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-{{ 'info' if banner.tipo == 'info' else 'warning' if banner.tipo == 'warning' else 'success' if banner.tipo == 'success' else 'danger' }}">
+                      {{ banner.tipo.upper() }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-{{ 'success' if banner.ativo else 'secondary' }}">
+                      {{ 'Ativo' if banner.ativo else 'Inativo' }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if banner.data_expiracao %}
+                      <span class="text-muted">{{ banner.data_expiracao.strftime('%d/%m/%Y %H:%M') }}</span>
+                    {% else %}
+                      <span class="text-muted">Sem expiração</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <small class="text-muted">{{ banner.criador.nome if banner.criador else 'Desconhecido' }}</small><br>
+                    <small class="text-muted">{{ banner.data_criacao.strftime('%d/%m/%Y %H:%M') }}</small>
+                  </td>
+                  <td>
+                    <div class="btn-group" role="group">
+                      <button type="button" class="btn btn-sm btn-outline-{{ 'success' if banner.ativo else 'warning' }}" 
+                              onclick="toggleStatus({{ banner.id }})" 
+                              title="{{ 'Desativar' if banner.ativo else 'Ativar' }}">
+                        <i class="bi bi-{{ 'pause-circle' if banner.ativo else 'play-circle' }}"></i>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger" 
+                              onclick="excluirBanner({{ banner.id }})" 
+                              title="Excluir">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="empty-state">
+            <i class="bi bi-megaphone"></i>
+            <p>Nenhum banner cadastrado.<br><small>Clique em &ldquo;Novo Banner&rdquo; para criar seu primeiro aviso.</small></p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>

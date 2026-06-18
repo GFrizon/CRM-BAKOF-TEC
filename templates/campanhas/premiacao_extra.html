@@ -1,0 +1,384 @@
+{% extends "layout.html" %}
+{% block title %}Premiação Extra Mês - CRM Bakof{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  {# ── Cabeçalho ── #}
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+      <nav aria-label="breadcrumb" style="font-size:.8rem">
+        <ol class="breadcrumb mb-1">
+          <li class="breadcrumb-item"><a href="{{ url_for('campanhas_index') }}">Campanhas</a></li>
+          <li class="breadcrumb-item active">Premiação Extra Mês</li>
+        </ol>
+      </nav>
+      <h3 class="mb-0 fw-bold"><i class="bi bi-stars me-2 text-warning"></i>Premiação Extra Mês</h3>
+      <p class="text-muted mb-0" style="font-size:.88rem">
+        {{ mes_ref_nome }} / {{ ano_ref }}
+        &nbsp;·&nbsp; Corte intermediário: dia <strong>{{ dia_corte }}</strong>
+      </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      {# Seletor de mês #}
+      <form method="get" class="d-flex gap-2 align-items-center">
+        <select name="mes" class="form-select form-select-sm" style="width:130px" onchange="this.form.submit()">
+          {% for n in range(1,13) %}
+          <option value="{{ n }}" {% if n == mes_ref %}selected{% endif %}>
+            {{ ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][n] }}
+          </option>
+          {% endfor %}
+        </select>
+        <select name="ano" class="form-select form-select-sm" style="width:90px" onchange="this.form.submit()">
+          {% for y in range(hoje[:4]|int - 1, hoje[:4]|int + 2) %}
+          <option value="{{ y }}" {% if y == ano_ref %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% if eh_supervisor %}
+      <a href="{{ url_for('premiacao_extra_configuracao', ano=ano_ref, mes=mes_ref) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-gear me-1"></i> Configuração
+      </a>
+      {% endif %}
+      <a href="{{ url_for('campanhas_index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Voltar
+      </a>
+    </div>
+  </div>
+
+  {# ── Cards de resumo ── #}
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted mb-1" style="font-size:.75rem">REPRESENTANTES</div>
+          <div class="fw-bold fs-4">{{ representantes|length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted mb-1" style="font-size:.75rem">ATINGIRAM NO PRAZO</div>
+          <div class="fw-bold fs-4 text-success">{{ representantes|selectattr('status_meta','eq','prazo')|list|length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted mb-1" style="font-size:.75rem">ATINGIRAM NO FIM DO MÊS</div>
+          <div class="fw-bold fs-4 text-primary">{{ representantes|selectattr('status_meta','eq','fim_mes')|list|length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted mb-1" style="font-size:.75rem">TOTAL BÔNUS (META)</div>
+          <div class="fw-bold fs-5 text-warning">{{ formatar_moeda(total_bonus) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Accordion por consultor ── #}
+  {% if grupos_consultores %}
+  <div class="accordion" id="accordionConsultores">
+    {% for grupo in grupos_consultores %}
+    {% set gid = "grupo-" ~ loop.index %}
+    <div class="card border-0 shadow-sm mb-2 overflow-hidden">
+      {# Cabeçalho do consultor #}
+      <div id="head-{{ gid }}">
+        <button class="btn w-100 text-start p-0 border-0"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#{{ gid }}"
+          aria-expanded="false"
+          aria-controls="{{ gid }}">
+          <div style="display:flex;align-items:stretch;width:100%;">
+            <div style="width:4px;background:#4f46e5;flex-shrink:0;border-radius:4px 0 0 4px;"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex:1;padding:12px 20px;background:#f8fafc;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:#e0e7ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <i class="bi bi-person-fill" style="color:#4f46e5;font-size:1rem;"></i>
+                </div>
+                <div>
+                  <div style="font-weight:700;font-size:.9rem;color:#1e293b;">{{ grupo.consultor }}</div>
+                  <div style="margin-top:3px;display:flex;gap:6px;">
+                    <span style="font-size:.72rem;padding:2px 8px;border-radius:20px;background:#e2e8f0;color:#475569;">
+                      {{ grupo.representantes|length }} reps
+                    </span>
+                    <span style="font-size:.72rem;padding:2px 8px;border-radius:20px;background:#dcfce7;color:#16a34a;">
+                      {{ grupo.qtd_premiados }} premiado(s)
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="text-align:right;">
+                  <div style="font-weight:700;font-size:.92rem;color:#16a34a;">{{ formatar_moeda(grupo.total_bonus) }}</div>
+                  <div style="font-size:.7rem;color:#94a3b8;">total bônus</div>
+                </div>
+                <i class="bi bi-chevron-down" style="color:#94a3b8;font-size:.8rem;transition:transform .2s;"></i>
+              </div>
+            </div>
+          </div>
+        </button>
+      </div>
+      {# Tabela do grupo #}
+      <div id="{{ gid }}" class="collapse" aria-labelledby="head-{{ gid }}" data-bs-parent="#accordionConsultores">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size:.83rem;">
+            <thead class="table-light">
+              <tr>
+                <th style="min-width:210px">Representante</th>
+                <th class="text-end">Meta</th>
+                <th class="text-end">{{ campanha_config.pct_meta_intermediaria }}% da meta</th>
+                <th class="text-end">Venda até dia {{ dia_corte }}</th>
+                <th class="text-end">% até dia {{ dia_corte }}</th>
+                <th class="text-end">Venda total mês</th>
+                <th class="text-end">% total</th>
+                <th class="text-center">Status</th>
+                <th class="text-end">Bônus</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rep in grupo.representantes %}
+              {% set row_class = '' %}
+              {% if rep.status_meta == 'prazo' %}{% set row_class = 'table-success' %}
+              {% elif rep.status_meta == 'fim_mes' %}{% set row_class = 'table-primary' %}
+              {% endif %}
+              <tr class="{{ row_class }}">
+                <td>
+                  <div class="fw-semibold">{{ rep.nome_representante }}</div>
+                  <small class="text-muted">{{ rep.cd_representante }}</small>
+                </td>
+                <td class="text-end">
+                  {% if rep.meta > 0 %}{{ formatar_moeda(rep.meta) }}{% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td class="text-end text-muted">
+                  {% if rep.meta > 0 %}{{ formatar_moeda(rep.meta * (campanha_config.pct_meta_intermediaria | float) / 100) }}{% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td class="text-end">{{ formatar_moeda(rep.venda_ate_corte) }}</td>
+                <td class="text-end">
+                  {% if rep.pct_ate_corte is not none %}
+                    <span class="badge {% if rep.pct_ate_corte >= campanha_config.pct_meta_intermediaria|float %}bg-success{% elif rep.pct_ate_corte >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                      {{ rep.pct_ate_corte }}%
+                    </span>
+                  {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td class="text-end fw-semibold">{{ formatar_moeda(rep.venda_total) }}</td>
+                <td class="text-end">
+                  {% if rep.pct_total is not none %}
+                    <span class="badge {% if rep.pct_total >= 100 %}bg-success{% elif rep.pct_total >= 75 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                      {{ rep.pct_total }}%
+                    </span>
+                  {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td class="text-center">
+                  {% if rep.status_meta == 'prazo' %}
+                    <span class="badge bg-success"><i class="bi bi-lightning-fill me-1"></i>No prazo</span>
+                  {% elif rep.status_meta == 'fim_mes' %}
+                    <span class="badge bg-primary"><i class="bi bi-check-circle me-1"></i>Fim do mês</span>
+                  {% elif rep.status_meta == 'abaixo' %}
+                    <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Abaixo</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Sem meta</span>
+                  {% endif %}
+                </td>
+                <td class="text-end fw-bold {% if rep.bonus_valor > 0 %}text-success{% endif %}">
+                  {% if rep.bonus_valor > 0 %}{{ formatar_moeda(rep.bonus_valor) }}{% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td class="text-center">
+                  <button class="btn btn-outline-secondary btn-sm py-0"
+                    onclick="abrirDetalhes('{{ rep.cd_representante }}')"
+                    title="Ver detalhes">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-light fw-bold">
+              <tr>
+                <td colspan="5">Subtotal</td>
+                <td class="text-end">{{ formatar_moeda(grupo.representantes|sum(attribute='venda_total')) }}</td>
+                <td></td><td></td>
+                <td class="text-end text-success">{{ formatar_moeda(grupo.total_bonus) }}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="alert alert-info mt-3 py-2" style="font-size:.8rem">
+    <i class="bi bi-info-circle me-1"></i>
+    Atingindo <strong>{{ campanha_config.pct_meta_intermediaria }}%</strong> da meta até o dia <strong>{{ dia_corte }}</strong>
+    → bônus de <strong>{{ campanha_config.bonus_meta_no_prazo }}%</strong> sobre o valor correspondente a essa faixa da meta.
+    Caso contrário, atingindo <strong>100%</strong> até o fim do mês
+    → bônus de <strong>{{ campanha_config.bonus_meta_fim_mes }}%</strong> sobre a meta total.
+    O prêmio <strong>não é cumulativo</strong>.
+  </div>
+
+  {% else %}
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    Nenhum dado de venda encontrado para {{ mes_ref_nome }}/{{ ano_ref }}.
+  </div>
+  {% endif %}
+
+</div>
+
+{# ── Modal de detalhes do representante ── #}
+<div class="modal fade" id="modalDetalhesRep" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="modalDetalhesRepTitulo"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modalDetalhesRepBody"></div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-outline-secondary btn-sm" onclick="imprimirDetalhes()">
+          <i class="bi bi-printer me-1"></i> Imprimir / Salvar PDF
+        </button>
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<style>
+@media print { body { margin: 0; } }
+.detalhe-linha { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f1f5f9; font-size:.88rem; }
+.detalhe-linha:last-child { border-bottom:none; }
+.detalhe-label { color:#64748b; }
+.detalhe-valor { font-weight:600; }
+.accordion .collapse.show ~ * .bi-chevron-down,
+[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
+</style>
+
+<script>
+const _REPS   = {{ representantes | tojson }};
+const _MES    = {{ mes_ref_nome | tojson }};
+const _ANO    = {{ ano_ref }};
+const _CORTE  = {{ dia_corte }};
+const _PCT_INTERM  = {{ campanha_config.pct_meta_intermediaria | float }};
+const _BONUS_PRAZO = {{ campanha_config.bonus_meta_no_prazo | float }};
+const _BONUS_FIM   = {{ campanha_config.bonus_meta_fim_mes | float }};
+
+function _fmt(v) {
+  if (v == null || v === '') return '—';
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return 'R$ ' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function _pct(v) {
+  if (v == null) return '—';
+  return parseFloat(v).toFixed(1) + '%';
+}
+function _badge(status) {
+  if (status === 'prazo')   return '<span style="background:#16a34a;color:#fff;padding:2px 10px;border-radius:20px;font-size:.78rem;">⚡ No prazo</span>';
+  if (status === 'fim_mes') return '<span style="background:#2563eb;color:#fff;padding:2px 10px;border-radius:20px;font-size:.78rem;">✓ Fim do mês</span>';
+  if (status === 'abaixo')  return '<span style="background:#dc2626;color:#fff;padding:2px 10px;border-radius:20px;font-size:.78rem;">✗ Abaixo</span>';
+  return '<span style="background:#94a3b8;color:#fff;padding:2px 10px;border-radius:20px;font-size:.78rem;">Sem meta</span>';
+}
+
+function _gerarHtml(rep, paraPrint) {
+  const regra = rep.status_meta === 'prazo'
+    ? `Atingiu <b>${_PCT_INTERM}%</b> da meta até o dia <b>${_CORTE}</b> → bônus de <b>${_BONUS_PRAZO}%</b> sobre o valor correspondente a essa faixa da meta`
+    : rep.status_meta === 'fim_mes'
+    ? `Não atingiu no prazo, mas atingiu <b>100%</b> até o fim do mês → bônus de <b>${_BONUS_FIM}%</b>`
+    : `Não atingiu a meta intermediária nem a meta completa`;
+
+  const headerBg = 'background:#0f172a;color:#fff;padding:' + (paraPrint ? '18px 24px' : '14px 20px') + ';border-radius:10px 10px 0 0;';
+
+  return `
+  <div style="font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+    <div style="${headerBg}">
+      ${paraPrint ? '<div style="font-size:.75rem;opacity:.7;margin-bottom:4px">BAKOF — Premiação Extra Mês</div>' : ''}
+      <div style="font-size:1.1rem;font-weight:700;">${rep.nome_representante}</div>
+      <div style="font-size:.8rem;opacity:.7;">${rep.cd_representante} &nbsp;·&nbsp; ${_MES} / ${_ANO}</div>
+    </div>
+    <div style="padding:16px 20px;background:#fff;">
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:120px;background:#f8fafc;border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:.7rem;color:#64748b;margin-bottom:4px;">META</div>
+          <div style="font-weight:700;font-size:1rem;">${_fmt(rep.meta)}</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:#f8fafc;border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:.7rem;color:#64748b;margin-bottom:4px;">VENDA TOTAL</div>
+          <div style="font-weight:700;font-size:1rem;">${_fmt(rep.venda_total)}</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:${rep.bonus_valor > 0 ? '#f0fdf4' : '#fef2f2'};border-radius:8px;padding:12px;text-align:center;border:1px solid ${rep.bonus_valor > 0 ? '#bbf7d0' : '#fecaca'};">
+          <div style="font-size:.7rem;color:#64748b;margin-bottom:4px;">BÔNUS</div>
+          <div style="font-weight:700;font-size:1rem;color:${rep.bonus_valor > 0 ? '#16a34a' : '#dc2626'};">${_fmt(rep.bonus_valor)}</div>
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div class="detalhe-linha"><span class="detalhe-label">Venda até dia ${_CORTE}</span><span class="detalhe-valor">${_fmt(rep.venda_ate_corte)}</span></div>
+        <div class="detalhe-linha"><span class="detalhe-label">% atingido até dia ${_CORTE}</span><span class="detalhe-valor">${_pct(rep.pct_ate_corte)}</span></div>
+        <div class="detalhe-linha"><span class="detalhe-label">Venda total no mês</span><span class="detalhe-valor">${_fmt(rep.venda_total)}</span></div>
+        <div class="detalhe-linha"><span class="detalhe-label">% total da meta</span><span class="detalhe-valor">${_pct(rep.pct_total)}</span></div>
+        <div class="detalhe-linha"><span class="detalhe-label">Status</span><span class="detalhe-valor">${_badge(rep.status_meta)}</span></div>
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;font-size:.82rem;color:#78350f;">
+        <b>Regra aplicada:</b> ${regra}
+      </div>
+      ${paraPrint ? `<div style="margin-top:16px;font-size:.72rem;color:#94a3b8;text-align:center;">Gerado em ${new Date().toLocaleDateString('pt-BR')} — CRM Bakof</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function abrirDetalhes(cd) {
+  const rep = _REPS.find(r => r.cd_representante === cd);
+  document.getElementById('modalDetalhesRepTitulo').textContent = rep.nome_representante;
+  document.getElementById('modalDetalhesRepBody').innerHTML = _gerarHtml(rep, false);
+  const modalEl = document.getElementById('modalDetalhesRep');
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  modalEl._repAtual = rep;
+}
+
+function imprimirDetalhes() {
+  const rep = document.getElementById('modalDetalhesRep')._repAtual;
+  if (!rep) return;
+  const conteudo = _gerarHtml(rep, true);
+  const win = window.open('', '_blank', 'width=680,height=820');
+  win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Premiação Extra — ${rep.nome_representante}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, Arial, sans-serif; background: #f1f5f9; padding: 32px; }
+    .detalhe-linha { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid #f1f5f9; font-size:.88rem; }
+    .detalhe-linha:last-child { border-bottom:none; }
+    .detalhe-label { color:#64748b; }
+    .detalhe-valor { font-weight:600; }
+    @media print {
+      body { background:#fff; padding: 16px; }
+      .no-print { display:none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="text-align:right;margin-bottom:16px;">
+    <button onclick="window.print()" style="background:#4f46e5;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:.85rem;cursor:pointer;">🖨️ Imprimir / Salvar PDF</button>
+    <button onclick="window.close()" style="background:#e2e8f0;color:#475569;border:none;padding:8px 16px;border-radius:6px;font-size:.85rem;cursor:pointer;margin-left:8px;">Fechar</button>
+  </div>
+  ${conteudo}
+</body>
+</html>`);
+  win.document.close();
+}
+</script>
+
+{% endblock %}

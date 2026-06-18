@@ -1,0 +1,1059 @@
+﻿<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let _reqFiltroMesToken = 0;
+let _reqLigacoesMesToken = 0;
+let _reqDetalheConversaoToken = 0;
+let _reqInsightsObsToken = 0;
+let _chartLigacoesDias = null;
+let _chartResultados = null;
+const DASHBOARD_TIPO = '{{ dashboard_tipo }}';
+let _resumoFechamentoTexto = '';
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.__supervisorDashboardInit) return;
+  window.__supervisorDashboardInit = true;
+  try {
+    const url = new URL(window.location.href);
+    const secao = (url.searchParams.get('secao') || '').toLowerCase();
+    if (secao === 'fechamento') {
+      aplicarFiltroMes();
+      carregarLigacoesMes();
+      setTimeout(() => {
+        const el = document.getElementById('resultadosFiltrados');
+        if (el) {
+          el.style.display = 'block';
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 180);
+    }
+  } catch (_) {}
+});
+
+function gerarPdfFechamento() {
+  try {
+    const filtro = document.getElementById('filtroMes');
+    let mes = '';
+    let ano = '';
+    if (filtro && filtro.value) {
+      const partes = String(filtro.value).split('-');
+      mes = partes[0] || '';
+      ano = partes[1] || '';
+    }
+    if (!mes || !ano) {
+      const hoje = new Date();
+      mes = String(hoje.getMonth() + 1);
+      ano = String(hoje.getFullYear());
+    }
+    const url = new URL('/supervisor/fechamento/pdf', window.location.origin);
+    url.searchParams.set('mes', mes);
+    url.searchParams.set('ano', ano);
+    url.searchParams.set('tipo', DASHBOARD_TIPO || 'consultor');
+    window.open(url.toString(), '_blank');
+  } catch (_) {
+    alert('Não foi possível gerar o PDF agora.');
+  }
+}
+
+window.addEventListener('pageshow', () => {
+  if (_chartLigacoesDias) _chartLigacoesDias.resize();
+  if (_chartResultados) _chartResultados.resize();
+});
+
+// FECHAR POP-UP DE NOVIDADES
+async function fecharNovidades(persistir = false) {
+  const modal = document.getElementById('modalNovidades');
+  if (!modal) return;
+  const versao = modal.getAttribute('data-release-version') || 'v3.0';
+  const chave = `crm_novidades_dismissed_${versao}`;
+  const marcar = persistir || Boolean(document.getElementById('chkNaoMostrarVersao')?.checked);
+
+  if (marcar) {
+    try {
+      localStorage.setItem(chave, '1');
+      await fetch('/marcar-novidades-vistas', { method: 'POST' });
+    } catch (_) {}
+  }
+  modal.style.display = 'none';
+}
+
+// Se já foi dispensado nesta versão no navegador, não exibe de novo.
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('modalNovidades');
+  if (!modal) return;
+  const versao = modal.getAttribute('data-release-version') || 'v3.0';
+  const chave = `crm_novidades_dismissed_${versao}`;
+  if (localStorage.getItem(chave) === '1') {
+    modal.style.display = 'none';
+  }
+});
+
+// APLICAR FILTRO POR MÃŠS
+async function aplicarFiltroMes() {
+  const select = document.getElementById('filtroMes');
+  if (!select) return;
+  const valor = select.value; // formato: "mes-ano"
+  const [mes, ano] = valor.split('-');
+  carregarInsightsObservacoes(mes, ano);
+  
+  const textoSelecionado = select.options[select.selectedIndex].text;
+  document.getElementById('periodoSelecionado').textContent = textoSelecionado;
+  
+  // Mostrar loading
+  document.getElementById('resultadosFiltrados').style.display = 'block';
+  document.getElementById('tbodyResultados').innerHTML = `
+    <tr>
+      <td colspan="11" class="text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Carregando dados...</p>
+      </td>
+    </tr>
+  `;
+  document.getElementById('tfootResultados').innerHTML = '';
+  
+  const token = ++_reqFiltroMesToken;
+  try {
+    const metaConversao = 10;
+    const r = await fetch(`/api/resultados-por-mes?mes=${mes}&ano=${ano}&meta_conversao=${metaConversao}&tipo=${DASHBOARD_TIPO}`);
+    const data = await r.json();
+    if (token !== _reqFiltroMesToken) return;
+    
+    if (!data.ok) {
+      throw new Error(data.erro || 'Erro ao buscar dados');
+    }
+    
+    const tbody = document.getElementById('tbodyResultados');
+    
+    if (!data.consultores || data.consultores.length === 0) {
+      _resumoFechamentoTexto = '';
+      renderizarAnaliseFechamento(null);
+      renderizarConfiabilidadeFechamento(null);
+      tbody.innerHTML = `
+        <tr>
+        <td colspan="{{ 10 if dashboard_tipo == 'televendas' else 12 }}" class="text-center text-muted py-4">
+            <i class="bi bi-inbox display-4 d-block mb-2"></i>
+            Nenhum dado encontrado para este período
+          </td>
+        </tr>
+      `;
+      return;
+    }
+    
+    let html = '';
+    data.consultores.forEach(c => {
+      const atingiuMeta = Number(c.conversao || 0) >= Number(c.meta_conversao || 0);
+      const podeAbrirDetalhe = Boolean(c.id && Number(c.vendas || 0) > 0);
+      const nomeEscapado = String(c.nome || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const attrsLinha = podeAbrirDetalhe
+        ? ` role="button" tabindex="0" class="table-active" style="cursor:pointer;" title="Clique para ver detalhes das vendas" onclick="abrirDetalheConversao(${c.id}, '${nomeEscapado}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDetalheConversao(${c.id}, '${nomeEscapado}');}"`
+        : '';
+      
+      html += `
+        <tr${attrsLinha}>
+          <td>
+            <strong>${c.nome}</strong>
+            ${podeAbrirDetalhe ? '<span class="text-primary ms-1" title="Ver detalhes"><i class="bi bi-box-arrow-up-right"></i></span>' : ''}
+          </td>
+          <td class="text-center fw-semibold">${c.total_ligacoes}</td>
+          <td class="text-center fw-semibold">
+            ${podeAbrirDetalhe
+              ? `<button type="button" class="btn btn-sm btn-link p-0 fw-semibold text-decoration-none" onclick="event.stopPropagation();abrirDetalheConversao(${c.id}, '${nomeEscapado}')">${c.vendas}</button>`
+              : `${c.vendas}`}
+          </td>
+          <td class="text-center fw-semibold">${c.total_retornar}</td>
+          <td class="text-center fw-semibold">${c.reativacoes || 0}</td>
+          <td class="text-center"><span class="fw-semibold ${atingiuMeta ? 'text-success' : 'text-secondary'}">${c.conversao}%</span></td>
+          <td class="text-center"><span class="text-muted fw-semibold">${c.meta_conversao}%</span></td>
+          {% if dashboard_tipo == 'televendas' %}
+          <td class="text-center fw-semibold">${c.total_construtoras_display || c.total_construtoras || 'Sem histórico'}</td>
+          {% else %}
+          <td class="text-center fw-semibold">${c.total_ativos_display || c.total_ativos || 'Sem histórico'}</td>
+          <td class="text-center fw-semibold">${c.total_90_150_display || c.total_90_150 || 'Sem histórico'}</td>
+          <td class="text-center fw-semibold">${c.total_proximos_inativacao_display || c.total_proximos_inativacao || 'Sem histórico'}</td>
+          {% endif %}
+          <td class="text-end"><strong class="text-success">${c.receita_fmt}</strong></td>
+          <td class="text-end"><strong class="text-primary">${c.receita_comprovada_oracle_fmt || 'R$ 0,00'}</strong></td>
+        </tr>
+      `;
+    });
+    
+    tbody.innerHTML = html;
+    const t = data.totais || {};
+    renderizarConfiabilidadeFechamento(data);
+    document.getElementById('tfootResultados').innerHTML = `
+      <tr class="table-light">
+        <th>Total resultado do período</th>
+        <th class="text-center">${t.total_ligacoes || 0}</th>
+        <th class="text-center">${t.total_vendas || 0}</th>
+        <th class="text-center">${t.total_retornar || 0}</th>
+        <th class="text-center">${t.total_reativacoes || 0}</th>
+        <th class="text-center">${t.conversao || 0}%</th>
+        <th class="text-center">${t.meta_conversao || 0}%</th>
+        {% if dashboard_tipo == 'televendas' %}
+        <th class="text-center">${t.total_construtoras_display || t.total_construtoras || 'Sem histórico'}</th>
+        {% else %}
+        <th class="text-center">${t.total_ativos_display || t.total_ativos || 'Sem histórico'}</th>
+        <th class="text-center">${t.total_90_150_display || t.total_90_150 || 'Sem histórico'}</th>
+        <th class="text-center">${t.total_proximos_inativacao_display || t.total_proximos_inativacao || 'Sem histórico'}</th>
+        {% endif %}
+        <th class="text-end">${t.receita_fmt || 'R$ 0,00'}</th>
+        <th class="text-end">${t.receita_comprovada_oracle_fmt || 'R$ 0,00'}</th>
+      </tr>
+    `;
+    renderizarAnaliseFechamento(data.analise_fechamento || null);
+    _resumoFechamentoTexto = [
+      `Período: ${textoSelecionado}`,
+      `Operadores: ${data.consultores.length}`,
+      `{{ 'Interações' if dashboard_tipo == 'consultor' else 'Ligações' }}: ${t.total_ligacoes || 0}`,
+      `Vendas: ${t.total_vendas || 0}`,
+      `Retornar: ${t.total_retornar || 0}`,
+      `Reativações Rep.: ${t.total_reativacoes || 0}`,
+      `Conversão: ${t.conversao || 0}%`,
+      `Meta: ${t.meta_conversao || 0}%`,
+      {% if dashboard_tipo == 'televendas' %}
+      `Construtoras: ${t.total_construtoras_display || t.total_construtoras || 'Sem histórico'}`,
+      {% else %}
+      `Clientes Ativos: ${t.total_ativos_display || t.total_ativos || 'Sem histórico'}`,
+      `90-150: ${t.total_90_150_display || t.total_90_150 || 'Sem histórico'}`,
+      `Próx. Inativação: ${t.total_proximos_inativacao_display || t.total_proximos_inativacao || 'Sem histórico'}`,
+      {% endif %}
+      `Receita: ${t.receita_fmt || 'R$ 0,00'}`,
+      `Receita Comprovada Oracle: ${t.receita_comprovada_oracle_fmt || 'R$ 0,00'}`,
+    ].join(' | ');
+    
+  } catch (erro) {
+    console.error('Erro:', erro);
+    _resumoFechamentoTexto = '';
+    renderizarAnaliseFechamento(null);
+    renderizarConfiabilidadeFechamento(null);
+    document.getElementById('tbodyResultados').innerHTML = `
+      <tr>
+        <td colspan="{{ 10 if dashboard_tipo == 'televendas' else 12 }}" class="text-center text-danger py-4">
+          <i class="bi bi-exclamation-triangle display-4 d-block mb-2"></i>
+          Erro ao carregar dados: ${erro.message}
+        </td>
+      </tr>
+    `;
+    document.getElementById('tfootResultados').innerHTML = '';
+  }
+}
+
+function escapeHtml(valor) {
+  return String(valor || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function classeSaldo(valor) {
+  const num = Number(valor || 0);
+  if (num > 0) return 'positive';
+  if (num < 0) return 'negative';
+  return 'neutral';
+}
+
+function formatarSaldo(valor) {
+  const num = Number(valor || 0);
+  if (num > 0) return `+${num}`;
+  return `${num}`;
+}
+
+function renderizarListaAnalise(id, itens, vazio) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!Array.isArray(itens) || !itens.length) {
+    el.innerHTML = `<div class="analise-empty">${escapeHtml(vazio)}</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="analise-item-list">${itens.map((it) => `
+    <div class="analise-item">
+      <strong>${escapeHtml(it.nome || it.titulo || '-')}</strong>
+      <span>${escapeHtml(it.texto || '-')}</span>
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderizarAnaliseFechamento(analise) {
+  const card = document.getElementById('cardAnaliseFechamento');
+  if (!card) return;
+  if (!analise) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = 'block';
+  const periodoInfo = document.getElementById('analiseFechamentoPeriodoInfo');
+  if (periodoInfo) {
+    periodoInfo.textContent = `Comparativo ${analise.periodo_atual?.texto || ''} x ${analise.periodo_anterior?.texto || ''}`;
+  }
+
+  const cards = Array.isArray(analise.comparativos) ? analise.comparativos : [];
+  document.getElementById('analiseFechamentoCards').innerHTML = cards.map((item) => `
+    <div class="col-sm-6 col-xl">
+      <div class="analise-card h-100">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+          <div class="analise-card-label">${escapeHtml(item.titulo || '-')}</div>
+          <span class="analise-card-delta ${escapeHtml(item.classe || 'neutral')}">
+            <i class="bi ${escapeHtml(item.icone || 'bi-dash-lg')}"></i>
+            ${escapeHtml(item.delta || 'Sem histórico')}
+          </span>
+        </div>
+        <div class="analise-card-value mb-1">${escapeHtml(item.atual || '-')}</div>
+        <div class="analise-card-sub">Mês anterior: ${escapeHtml(item.anterior || 'Sem histórico')}</div>
+      </div>
+    </div>
+  `).join('');
+
+  const destaques = analise.destaques || {};
+  renderizarListaAnalise('analiseFechamentoMelhoraram', destaques.melhoraram, 'Nenhum destaque positivo relevante no comparativo.');
+  renderizarListaAnalise('analiseFechamentoPioraram', destaques.pioraram, 'Nenhuma piora relevante no comparativo.');
+  renderizarListaAnalise('analiseFechamentoAlertasConsultores', destaques.em_alerta, 'Nenhum consultor entrou em alerta neste período.');
+
+  const movimento = analise.movimento_carteiras || {};
+  const movimentoInfo = document.getElementById('analiseFechamentoMovimentoInfo');
+  if (movimentoInfo) {
+    movimentoInfo.textContent = movimento.disponivel
+      ? 'Entradas e saídas por consultor nas carteiras do fechamento'
+      : 'Sem base histórica suficiente para detalhar o movimento do mês';
+  }
+  const movBody = document.getElementById('analiseFechamentoMovimentoBody');
+  const movFoot = document.getElementById('analiseFechamentoMovimentoFoot');
+  if (movBody && movFoot) {
+    const linhas = Array.isArray(movimento.linhas) ? movimento.linhas : [];
+    if (!movimento.disponivel) {
+      movBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Sem histórico suficiente para montar o movimento das carteiras neste mês.</td></tr>';
+      movFoot.innerHTML = '';
+    } else {
+      movBody.innerHTML = linhas.map((row) => `
+        <tr>
+          <td><strong>${escapeHtml(row.nome || '-')}</strong></td>
+          <td class="text-center">${Number(row.entraram_90_150 || 0)}</td>
+          <td class="text-center">${Number(row.sairam_90_150 || 0)}</td>
+          <td class="text-center">${Number(row.entraram_proximos || 0)}</td>
+          <td class="text-center">${Number(row.sairam_proximos || 0)}</td>
+          <td class="text-center"><span class="analise-saldo ${classeSaldo(row.saldo_90_150)}">${formatarSaldo(row.saldo_90_150)}</span></td>
+          <td class="text-center"><span class="analise-saldo ${classeSaldo(row.saldo_proximos)}">${formatarSaldo(row.saldo_proximos)}</span></td>
+        </tr>
+      `).join('');
+      const t = movimento.totais || {};
+      movFoot.innerHTML = `
+        <tr class="table-light">
+          <th>Total do mês</th>
+          <th class="text-center">${Number(t.entraram_90_150 || 0)}</th>
+          <th class="text-center">${Number(t.sairam_90_150 || 0)}</th>
+          <th class="text-center">${Number(t.entraram_proximos || 0)}</th>
+          <th class="text-center">${Number(t.sairam_proximos || 0)}</th>
+          <th class="text-center"><span class="analise-saldo ${classeSaldo(t.saldo_90_150)}">${formatarSaldo(t.saldo_90_150)}</span></th>
+          <th class="text-center"><span class="analise-saldo ${classeSaldo(t.saldo_proximos)}">${formatarSaldo(t.saldo_proximos)}</span></th>
+        </tr>
+      `;
+    }
+  }
+
+  const alertas = Array.isArray(analise.alertas) ? analise.alertas : [];
+  const alertasEl = document.getElementById('analiseFechamentoAlertasGerais');
+  if (alertasEl) {
+    alertasEl.innerHTML = alertas.map((item) => `
+      <div class="col-lg-6">
+        <div class="analise-alerta-card ${escapeHtml(item.nivel || 'info')}">
+          <div class="analise-alerta-title">${escapeHtml(item.titulo || '-')}</div>
+          <div class="analise-alerta-text">${escapeHtml(item.texto || '-')}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function renderizarConfiabilidadeFechamento(data) {
+  const bar = document.getElementById('fechamentoConfiabilidadeBar');
+  if (!bar) return;
+  const totais = (data && data.totais) || {};
+  const consistencia = (data && data.consistencia) || {};
+  const snapshot = (data && data.snapshot_info) || {};
+  const historico90 = totais.historico_90_150_data_ref || 'Sem histórico';
+  const historicoPx = totais.historico_proximos_data_ref || 'Sem histórico';
+  const historicoConstr = totais.historico_construtoras_data_ref || 'Sem histórico';
+  const historicoAtivos = totais.historico_ativos_data_ref || 'Sem histórico';
+  const regraBaseTexto = (totais.historico_ativos_data_ref || totais.historico_90_150_data_ref || totais.historico_proximos_data_ref || totais.historico_construtoras_data_ref)
+    ? 'Comparativo usando a foto do primeiro dia do mês'
+    : 'Comparativo sem base histórica disponível';
+  const snapshotStatus = snapshot.atualizado_do_ultimo
+    ? 'Snapshot atualizado'
+    : (snapshot.versao_existente ? 'Snapshot conferido' : 'Snapshot inicial salvo');
+  const snapshotClasse = 'text-success';
+  const avisosVisiveis = (consistencia.avisos || []).filter(
+    (aviso) => !String(aviso || '').toLowerCase().includes('snapshot atual divergiu da última versão salva')
+  );
+  const consistenciaTexto = (consistencia.ok || !avisosVisiveis.length)
+    ? 'Consistência validada'
+    : `Atenção: ${avisosVisiveis[0] || 'divergência detectada'}`;
+  const consistenciaClasse = (consistencia.ok || !avisosVisiveis.length) ? 'text-success' : 'text-danger';
+
+  bar.innerHTML = `
+    <span class="fechamento-resumo-item text-primary"><i class="bi bi-info-circle"></i> ${escapeHtml(regraBaseTexto)}</span>
+    {% if dashboard_tipo == 'televendas' %}
+    <span class="fechamento-resumo-item"><i class="bi bi-building"></i> Base Construtoras: <strong>${escapeHtml(historicoConstr)}</strong></span>
+    {% else %}
+    <span class="fechamento-resumo-item"><i class="bi bi-people"></i> Base Ativos: <strong>${escapeHtml(historicoAtivos)}</strong></span>
+    <span class="fechamento-resumo-item"><i class="bi bi-clock-history"></i> Base 90-150: <strong>${escapeHtml(historico90)}</strong></span>
+    <span class="fechamento-resumo-item"><i class="bi bi-clock-history"></i> Base Prox.: <strong>${escapeHtml(historicoPx)}</strong></span>
+    {% endif %}
+    <span class="fechamento-resumo-item ${snapshotClasse}"><i class="bi bi-shield-check"></i> ${escapeHtml(snapshotStatus)}</span>
+    <span class="fechamento-resumo-item ${consistenciaClasse}"><i class="bi bi-patch-check"></i> ${escapeHtml(consistenciaTexto)}</span>
+  `;
+  bar.style.display = 'flex';
+}
+
+function badgeResultado(resultado) {
+  const mapa = {
+    comprou: '<span class="badge bg-success"><i class="bi bi-cart-check"></i> Comprou</span>',
+    nao_comprou: '<span class="badge bg-secondary">Não comprou</span>',
+    retornar: '<span class="badge bg-warning"><i class="bi bi-arrow-clockwise"></i> Retornar</span>',
+    sem_interesse: '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> Sem interesse</span>',
+    relacionamento: '<span class="badge bg-info"><i class="bi bi-heart"></i> Relacionamento</span>',
+    cliente_inativo: '<span class="badge bg-dark"><i class="bi bi-person-x"></i> Cliente inativo</span>'
+  };
+  return mapa[resultado] || mapa.nao_comprou;
+}
+
+async function carregarInsightsObservacoes(mes, ano) {
+  const elResumo = document.getElementById('insightsObsResumo');
+  const elCats = document.getElementById('insightsObsCategorias');
+  const elPal = document.getElementById('insightsObsPalavras');
+  const elOps = document.getElementById('insightsObsOperadores');
+  if (!elResumo || !elCats || !elPal || !elOps) return;
+
+  elResumo.textContent = 'Analisando...';
+  elCats.innerHTML = '<span class="text-muted">Carregando...</span>';
+  elPal.innerHTML = '<span class="text-muted">Carregando...</span>';
+  elOps.innerHTML = '<span class="text-muted">Carregando...</span>';
+
+  const token = ++_reqInsightsObsToken;
+  try {
+    const params = new URLSearchParams({
+      mes: String(mes || ''),
+      ano: String(ano || ''),
+      tipo: DASHBOARD_TIPO || 'consultor',
+    });
+    const r = await fetch(`/api/supervisor/observacoes-insights?${params.toString()}`);
+    const data = await r.json();
+    if (token !== _reqInsightsObsToken) return;
+    if (!data.ok) throw new Error(data.erro || 'Erro ao analisar observações');
+
+    const totalObs = Number(data.total_observacoes || 0);
+    elResumo.textContent = `${totalObs} observações analisadas`;
+
+    const cats = data.top_categorias_sem_outros || data.top_categorias || [];
+    const base = totalObs > 0 ? totalObs : 1;
+    elCats.innerHTML = cats.length
+      ? cats.map((c) => {
+          const qtd = Number(c.qtd || 0);
+          const pct = Math.max(0, Math.min(100, Math.round((qtd / base) * 100)));
+          return `
+            <div class="mb-2">
+              <div class="d-flex justify-content-between">
+                <strong>${escapeHtml(c.categoria)}</strong>
+                <span class="text-muted">${qtd}</span>
+              </div>
+              <div class="progress" style="height:6px;">
+                <div class="progress-bar" role="progressbar" style="width:${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '<span class="text-muted">Sem dados no período.</span>';
+
+    const palavras = data.top_palavras || [];
+    elPal.innerHTML = palavras.length
+      ? palavras.slice(0, 8).map((p) => `<span class="badge text-bg-light border me-1 mb-1">${escapeHtml(p.palavra)} (${p.qtd})</span>`).join('')
+      : '<span class="text-muted">Sem palavras relevantes.</span>';
+
+    const ops = (data.operadores || []).slice(0, 6);
+    elOps.innerHTML = ops.length
+      ? ops.map((o) => `<div class="mb-1"><strong>${escapeHtml(o.operador)}</strong>: ${o.total_observacoes} <span class="text-muted">(${escapeHtml(o.principal)})</span></div>`).join('')
+      : '<span class="text-muted">Sem observações por operador.</span>';
+  } catch (erro) {
+    elResumo.textContent = 'Falha ao analisar';
+    elCats.innerHTML = `<span class="text-danger">${escapeHtml(erro.message || 'Erro')}</span>`;
+    elPal.innerHTML = '<span class="text-muted">-</span>';
+    elOps.innerHTML = '<span class="text-muted">-</span>';
+  }
+}
+
+function badgeCarteira(carteira) {
+  const c = String(carteira || '').trim();
+  if (!c) return '';
+  const mapa = {
+    'Clientes Especiais': 'text-secondary border-secondary-subtle bg-light',
+    'Sem Pedido 90-150d': 'text-warning-emphasis border-warning-subtle bg-warning-subtle',
+    'Prox. Inativação': 'text-warning-emphasis border-warning-subtle bg-warning-subtle',
+    'Lista Pública': 'text-secondary border-secondary-subtle bg-light',
+    'Retornar': 'text-info-emphasis border-info-subtle bg-info-subtle',
+  };
+  const cls = mapa[c] || 'text-secondary border-secondary-subtle bg-light';
+  return `<span class="badge rounded-pill ms-2 ${cls}" style="font-size:.66rem;font-weight:600;padding:.18rem .45rem;border:1px solid;">${escapeHtml(c)}</span>`;
+}
+
+async function abrirDetalheConversao(operadorId, operadorNome) {
+  const filtro = document.getElementById('filtroMes');
+  const valor = (filtro && filtro.value) ? filtro.value : '';
+  const [mes, ano] = valor.split('-');
+  if (!operadorId || !mes || !ano) return;
+
+  const titulo = document.getElementById('detalheConversaoTitulo');
+  const resumo = document.getElementById('detalheConversaoResumo');
+  const tbody = document.getElementById('tbodyDetalheConversao');
+  if (!titulo || !resumo || !tbody) return;
+
+  titulo.textContent = `Conversoes de ${operadorNome || 'Operador'} - ${mes}/${ano}`;
+  resumo.innerHTML = '<span class="text-muted">Carregando...</span>';
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+
+  const modalEl = document.getElementById('modalDetalheConversao');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+
+  const token = ++_reqDetalheConversaoToken;
+  try {
+    const params = new URLSearchParams({
+      mes: String(mes),
+      ano: String(ano),
+      operador_id: String(operadorId),
+      tipo: DASHBOARD_TIPO,
+    });
+    const r = await fetch(`/api/resultados-por-mes/detalhe-conversao?${params.toString()}`);
+    const data = await r.json();
+    if (token !== _reqDetalheConversaoToken) return;
+    if (!data.ok) throw new Error(data.erro || 'Erro ao carregar detalhe');
+
+    const rs = data.resumo || {};
+    resumo.innerHTML = `<strong>Compradores:</strong> ${rs.compradores || 0} <span class="mx-2">|</span> <strong>Confirmados Oracle:</strong> ${rs.confirmados_oracle || 0} <span class="mx-2">|</span> <strong>Não confirmados:</strong> ${rs.nao_confirmados_oracle || 0}`;
+
+    const itens = data.itens || [];
+    if (!itens.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Nenhum cliente com compra no período.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = itens.map((it) => `
+      <tr>
+        <td>${escapeHtml(it.cliente_nome)} <span class="text-muted">(${escapeHtml(it.cd_cliente_oracle || '-')})</span>${badgeCarteira(it.carteira_origem)}</td>
+        <td class="text-center">${it.qtd_compras || 0}</td>
+        <td class="text-center">${escapeHtml(it.ultima_compra_em || '-')}</td>
+        <td class="text-end">${escapeHtml(it.receita_fmt || 'R$ 0,00')}</td>
+        <td class="text-center">
+          ${it.pedido_oracle_confirmado
+            ? `<span class="text-success fw-semibold">&#10003;</span> <span class="text-muted">#${escapeHtml(it.pedido_oracle_codigo || '')}</span>`
+            : '<span class="text-danger fw-semibold">&#10005;</span>'}
+        </td>
+        <td class="text-center">
+          ${(it.cd_cliente_oracle || it.cliente_id)
+            ? `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="abrirDetalhesOracleSupervisor('${String(it.cd_cliente_oracle || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', ${Number(it.cliente_id || 0)}, '${String(it.carteira_origem || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"><i class="bi bi-eye"></i></button>`
+            : '<span class="text-muted">-</span>'}
+        </td>
+      </tr>
+    `).join('');
+  } catch (erro) {
+    resumo.innerHTML = `<span class="text-danger">${escapeHtml(erro.message || 'Erro')}</span>`;
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Erro ao carregar.</td></tr>';
+  }
+}
+
+async function copiarResumoFechamento() {
+  const texto = _resumoFechamentoTexto || 'Sem resumo carregado.';
+  try {
+    await navigator.clipboard.writeText(texto);
+    alert('Resumo copiado.');
+  } catch (_) {
+    alert('Não foi possível copiar automaticamente.\n\n' + texto);
+  }
+}
+
+function abrirDetalhesOracleSupervisor(cdClienteOracle, clienteId, carteiraOrigem = '') {
+  const cd = String(cdClienteOracle || '').trim();
+  const idCliente = Number(clienteId || 0);
+  if (!cd && !idCliente) return;
+  const carteira = String(carteiraOrigem || '').trim().toLowerCase();
+  const ehCarteiraInativos = carteira.includes('inativo');
+  const janelaDiasDetalhes = ehCarteiraInativos ? 730 : 365;
+  const parseMesAnoAtual = () => {
+    const select = document.getElementById('filtroMes');
+    const valor = String(select?.value || '').trim();
+    const [mesTxt, anoTxt] = valor.split('-');
+    const mes = Number(mesTxt);
+    const ano = Number(anoTxt);
+    if (!mes || !ano || mes < 1 || mes > 12) return null;
+    const inicio = new Date(ano, mes - 1, 1);
+    const fim = new Date(ano, mes, 1);
+    const fmtIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { inicioIso: fmtIso(inicio), fimIso: fmtIso(fim) };
+  };
+  const formatarDataPedido = (valor) => {
+    if (!valor) return '-';
+    const dt = new Date(valor);
+    if (!Number.isNaN(dt.getTime())) return dt.toLocaleDateString('pt-BR');
+    const txt = String(valor);
+    const m = txt.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    return txt;
+  };
+  const periodo = parseMesAnoAtual();
+
+  const modalEl = document.getElementById('modalDetalhesOracleSupervisor');
+  const content = document.getElementById('detalhesOracleSupervisorContent');
+  if (!modalEl || !content) return;
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+  content.innerHTML = `
+    <div class="text-center py-4">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Carregando detalhes do Oracle...</p>
+    </div>
+  `;
+
+  const params = new URLSearchParams();
+  if (periodo && !ehCarteiraInativos) {
+    params.set('data_inicio', periodo.inicioIso);
+    params.set('data_fim', periodo.fimIso);
+  } else {
+    params.set('janela_dias', String(janelaDiasDetalhes));
+  }
+  const url = cd
+    ? `/detalhes-cliente-oracle-cd/${encodeURIComponent(cd)}?${params.toString()}`
+    : `/detalhes-cliente-oracle/${idCliente}?${params.toString()}`;
+  fetch(url)
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data || !data.success) {
+        content.innerHTML = `<div class="alert alert-danger mb-0">Não foi possível carregar os detalhes.</div>`;
+        return;
+      }
+      const cliente = data.cliente || {};
+      const pedidos = (data.pedidos_oracle || []).slice().sort((a, b) => {
+        const da = new Date(a?.dt_pedido || 0).getTime();
+        const db = new Date(b?.dt_pedido || 0).getTime();
+        return db - da;
+      });
+      const itensOracle = data.itens_oracle || [];
+      const pedidosPeriodoSet = new Set(
+        pedidos
+          .map((p) => String(p.cd_pedido || '').trim())
+          .filter((v) => v)
+      );
+      const itensPeriodo = itensOracle.filter((it) => pedidosPeriodoSet.has(String(it.cd_pedido || '').trim()));
+
+      const linhas = pedidos.slice(0, 20).map((p) => `
+        <tr>
+          <td>${escapeHtml(formatarDataPedido(p.dt_pedido))}</td>
+          <td>${escapeHtml(p.cd_pedido || '-')}</td>
+          <td class="text-end">${escapeHtml((p.total_pedido !== null && p.total_pedido !== undefined) ? Number(p.total_pedido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-')}</td>
+          <td>${escapeHtml(p.situacao || '-')}</td>
+        </tr>
+      `).join('');
+      const periodoInicio = data.periodo_inicio ? formatarDataPedido(data.periodo_inicio) : '';
+      let periodoFim = '';
+      if (data.periodo_fim) {
+        const dtFim = new Date(data.periodo_fim);
+        if (!Number.isNaN(dtFim.getTime())) {
+          dtFim.setDate(dtFim.getDate() - 1);
+          periodoFim = dtFim.toLocaleDateString('pt-BR');
+        } else {
+          periodoFim = formatarDataPedido(data.periodo_fim);
+        }
+      }
+      const periodoLabel = (periodoInicio && periodoFim)
+        ? `${periodoInicio} a ${periodoFim}`
+        : 'janela padrao';
+
+      const itensPorPedido = {};
+      for (const it of itensPeriodo) {
+        const chavePedido = String(it.cd_pedido || '').trim();
+        if (!chavePedido) continue;
+        if (!itensPorPedido[chavePedido]) itensPorPedido[chavePedido] = [];
+        itensPorPedido[chavePedido].push(it);
+      }
+      const blocosItensPorPedido = pedidos.slice(0, 20).map((pedido) => {
+        const chavePedido = String(pedido.cd_pedido || '').trim();
+        const itens = (itensPorPedido[chavePedido] || []).slice();
+        if (!itens.length) return '';
+        const linhasItensPedido = itens.map((it) => {
+          const qtd = Number(it.quantidade || 0);
+          const unit = Number(it.precounitario || 0);
+          const peso = Number(it.peso || 0);
+          const desc = (it.pe_desconto !== null && it.pe_desconto !== undefined && String(it.pe_desconto) !== '')
+            ? Number(it.pe_desconto)
+            : null;
+          const fatorDesc = (desc !== null && !Number.isNaN(desc)) ? (1 - (desc / 100)) : 1;
+          const totalItem = (qtd > 0 && unit > 0) ? (qtd * unit * fatorDesc) : null;
+          const pmk = (peso > 0 && unit > 0) ? (unit / peso) : null;
+          return `
+            <tr>
+              <td>${escapeHtml(it.nome_produto || it.idproduto || '-')}</td>
+              <td class="text-center">${Number.isFinite(qtd) ? qtd : '-'}</td>
+              <td class="text-center">${(peso > 0 && Number.isFinite(peso)) ? peso.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 }) : '-'}</td>
+              <td class="text-end">${(pmk !== null && Number.isFinite(pmk)) ? `${pmk.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/kg` : '-'}</td>
+              <td class="text-end">${Number.isFinite(unit) ? unit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</td>
+              <td class="text-center">${(desc !== null && !Number.isNaN(desc)) ? `${desc.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%` : '-'}</td>
+              <td class="text-end">${(totalItem !== null && Number.isFinite(totalItem)) ? totalItem.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</td>
+            </tr>
+          `;
+        }).join('');
+        return `
+          <div class="border rounded-2 p-2 mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Pedido #${escapeHtml(chavePedido)}</strong>
+              <span class="text-muted small">${escapeHtml(formatarDataPedido(pedido.dt_pedido))}</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th class="text-center">Qtd</th>
+                    <th class="text-center">Peso</th>
+                    <th class="text-end">PMK</th>
+                    <th class="text-end">Unitario</th>
+                    <th class="text-center">Desconto</th>
+                    <th class="text-end">Total item</th>
+                  </tr>
+                </thead>
+                <tbody>${linhasItensPedido}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      content.innerHTML = `
+        <div class="mb-2">
+          <strong>${escapeHtml(cliente.nome || '-')}</strong>
+          <span class="text-muted">(${escapeHtml(cliente.cd_cliente_oracle || cd)})</span>
+        </div>
+        <div class="text-muted small mb-2">Período aplicado: ${escapeHtml(periodoLabel)}</div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Pedido</th>
+                <th class="text-end">Valor</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${linhas || '<tr><td colspan="4" class="text-center text-muted py-3">Sem pedidos no período.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+        <hr class="my-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Itens dos pedidos no período</strong>
+          <span class="text-muted small">${itensPeriodo.length} item(ns)</span>
+        </div>
+        ${blocosItensPorPedido || '<div class="text-center text-muted py-3 border rounded-2">Sem itens detalhados no período.</div>'}
+      `;
+    })
+    .catch(() => {
+      content.innerHTML = `<div class="alert alert-danger mb-0">Erro ao consultar Oracle.</div>`;
+    });
+}
+
+async function carregarLigacoesMes() {
+  const selectConsultor = document.getElementById('filtroConsultorMes');
+  const selectMes = document.getElementById('filtroMesDetalhes');
+  const tbody = document.getElementById('tbodyLigacoesMes');
+  const resumo = document.getElementById('resumoLigacoesMes');
+  if (!selectConsultor || !selectMes || !tbody || !resumo) return;
+
+  const consultorId = selectConsultor.value;
+  const [mes, ano] = selectMes.value.split('-');
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="7" class="text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+      </td>
+    </tr>
+  `;
+  resumo.innerHTML = '';
+
+  const params = new URLSearchParams({ mes, ano });
+  if (consultorId) params.append('consultor_id', consultorId);
+
+  const token = ++_reqLigacoesMesToken;
+  try {
+    params.append('tipo', DASHBOARD_TIPO);
+    const r = await fetch(`/api/supervisor/ligacoes-por-mes?${params.toString()}`);
+    const data = await r.json();
+    if (token !== _reqLigacoesMesToken) return;
+    if (!data.ok) throw new Error(data.erro || "Erro ao carregar {{ 'interacoes' if dashboard_tipo == 'consultor' else 'ligacoes' }}");
+
+    const est = data.estatisticas || {};
+    resumo.innerHTML = `
+      <div class="alert alert-info py-2 mb-2">
+        <strong>${escapeHtml(data.consultor_nome)}</strong>:
+        ${est.total_ligacoes || 0} {{ 'interacoes' if dashboard_tipo == 'consultor' else 'ligacoes' }} |
+        ${est.vendas || 0} vendas |
+        ${est.conversao || 0}% conversão |
+        ${escapeHtml(est.receita_fmt || 'R$ 0,00')}
+      </div>
+    `;
+
+    if (!data.ligacoes || data.ligacoes.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">
+            Nenhuma {{ 'interacao' if dashboard_tipo == 'consultor' else 'ligacao' }} encontrada para esse filtro
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    let html = '';
+    data.ligacoes.forEach((lig) => {
+      html += `
+        <tr>
+          <td>${escapeHtml(lig.data_hora)}</td>
+          <td>${escapeHtml(lig.consultor)}</td>
+          <td>${escapeHtml(lig.cliente)}</td>
+          <td>${escapeHtml(lig.contato)}</td>
+          <td>${badgeResultado(lig.resultado)}</td>
+          <td class="text-end">${escapeHtml(lig.valor_fmt)}</td>
+          <td>${escapeHtml(lig.observacao || '-')}</td>
+        </tr>
+      `;
+    });
+    tbody.innerHTML = html;
+  } catch (error) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center text-danger py-4">
+          <i class="bi bi-exclamation-triangle"></i> ${escapeHtml(error.message)}
+        </td>
+      </tr>
+    `;
+  }
+}
+
+function renderizarMiniGraficosCards() {
+  const nodes = document.querySelectorAll('.stat-sparkline');
+  if (!nodes.length) return;
+
+  const parseSeries = (value) => {
+    try {
+      const parsed = JSON.parse(value || '[]');
+      return Array.isArray(parsed) ? parsed.map((n) => Number(n || 0)) : [];
+    } catch (_) {
+      return [];
+    }
+  };
+
+  nodes.forEach((node) => {
+    const current = parseSeries(node.dataset.series);
+    const previous = parseSeries(node.dataset.previous);
+    if (!current.length) return;
+
+    const color = node.dataset.color || '#2563eb';
+    const width = 180;
+    const height = 44;
+    const pad = 3;
+    const combined = current.concat(previous.length ? previous : []);
+    const max = Math.max(...combined, 1);
+    const min = Math.min(...combined, 0);
+    const span = Math.max(max - min, 1);
+    const stepCurrent = current.length > 1 ? (width - pad * 2) / (current.length - 1) : 0;
+    const stepPrevious = previous.length > 1 ? (width - pad * 2) / (previous.length - 1) : 0;
+
+    const makePath = (values, step) => values.map((value, index) => {
+      const x = pad + step * index;
+      const y = pad + ((max - value) / span) * (height - pad * 2);
+      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }).join(' ');
+
+    const nowPath = makePath(current, stepCurrent);
+    const prevPath = previous.length ? makePath(previous, stepPrevious) : '';
+    const areaPath = nowPath ? `${nowPath} L ${width - pad} ${height - pad} L ${pad} ${height - pad} Z` : '';
+    node.innerHTML = `
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+        ${areaPath ? `<path class="sparkline-area" d="${areaPath}" fill="${color}"></path>` : ''}
+        ${prevPath ? `<path class="sparkline-prev" d="${prevPath}"></path>` : ''}
+        <path class="sparkline-now" d="${nowPath}" stroke="${color}"></path>
+      </svg>
+    `;
+  });
+}
+
+renderizarMiniGraficosCards();
+
+if (typeof Chart === 'undefined') {
+  console.error('Chart.js não carregou no painel do supervisor.');
+} else {
+// Configuracao dos graficos
+Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+Chart.defaults.font.size = 12;
+Chart.defaults.color = '#64748b';
+
+// Grafico de Ligações por Dia
+const ctxDias = document.getElementById('chartLigacoesDias');
+if (ctxDias) {
+  const ligacoesDias = {{ ligacoes_por_dia|tojson|safe }};
+  if (_chartLigacoesDias) {
+    _chartLigacoesDias.destroy();
+  }
+  
+  _chartLigacoesDias = new Chart(ctxDias, {
+    type: 'line',
+    data: {
+      labels: ligacoesDias.map(d => d.data),
+      datasets: [{
+        label: "{{ 'Interações' if dashboard_tipo == 'consultor' else 'Ligações' }}",
+        data: ligacoesDias.map(d => d.total),
+        borderColor: '#2563eb',
+        backgroundColor: (context) => {
+          const chart = context.chart;
+          const area = chart.chartArea;
+          if (!area) return 'rgba(37, 99, 235, 0.12)';
+          const gradient = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+          gradient.addColorStop(0, 'rgba(37, 99, 235, 0.22)');
+          gradient.addColorStop(1, 'rgba(37, 99, 235, 0)');
+          return gradient;
+        },
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.38,
+        pointRadius: 2.5,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#2563eb',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          borderColor: 'rgba(255,255,255,.12)',
+          borderWidth: 1,
+          padding: 10,
+          displayColors: false,
+          titleFont: { size: 12, weight: '700' },
+          bodyFont: { size: 12 }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          border: { display: false },
+          ticks: {
+            stepSize: 1,
+            padding: 8,
+            callback: value => Number.isInteger(value) ? value : ''
+          },
+          grid: { color: 'rgba(148, 163, 184, 0.18)', drawTicks: false }
+        },
+        x: {
+          border: { display: false },
+          ticks: { maxRotation: 0, autoSkipPadding: 18 },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// Grafico de Resultados
+const ctxResultados = document.getElementById('chartResultados');
+if (ctxResultados) {
+  const resultados = {{ resultados_chart|tojson|safe }};
+  if (_chartResultados) {
+    _chartResultados.destroy();
+  }
+  
+  _chartResultados = new Chart(ctxResultados, {
+    type: 'doughnut',
+    data: {
+      labels: ['Comprou', 'Não Comprou', 'Retornar', 'Sem Interesse', 'Relacionamento', 'Cliente Inativo'],
+      datasets: [{
+        data: [
+          resultados.comprou || 0,
+          resultados.nao_comprou || 0,
+          resultados.retornar || 0,
+          resultados.sem_interesse || 0,
+          resultados.relacionamento || 0,
+          resultados.cliente_inativo || 0
+        ],
+        backgroundColor: [
+          '#10b981',
+          '#94a3b8',
+          '#f59e0b',
+          '#ef4444',
+          '#2563eb',
+          '#475569'
+        ],
+        borderColor: '#ffffff',
+        borderWidth: 3,
+        hoverOffset: 5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 12,
+            font: { size: 11 },
+            usePointStyle: true,
+            pointStyle: 'circle',
+            boxWidth: 6,
+            boxHeight: 6
+          }
+        },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          padding: 10,
+          callbacks: {
+            label: context => {
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percent = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+              return `${context.label}: ${context.parsed} (${percent}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+(function bindCollapseToggleText() {
+  const buttons = document.querySelectorAll('.js-collapse-toggle[data-bs-toggle="collapse"]');
+  if (!buttons.length) return;
+
+  const syncText = (btn) => {
+    const expanded = String(btn.getAttribute('aria-expanded') || 'false') === 'true';
+    const txtCollapsed = btn.getAttribute('data-text-collapsed') || 'Ver lista';
+    const txtExpanded = btn.getAttribute('data-text-expanded') || 'Fechar lista';
+    btn.textContent = expanded ? txtExpanded : txtCollapsed;
+  };
+
+  buttons.forEach((btn) => {
+    const targetSel = btn.getAttribute('data-bs-target');
+    const target = targetSel ? document.querySelector(targetSel) : null;
+    syncText(btn);
+    if (!target) return;
+    target.addEventListener('shown.bs.collapse', () => syncText(btn));
+    target.addEventListener('hidden.bs.collapse', () => syncText(btn));
+  });
+})();
+}
+</script>
+

@@ -1,0 +1,107 @@
+<!-- ============================================================
+     MODAL: NOVIDADES
+     ============================================================ -->
+{% if mostrar_novidades %}
+<div class="modal fade show" id="modalNovidades" data-release-version="{{ app_version }}" tabindex="-1" style="display:block;background:rgba(0,0,0,.5);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-stars me-2"></i>Novidades da Atualização!</h5>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-primary mb-4" style="border-radius:8px;">
+          <i class="bi bi-info-circle me-2"></i><strong>{{ app_version }}</strong> - Atualizado em {{ app_release_date }}
+        </div>
+
+        <ul class="list-unstyled" style="display:flex;flex-direction:column;gap:16px;">
+          <li class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="bi bi-palette text-primary"></i>
+            </div>
+            <div>
+              <strong style="font-size:.9rem;">Nova aparência do sistema</strong><br>
+              <small class="text-muted">Layout redesenhado com menu lateral fixo e visual mais moderno.</small>
+            </div>
+          </li>
+
+          <li class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="bi bi-geo-alt text-info"></i>
+            </div>
+            <div>
+              <strong style="font-size:.9rem;">Visualização por Estado, Representação e Consultor</strong><br>
+              <small class="text-muted">Escolha como analisar a carteira: por UF, por representante ou por consultor (supervisor).</small>
+            </div>
+          </li>
+
+          <li class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="bi bi-tools text-warning"></i>
+            </div>
+            <div>
+              <strong style="font-size:.9rem;">Correções de bugs e estabilidade</strong><br>
+              <small class="text-muted">Ajustes em filtros, contagens de cards, sincronização e textos para evitar inconsistências.</small>
+              <div class="text-muted mt-1" style="font-size:.78rem;">
+                • Filtro mensal com acentuação correta<br>
+                • Contadores e badges revisados<br>
+                • Ajustes de textos e encoding (UTF-8)
+              </div>
+            </div>
+          </li>
+
+          <li class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:10px;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="bi bi-speedometer2 text-success"></i>
+            </div>
+            <div>
+              <strong style="font-size:.9rem;">Listas de acompanhamento revisadas</strong><br>
+              <small class="text-muted">Regras de 90-150 dias, próximos da inativação e movimentos diários ajustadas.</small>
+            </div>
+          </li>
+
+          <li class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:10px;background:#f3e8ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="bi bi-clock-history text-warning"></i>
+            </div>
+            <div>
+              <strong style="font-size:.9rem;">Tempo médio de pagamento</strong><br>
+              <small class="text-muted">Nova métrica para acompanhar o prazo médio de pagamento dos clientes.</small>
+            </div>
+          </li>
+
+          <li class="d-flex gap-3 align-items-start">
+            <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="bi bi-cpu text-warning"></i>
+            </div>
+            <div>
+              <strong style="font-size:.9rem;">Crânio IA em evolução</strong><br>
+              <small class="text-muted">Assistente em desenvolvimento contínuo, com melhorias a cada versão.</small>
+            </div>
+          </li>
+        </ul>
+
+        <div class="alert alert-success mt-4 mb-0" style="border-radius:8px;">
+          <i class="bi bi-check-circle me-2"></i>Funcionalidades anteriores seguem funcionando normalmente.
+        </div>
+
+      </div>
+      <div class="modal-footer d-flex justify-content-between align-items-center">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="chkNaoMostrarVersao">
+          <label class="form-check-label" for="chkNaoMostrarVersao" style="font-size:.85rem;">
+            Não mostrar novamente nesta versão
+          </label>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary" onclick="fecharNovidades(false)">
+            Lembrar depois
+          </button>
+          <button type="button" class="btn btn-primary" onclick="fecharNovidades(true)">
+            <i class="bi bi-check-lg me-1"></i> Entendi
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}

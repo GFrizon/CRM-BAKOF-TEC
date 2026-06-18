@@ -1,0 +1,170 @@
+  <!-- Tabela de clientes -->
+  <div class="rep-table-wrap">
+    <table class="table rep-table">
+      <thead>
+        <tr>
+          <th class="th-sort" onclick="sortFlatTable(this,0)">Cliente<span class="sort-icon"></span></th>
+          <th class="th-sort" onclick="sortFlatTable(this,1)">CNPJ<span class="sort-icon"></span></th>
+          <th>Telefone</th>
+          <th class="th-sort" onclick="sortFlatTable(this,3)">Representante<span class="sort-icon"></span></th>
+          {% if aba != 'pendentes' %}
+          <th class="th-sort" onclick="sortFlatTable(this,4)">Ãltima LigaÃ§Ã£o<span class="sort-icon"></span></th>
+          {% endif %}
+          {% if aba == 'retornar' %}
+          <th class="th-sort" onclick="sortFlatTable(this,{% if aba != 'pendentes' %}5{% else %}4{% endif %})">Próximo Contato<span class="sort-icon"></span></th>
+          {% endif %}
+          <th class="th-sort" onclick="sortFlatTable(this, this.cellIndex)">{{ 'InteraÃ§Ãµes' if current_user.tipo == 'consultor' else 'LigaÃ§Ãµes' }}<span class="sort-icon"></span></th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyClientes">
+      {% if clientes %}
+        {% for c in clientes %}
+        <tr
+          data-origem="{{ c.origem or '' }}"
+          data-cliente-id="{{ c.id if c.id else '' }}"
+          data-cd-cliente-oracle="{{ c.cd_cliente_oracle or '' }}"
+          data-total-ligacoes="{{ c.total_ligacoes or 0 }}"
+          data-tem-telefone="{{ '1' if (c.telefone or c.telefone2) else '0' }}"
+          data-valor="{{ (c.valor_total_365dias or c.valor_ultimo_pedido or 0) }}"
+          data-ultima-ligacao="{{ c.ultima_ligacao.strftime('%Y-%m-%d %H:%M:%S') if c.ultima_ligacao else '' }}"
+          data-proxima-ligacao="{{ c.proxima_ligacao.strftime('%Y-%m-%d %H:%M:%S') if c.proxima_ligacao else '' }}"
+          data-retorno-atrasado="{{ '1' if (c.proxima_ligacao and c.proxima_ligacao < now()) else '0' }}"
+          data-especial-contato-mensal-status="{{ c.especial_contato_mensal_status or '' }}"
+          data-especial-contato-mensal-label="{{ c.especial_contato_mensal_label or '' }}"
+        >
+          <td>
+            <div class="fw-bold" style="font-size:.84rem;color:var(--text-1);display:flex;align-items:center;gap:6px;min-width:0;">
+              <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;">{{ c.nome }}</span>
+              {% if c.pedido_em_andamento %}
+              <span
+                class="pedido-andamento-indicator"
+                title="Pedido em andamento{% if c.pedido_em_andamento_dt %} em {{ c.pedido_em_andamento_dt.strftime('%d/%m/%Y') }}{% endif %}{% if c.pedido_em_andamento_status %} - situacao {{ c.pedido_em_andamento_status }}{% endif %}{% if c.pedido_em_andamento_desc_controle %} - {{ c.pedido_em_andamento_desc_controle }}{% endif %}"
+                aria-label="Pedido em andamento"
+              >
+                <i class="bi bi-hourglass-split"></i>
+              </span>
+              {% endif %}
+            </div>
+            <div class="mt-1 d-flex gap-1">
+              {% if c.origem == 'manual' %}
+              <span class="badge-manual">Manual</span>
+              {% elif c.origem == 'importado_csv' %}
+              <span class="badge-importado">Importado</span>
+              {% endif %}
+            </div>
+            {% if c.continuidade_compra_compacto %}
+            <div class="mt-1">
+              <small style="color:var(--text-2);" title="{{ c.continuidade_compra_tooltip or '' }}">
+                <i class="bi bi-graph-up-arrow"></i> Rec.: {{ c.continuidade_compra_compacto }}
+              </small>
+            </div>
+            {% endif %}
+          </td>
+          <td><code>{{ c.cnpj or '-' }}</code></td>
+          <td>
+            {% if c.telefone %}
+            <div class="contact-inline">
+              <a href="#" class="tel-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ c.telefone|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'telefone' }); return false;">
+                <i class="bi bi-telephone-fill"></i> {{ c.telefone }}
+              </a>
+              <a href="#" class="wa-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ (c.telefone or c.telefone2)|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'whatsapp' }); return false;" title="Chamar no WhatsApp">
+                <i class="bi bi-whatsapp"></i>
+              </a>
+            </div>
+            {% elif c.telefone2 %}
+            <div class="contact-inline">
+              <a href="#" class="tel-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ c.telefone2|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'telefone' }); return false;">
+                <i class="bi bi-telephone-fill"></i> {{ c.telefone2 }}
+              </a>
+              <a href="#" class="wa-link" onclick="iniciarContatoCliente({ clienteId: {{ c.id if c.id else 'null' }}, cdClienteOracle: '{{ c.cd_cliente_oracle|e }}', telefone: '{{ (c.telefone or c.telefone2)|e }}', nomeCliente: '{{ c.nome|e }}', canal: 'whatsapp' }); return false;" title="Chamar no WhatsApp">
+                <i class="bi bi-whatsapp"></i>
+              </a>
+            </div>
+            {% else %}-{% endif %}
+          </td>
+          <td><small style="color:var(--text-2);">{{ c.representante_nome or '-' }}</small></td>
+          {% if aba != 'pendentes' %}
+          <td data-col="ultima-ligacao">
+            {% if c.ultima_ligacao %}
+            <span style="font-size:.8rem;">{{ c.ultima_ligacao.strftime('%d/%m/%Y %H:%M') }}</span>
+            {% else %}-{% endif %}
+          </td>
+          {% endif %}
+          {% if aba == 'retornar' %}
+          <td data-col="proxima-ligacao">
+            {% set agora = now() %}
+            {% if c.proxima_ligacao %}
+            {% if c.proxima_ligacao < agora %}
+            <span class="text-danger fw-bold" style="font-size:.8rem;">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>
+              {{ c.proxima_ligacao.strftime('%d/%m/%Y %H:%M') }}
+            </span>
+            {% else %}
+            <span style="font-size:.8rem;">{{ c.proxima_ligacao.strftime('%d/%m/%Y %H:%M') }}</span>
+            {% endif %}
+            {% else %}-{% endif %}
+          </td>
+          {% endif %}
+          <td>
+            <span class="badge-count">{{ c.total_ligacoes }}</span>
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <button class="action-btn btn btn-outline-secondary"
+                      onclick="abrirDetalhesClienteComSync({{ c.id }}, '{{ (c.cd_cliente_oracle or '')|e }}', '{{ (c.cnpj or '')|e }}')"
+                      title="Ver Detalhes Oracle">
+                <i class="bi bi-eye"></i>
+              </button>
+              {% if current_user.tipo not in ('supervisor_repr', 'representante') %}
+              <button class="action-btn btn btn-primary"
+                      onclick="abrirForm({{ c.id }}, '{{ c.nome|e }}', '{{ c.telefone|e }}', '{{ (c.cd_cliente_oracle or '')|e }}')"
+                      title="Registrar Ligação">
+                <i class="bi bi-telephone-plus"></i>
+              </button>
+              {% endif %}
+              {% if c.total_ligacoes > 0 %}
+              <button class="action-btn btn {% if c.especial_contato_mensal_status == 'mes_atual' %}btn-outline-success action-btn-monthly action-btn-monthly--current{% elif c.especial_contato_mensal_status == 'mes_anterior' %}btn-outline-warning action-btn-monthly action-btn-monthly--previous{% elif c.especial_contato_mensal_status in ('atrasado', 'sem_historico') %}btn-outline-danger action-btn-monthly action-btn-monthly--late{% else %}btn-outline-secondary{% endif %}"
+                      data-action="historico"
+                      onclick="historico({{ c.id }})"
+                      title="{% if c.origem in ('manual', 'importado_csv') %}Histórico. {{ c.especial_contato_mensal_label }}{% else %}Histórico{% endif %}">
+                <i class="bi bi-clock-history"></i>
+              </button>
+              {% endif %}
+              {% if current_user.tipo not in ('supervisor_repr', 'representante') %}
+              <button class="action-btn btn btn-outline-danger"
+                      onclick="removerCliente({{ c.id }}, '{{ c.nome|e }}')"
+                      title="Remover">
+                <i class="bi bi-trash"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if usar_lazy_tabela|default(false) %}
+        <tr class="tabela-lazy-more" data-next-offset="{{ lazy_tabela_next_offset|int }}" data-total="{{ lazy_tabela_total|int }}">
+          <td colspan="8" class="text-center py-3">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="carregarMaisTabelaPadrao(this)">
+              Carregar mais
+            </button>
+            <div class="small text-muted mt-1">
+              Exibindo {{ lazy_tabela_next_offset|int }} de {{ lazy_tabela_total|int }}
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+      {% else %}
+        <tr>
+          <td colspan="8">
+            <div class="empty-state">
+              <i class="bi bi-inbox"></i>
+              <p class="fw-semibold mb-0">Nenhum cliente encontrado.</p>
+            </div>
+          </td>
+        </tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>

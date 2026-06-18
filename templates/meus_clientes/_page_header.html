@@ -1,0 +1,61 @@
+<!-- ============================================================
+     CABECALHO DA PAGINA
+     ============================================================ -->
+<div class="page-header d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between gap-3">
+  {% set visao_padrao = 'dashboard' if current_user.tipo in ('consultor', 'televendas', 'supervisor_repr', 'representante') else 'clientes' %}
+  {% set visao_atual = visao|default(request.args.get('visao') or visao_padrao, true) %}
+  <div>
+    <h2 class="m-0">
+      {% if visao_atual == 'dashboard' %}
+      <i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard
+      {% else %}
+      <i class="bi bi-people-fill me-2 text-primary"></i>Meus Clientes
+      {% endif %}
+    </h2>
+    {% if aba == 'oracle' %}
+    <p class="mb-0 mt-1">Clientes sem pedidos ha 90-150 dias (Oracle)</p>
+    {% elif aba == 'inativos' %}
+    <p class="mb-0 mt-1">Lista Publica - sem pedidos entre 181 dias e 3 anos</p>
+    {% elif aba == 'proximos_inativacao' %}
+    <p class="mb-0 mt-1">Clientes com 151-180 dias sem pedido - proximos da inativacao</p>
+    {% elif aba == 'pendentes' and current_user.tipo == 'consultor' %}
+    <p class="mb-0 mt-1">Clientes especiais sem contato registrado - por representante</p>
+    {% elif current_user.tipo == 'televendas' %}
+    <p class="mb-0 mt-1">Gerencie seus clientes e registre ligacoes (Televendas)</p>
+    {% else %}
+    <p class="mb-0 mt-1">Gerencie representantes, clientes e registre ligacoes</p>
+    {% endif %}
+  </div>
+  {% if visao_atual == 'clientes' %}
+  <form method="get" action="{{ url_for('meus_clientes') }}" class="header-search flex-grow-1">
+    <input type="hidden" name="aba" value="{{ aba }}">
+    <input type="hidden" name="visao" value="{{ visao|default(request.args.get('visao', 'clientes')) }}">
+    <input type="hidden" name="agrupar_por" value="{{ agrupar_por|default(request.args.get('agrupar_por', ''), true) }}">
+    {% if dashboard_tipo %}
+    <input type="hidden" name="dashboard_tipo" value="{{ dashboard_tipo }}">
+    {% endif %}
+    <div class="input-group input-group-sm">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="text" class="form-control js-auto-submit-search" name="q"
+             placeholder="Buscar cliente, CNPJ, telefone ou representante..."
+             value="{{ request.args.get('q','') }}"
+             id="buscaRapida"
+             data-debounce-ms="380"
+             autocomplete="off">
+    </div>
+    <small id="buscaStatus" class="visually-hidden"></small>
+  </form>
+  <div class="header-actions d-flex flex-wrap gap-2">
+    {% if current_user.tipo in ('consultor', 'televendas', 'supervisor') %}
+    <button class="btn btn-warning btn-sm" onclick="abrirModalVendaRetroativa()">
+      <i class="bi bi-receipt-cutoff me-1"></i> Venda Retroativa
+    </button>
+    {% endif %}
+    {% if aba not in ('oracle', 'inativos') and current_user.tipo in ('consultor', 'supervisor') %}
+    <button class="btn btn-primary btn-sm" onclick="abrirModalAdicionar()">
+      <i class="bi bi-person-plus me-1"></i> Adicionar Cliente
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>

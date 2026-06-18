@@ -1,0 +1,57 @@
+<!-- Modal Criar Banner -->
+<div class="modal fade" id="modalCriarBanner" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-plus-circle"></i> Criar Novo Banner
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="formCriarBanner">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="titulo" class="form-label">Título <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="titulo" name="titulo" required maxlength="200">
+            <div class="form-text">Título curto e chamativo para o aviso.</div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="mensagem" class="form-label">Mensagem <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="mensagem" name="mensagem" rows="4" required></textarea>
+            <div class="form-text">Descrição detalhada do aviso que será exibido para os usuários.</div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="tipo" class="form-label">Tipo do Banner</label>
+                <select class="form-select" id="tipo" name="tipo">
+                  <option value="info">Informativo</option>
+                  <option value="warning">Aviso</option>
+                  <option value="success">Sucesso</option>
+                  <option value="danger">Urgente</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="data_expiracao" class="form-label">Data de Expiração</label>
+                <input type="date" class="form-control" id="data_expiracao" name="data_expiracao">
+                <div class="form-text">Opcional. Banner será desativado automaticamente nesta data.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i> Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-circle"></i> Criar Banner
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

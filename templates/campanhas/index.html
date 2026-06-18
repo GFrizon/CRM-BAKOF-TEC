@@ -1,0 +1,117 @@
+{% extends "layout.html" %}
+
+{% block title %}Campanhas - CRM Bakof{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h3 class="mb-0 fw-bold"><i class="bi bi-trophy-fill me-2 text-warning"></i>Campanhas</h3>
+      <p class="text-muted mb-0" style="font-size:.88rem">Selecione uma campanha para visualizar</p>
+    </div>
+    {% if eh_supervisor %}
+    <a href="{{ url_for('campanha_configuracao') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-gear me-1"></i> Configuração
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="row g-4">
+
+    <!-- Card: Reativação Premiada -->
+    <div class="col-12 col-md-6 col-xl-4">
+      <a href="{{ url_for('campanha_reativacao_premiada') }}" class="text-decoration-none">
+        <div class="card h-100 border-0 shadow-sm campanha-card">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center gap-3 mb-3">
+              <div class="campanha-icon" style="background:#fef9c3;color:#854d0e;">
+                <i class="bi bi-arrow-repeat fs-4"></i>
+              </div>
+              <div>
+                <h5 class="mb-0 fw-bold">Reativação Premiada</h5>
+                <span class="badge bg-success" style="font-size:.7rem">Ativa</span>
+              </div>
+            </div>
+            <p class="text-muted mb-3" style="font-size:.85rem">
+              Premiação para representantes que reativam clientes entre 151 e 180 dias sem pedido.
+              Acompanhe reativações, prêmios e clientes próximos da inativação por representante.
+            </p>
+            <div class="d-flex align-items-center gap-2 mt-auto">
+              <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>151–180 dias</span>
+              <span class="badge bg-light text-dark border"><i class="bi bi-cash-coin me-1"></i>R$ 50,00 / reativação</span>
+            </div>
+          </div>
+          <div class="card-footer bg-transparent border-0 px-4 pb-4 pt-0">
+            <span class="btn btn-warning btn-sm w-100">
+              <i class="bi bi-arrow-right me-1"></i> Acessar campanha
+            </span>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Card: Premiação Extra Mês -->
+    <div class="col-12 col-md-6 col-xl-4">
+      <a href="{{ url_for('premiacao_extra') }}" class="text-decoration-none">
+        <div class="card h-100 border-0 shadow-sm campanha-card">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center gap-3 mb-3">
+              <div class="campanha-icon" style="background:#fce7f3;color:#9d174d;">
+                <i class="bi bi-stars fs-4"></i>
+              </div>
+              <div>
+                <h5 class="mb-0 fw-bold">Premiação Extra Mês</h5>
+                <span class="badge bg-success" style="font-size:.7rem">Ativa</span>
+              </div>
+            </div>
+            <p class="text-muted mb-3" style="font-size:.85rem">
+              Bônus por atingir a meta de vendas no prazo intermediário ou até o fim do mês.
+              Configurável por mês pelo supervisor.
+            </p>
+            <div class="d-flex align-items-center gap-2 flex-wrap mt-auto">
+              <span class="badge bg-warning text-dark"><i class="bi bi-lightning-fill me-1"></i>Meta % + prazo</span>
+            </div>
+          </div>
+          <div class="card-footer bg-transparent border-0 px-4 pb-4 pt-0">
+            <span class="btn btn-sm w-100" style="background:#4f46e5;color:#fff;">
+              <i class="bi bi-arrow-right me-1"></i> Acessar campanha
+            </span>
+          </div>
+        </div>
+      </a>
+    </div>
+
+  </div>
+
+</div>
+
+<style>
+.campanha-card {
+  border-radius: 14px;
+  transition: transform .15s, box-shadow .15s;
+  cursor: pointer;
+}
+.campanha-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.10) !important;
+}
+.campanha-card-placeholder {
+  cursor: default;
+  opacity: .65;
+}
+.campanha-card-placeholder:hover {
+  transform: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,.07) !important;
+}
+.campanha-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,31 @@
+﻿<div class="row g-3 mb-4 dashboard-chart-grid">
+  <div class="col-xl-8">
+    <div class="dashboard-chart-card">
+      <div class="dashboard-chart-head">
+        <div>
+          <span class="dashboard-chart-kicker">Evolução</span>
+          <h3>{{ 'Interações' if dashboard_tipo == 'consultor' else 'Ligações' }} {{ chart_titulo_periodo or 'por dia' }}</h3>
+        </div>
+        <span class="dashboard-chart-pill">{{ chart_periodo_label or '30 dias' }}</span>
+      </div>
+      <div class="dashboard-chart-shell dashboard-chart-shell-line">
+        <canvas id="chartLigacoesDias"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="dashboard-chart-card">
+      <div class="dashboard-chart-head">
+        <div>
+          <span class="dashboard-chart-kicker">Resultado</span>
+          <h3>Distribuição do período</h3>
+        </div>
+        <span class="dashboard-chart-pill">{{ total_vendas_periodo or 0 }} vendas</span>
+      </div>
+      <div class="dashboard-chart-shell dashboard-chart-shell-donut">
+        <canvas id="chartResultados"></canvas>
+      </div>
+    </div>
+  </div>
+</div>

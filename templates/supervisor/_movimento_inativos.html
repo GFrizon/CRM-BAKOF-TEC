@@ -1,0 +1,52 @@
+<div class="card mb-4" style="border:1px solid #dbe4f3;">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex flex-wrap align-items-center gap-2" style="font-size:.86rem;">
+      <span class="fw-semibold text-muted">Movimento Inativos (hoje)</span>
+      <span class="badge" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;">Entraram: {{ movimento_inativos_hoje.entraram if movimento_inativos_hoje else 0 }}</span>
+      <span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;">Sairam: {{ movimento_inativos_hoje.sairam if movimento_inativos_hoje else 0 }}</span>
+      <button
+        class="btn btn-sm btn-outline-secondary py-0 px-2 js-collapse-toggle"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#movimentoInativosDetalheSup"
+        aria-expanded="false"
+        aria-controls="movimentoInativosDetalheSup"
+        data-text-collapsed="Ver lista"
+        data-text-expanded="Fechar lista"
+      >
+        Ver lista
+      </button>
+      {% if movimento_inativos_hoje and movimento_inativos_hoje.atualizado_em %}
+      <small class="text-muted">Atualizado em {{ movimento_inativos_hoje.atualizado_em.strftime('%d/%m/%Y %H:%M') }}</small>
+      {% endif %}
+    </div>
+    <div class="collapse mt-2" id="movimentoInativosDetalheSup">
+      <div class="row g-2">
+        <div class="col-md-6">
+          <div class="fw-semibold text-success mb-1">Entraram ({{ (movimento_inativos_detalhes.entraram or [])|length }})</div>
+          <div class="border rounded p-2" style="max-height:190px; overflow:auto; font-size:.82rem;">
+            {% for c in movimento_inativos_detalhes.entraram or [] %}
+            <div class="border-bottom py-1">
+              <div>{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente }})</span></div>
+            </div>
+            {% else %}
+            <div class="text-muted">Sem entradas hoje.</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="fw-semibold text-danger mb-1">Sairam ({{ (movimento_inativos_detalhes.sairam or [])|length }})</div>
+          <div class="border rounded p-2" style="max-height:190px; overflow:auto; font-size:.82rem;">
+            {% for c in movimento_inativos_detalhes.sairam or [] %}
+            <div class="border-bottom py-1">
+              <div>{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente }})</span></div>
+            </div>
+            {% else %}
+            <div class="text-muted">Sem saídas hoje.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,68 @@
+﻿{% set secao_atual = request.args.get('secao') or 'dashboard' %}
+{% set mes_atual = request.args.get('mes') %}
+{% set ano_atual = request.args.get('ano') %}
+<div class="panel-card mb-3">
+  <div class="panel-body py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="text-muted small fw-semibold d-flex align-items-center gap-2">
+      {% if secao_atual == 'fechamento' %}
+      <i class="bi bi-clipboard-data"></i>
+      <span>Setor de fechamento</span>
+      {% else %}
+      <i class="bi bi-sliders2"></i>
+      <span>Visão do dashboard</span>
+      {% endif %}
+    </div>
+
+    {% if secao_atual != 'fechamento' %}
+    <form
+      method="get"
+      action="{{ url_for(request.endpoint) }}"
+      class="dashboard-period-form d-flex flex-wrap align-items-center gap-2"
+    >
+      <input type="hidden" name="secao" value="{{ secao_atual }}">
+      <label class="dashboard-period-field">
+        <span class="dashboard-period-label">Ano</span>
+        <select class="form-select form-select-sm" name="ano" onchange="this.form.submit()">
+          {% for ano_item in dashboard_anos_disponiveis or [] %}
+          <option value="{{ ano_item }}" {% if ano_item == ano_filtro %}selected{% endif %}>{{ ano_item }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="dashboard-period-field">
+        <span class="dashboard-period-label">Mês</span>
+        <select class="form-select form-select-sm" name="mes" onchange="this.form.submit()">
+          {% for mes_item in dashboard_meses_disponiveis or [] %}
+          <option value="{{ mes_item.valor }}" {% if mes_item.valor == mes_filtro %}selected{% endif %}>{{ mes_item.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <span class="dashboard-period-current">
+        <i class="bi bi-calendar3"></i>
+        Período: {{ dashboard_periodo_label }}
+      </span>
+    </form>
+    {% endif %}
+
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <div class="btn-group btn-group-sm" role="group" aria-label="Troca de visão do dashboard">
+        <a
+          class="btn {{ 'btn-primary' if dashboard_tipo == 'consultor' else 'btn-outline-primary' }}"
+          href="{{ url_for('dashboard_supervisor', secao=secao_atual, mes=mes_atual, ano=ano_atual) }}"
+        >
+          <i class="bi bi-people-fill"></i> Consultores
+        </a>
+        <a
+          class="btn {{ 'btn-primary' if dashboard_tipo == 'televendas' else 'btn-outline-primary' }}"
+          href="{{ url_for('dashboard_supervisor_televendas', secao=secao_atual, mes=mes_atual, ano=ano_atual) }}"
+        >
+          <i class="bi bi-headset"></i> Televendas/Construtoras
+        </a>
+      </div>
+      {% if secao_atual == 'fechamento' %}
+      <button type="button" class="btn btn-danger btn-sm" onclick="gerarPdfFechamento()">
+        <i class="bi bi-file-earmark-pdf-fill"></i> Gerar PDF
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</div>

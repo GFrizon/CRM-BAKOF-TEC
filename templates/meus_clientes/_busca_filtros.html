@@ -1,0 +1,52 @@
+<!-- ============================================================
+     BUSCA + FILTROS
+     ============================================================ -->
+<form method="get" action="{{ url_for('meus_clientes') }}" class="search-bar">
+  <div class="row g-2 align-items-start">
+    <input type="hidden" name="aba" value="{{ aba }}">
+    <input type="hidden" name="visao" value="{{ visao|default(request.args.get('visao', 'clientes')) }}">
+    <input type="hidden" name="agrupar_por" value="{{ agrupar_por|default(request.args.get('agrupar_por', ''), true) }}">
+    {% if dashboard_tipo %}
+    <input type="hidden" name="dashboard_tipo" value="{{ dashboard_tipo }}">
+    {% endif %}
+
+    <div class="col-md-7 col-lg-6">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control js-auto-submit-search" name="q"
+               placeholder="Buscar por nome, CNPJ, telefone ou representante..."
+               value="{{ request.args.get('q','') }}"
+               id="buscaRapida"
+               data-debounce-ms="380"
+               autocomplete="off">
+      </div>
+      <small id="buscaStatus" class="text-muted d-block mt-1 mb-0"></small>
+    </div>
+
+    {% if aba == 'contatados' %}
+    <div class="col-md-3 col-lg-3">
+      <select class="form-select js-debounce-submit-control" name="filtro" data-debounce-ms="240">
+        <option value="">Todos</option>
+        <option value="antigos"  {% if request.args.get('filtro') == 'antigos'  %}selected{% endif %}>+30 dias sem contato</option>
+        <option value="recentes" {% if request.args.get('filtro') == 'recentes' %}selected{% endif %}>Recentes (≤7 dias)</option>
+      </select>
+    </div>
+    {% endif %}
+
+    {% if aba == 'pendentes' or (aba not in ('oracle', 'inativos', 'proximos_inativacao') and not usar_vista_agrupada|default(false)) %}
+    <div class="col-md-3 col-lg-2 align-self-start">
+      <select id="filtroOrigem" class="form-select js-debounce-submit-control" name="origem" data-debounce-ms="220" onchange="filtrarPorOrigem()">
+        <option value="">Origem: todas</option>
+        <option value="manual" {% if request.args.get('origem') == 'manual' %}selected{% endif %}>Origem: manual</option>
+        <option value="importado_csv" {% if request.args.get('origem') == 'importado_csv' %}selected{% endif %}>Origem: importado</option>
+      </select>
+    </div>
+    {% endif %}
+
+    <div class="col-md-auto ms-md-auto text-md-end align-self-start">
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="bi bi-funnel me-1"></i> Aplicar filtros
+      </button>
+    </div>
+  </div>
+</form>

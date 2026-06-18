@@ -1,0 +1,35 @@
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label">Filtrar por Status:</label>
+                            <select class="form-select" id="statusFilter" onchange="aplicarFiltroTarefas('status', this.value)">
+                                <option value="">Todos os status</option>
+                                <option value="pendente" {% if status_atual == 'pendente' %}selected{% endif %}>Pendente</option>
+                                <option value="em_andamento" {% if status_atual == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
+                                <option value="concluida" {% if status_atual == 'concluida' %}selected{% endif %}>Concluída</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Filtrar por Prioridade:</label>
+                            <select class="form-select" id="prioridadeFilter" onchange="aplicarFiltroTarefas('prioridade', this.value)">
+                                <option value="">Todas as prioridades</option>
+                                <option value="baixa" {% if prioridade_atual == 'baixa' %}selected{% endif %}>Baixa</option>
+                                <option value="media" {% if prioridade_atual == 'media' %}selected{% endif %}>Média</option>
+                                <option value="alta" {% if prioridade_atual == 'alta' %}selected{% endif %}>Alta</option>
+                                <option value="urgente" {% if prioridade_atual == 'urgente' %}selected{% endif %}>Urgente</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-outline-secondary" onclick="window.location.href='{{ url_for('tarefas') }}'">
+                                <i class="bi bi-arrow-clockwise"></i> Limpar Filtros
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

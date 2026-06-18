@@ -1,0 +1,34 @@
+    <!-- Pipeline Kanban -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="row g-0">
+                        {% with titulo='Prospecção', icon='bi-search', icon_class='text-primary', badge_class='bg-primary', quantidade=stats.por_estagio.prospeccao, estagio='prospeccao', oportunidades=pipeline.prospeccao, border_end=true, card_border_class='', valor_badge_class='bg-success', prob_badge_class='bg-info', prob_display=none %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
+
+                        {% with titulo='Qualificação', icon='bi-person-check', icon_class='text-info', badge_class='bg-info', quantidade=stats.por_estagio.qualificacao, estagio='qualificacao', oportunidades=pipeline.qualificacao, border_end=true, card_border_class='', valor_badge_class='bg-success', prob_badge_class='bg-info', prob_display=none %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
+
+                        {% with titulo='Proposta', icon='bi-file-text', icon_class='text-warning', badge_class='bg-warning', quantidade=stats.por_estagio.proposta, estagio='proposta', oportunidades=pipeline.proposta, border_end=true, card_border_class='', valor_badge_class='bg-success', prob_badge_class='bg-info', prob_display=none %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
+
+                        {% with titulo='Negociação', icon='bi-handshake', icon_class='text-warning', badge_class='bg-warning', quantidade=stats.por_estagio.negociacao, estagio='negociacao', oportunidades=pipeline.negociacao, border_end=true, card_border_class='', valor_badge_class='bg-success', prob_badge_class='bg-info', prob_display=none %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
+
+                        {% with titulo='Ganho', icon='bi-trophy', icon_class='text-success', badge_class='bg-success', quantidade=stats.por_estagio.fechamento_ganho, estagio='fechamento_ganho', oportunidades=pipeline.fechamento_ganho, border_end=true, card_border_class='border-success', valor_badge_class='bg-success', prob_badge_class='bg-success', prob_display='100%' %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
+
+                        {% with titulo='Perda', icon='bi-x-circle', icon_class='text-danger', badge_class='bg-danger', quantidade=stats.por_estagio.fechamento_perda, estagio='fechamento_perda', oportunidades=pipeline.fechamento_perda, border_end=false, card_border_class='border-danger', valor_badge_class='bg-danger', prob_badge_class='bg-danger', prob_display='0%' %}
+                            {% include "oportunidades/_kanban_coluna.html" %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

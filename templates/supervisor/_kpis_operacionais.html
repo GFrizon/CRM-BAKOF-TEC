@@ -1,0 +1,125 @@
+{% macro stat_sparkline(item, color='#2563eb') -%}
+  {% if item %}
+  <div
+    class="stat-sparkline"
+    data-series='{{ item.serie|tojson }}'
+    data-previous='{{ item.anterior|tojson }}'
+    data-color="{{ color }}"
+  ></div>
+  <div class="stat-compare {{ item.classe or 'neutral' }}">{{ item.texto }}</div>
+  {% endif %}
+{%- endmacro %}
+
+<div class="row g-4 mb-4">
+  {% if dashboard_tipo == 'consultor' %}
+  <div class="col-md-3">
+    <a href="{{ url_for('meus_clientes', aba='oracle', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
+      <div class="stat-card stat-card-with-sparkline">
+        <div class="stat-icon cyan">
+          <i class="bi bi-database"></i>
+        </div>
+        <div class="stat-value">{{ total_sem_pedido_90_150 }}</div>
+        <div class="stat-label">Sem Pedido 90-150d</div>
+        {{ stat_sparkline((sparkline_cards or {}).get('sem_pedido'), '#0ea5e9') }}
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="{{ url_for('meus_clientes', aba='proximos_inativacao', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
+      <div class="stat-card stat-card-with-sparkline">
+        <div class="stat-icon yellow">
+          <i class="bi bi-exclamation-triangle"></i>
+        </div>
+        <div class="stat-value">{{ total_proximos_inativacao }}</div>
+        <div class="stat-label">Proximos Inativacao</div>
+        {{ stat_sparkline((sparkline_cards or {}).get('proximos'), '#d97706') }}
+        {% if total_carteira_risco > 0 %}
+        <small class="text-danger fw-semibold"><i class="bi bi-shield-exclamation"></i> {{ total_carteira_risco }} sem contato 30d</small>
+        {% else %}
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
+        {% endif %}
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
+      <div class="stat-card stat-card-with-sparkline">
+        <div class="stat-icon purple">
+          <i class="bi bi-person-slash"></i>
+        </div>
+        <div class="stat-value">{{ total_inativos }}</div>
+        <div class="stat-label">Lista Publica</div>
+        {{ stat_sparkline((sparkline_cards or {}).get('inativos'), '#7c3aed') }}
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="{{ url_for('meus_clientes', aba='construtoras', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
+      <div class="stat-card stat-card-with-sparkline">
+        <div class="stat-icon blue">
+          <i class="bi bi-buildings"></i>
+        </div>
+        <div class="stat-value">{{ total_construtoras }}</div>
+        <div class="stat-label">Construtoras</div>
+        {{ stat_sparkline((sparkline_cards or {}).get('construtoras'), '#3b82f6') }}
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card stat-card-with-sparkline {% if total_retorno_atrasado > 0 %}border-danger{% endif %}">
+      <a href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
+        <div class="stat-icon {% if total_retorno_atrasado > 0 %}red{% else %}orange{% endif %}">
+          <i class="bi bi-alarm"></i>
+        </div>
+        <div class="stat-value {% if total_retorno_atrasado > 0 %}text-danger{% endif %}">{{ total_retorno_atrasado }}</div>
+        <div class="stat-label">Retornos Atrasados</div>
+        {{ stat_sparkline((sparkline_cards or {}).get('retornos'), '#dc2626') }}
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver retornos</small>
+      </a>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-md-4">
+    <a href="{{ url_for('meus_clientes', aba='inativos', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
+      <div class="stat-card stat-card-with-sparkline">
+        <div class="stat-icon purple">
+          <i class="bi bi-person-slash"></i>
+        </div>
+        <div class="stat-value">{{ total_inativos }}</div>
+        <div class="stat-label">Lista Publica</div>
+        {{ stat_sparkline((sparkline_cards or {}).get('inativos'), '#7c3aed') }}
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{{ url_for('meus_clientes', aba='construtoras', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
+      <div class="stat-card stat-card-with-sparkline">
+        <div class="stat-icon blue">
+          <i class="bi bi-buildings"></i>
+        </div>
+        <div class="stat-value">{{ total_construtoras }}</div>
+        <div class="stat-label">Construtoras</div>
+        {{ stat_sparkline((sparkline_cards or {}).get('construtoras'), '#3b82f6') }}
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver lista</small>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card stat-card-with-sparkline {% if total_retorno_atrasado > 0 %}border-danger{% endif %}">
+      <a href="{{ url_for('meus_clientes', aba='retornar', dashboard_tipo=dashboard_tipo) }}" class="text-decoration-none">
+        <div class="stat-icon {% if total_retorno_atrasado > 0 %}red{% else %}orange{% endif %}">
+          <i class="bi bi-alarm"></i>
+        </div>
+        <div class="stat-value {% if total_retorno_atrasado > 0 %}text-danger{% endif %}">{{ total_retorno_atrasado }}</div>
+        <div class="stat-label">Retornos Atrasados</div>
+        {{ stat_sparkline((sparkline_cards or {}).get('retornos'), '#dc2626') }}
+        <small class="text-muted"><i class="bi bi-arrow-right-circle"></i> Ver retornos</small>
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>

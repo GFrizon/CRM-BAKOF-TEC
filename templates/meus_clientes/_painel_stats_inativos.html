@@ -1,0 +1,166 @@
+<!-- ============================================================
+     PAINEL DE ESTATISTICAS INATIVOS
+     ============================================================ -->
+{% if aba == 'inativos' %}
+<div class="panel-card">
+  <div class="panel-header">
+    <i class="bi bi-person-slash"></i>
+    <span>Estatísticas - Lista Pública 181 dias a 3 anos</span>
+    <small><i class="bi bi-telephone"></i> Area Televendas</small>
+  </div>
+  <div class="panel-body">
+    <div class="mb-3">
+      <span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:.72rem;">
+        Janela atual: 181 dias a 3 anos sem pedido
+      </span>
+    </div>
+    <div class="movement-card mb-3">
+      <div class="movement-card-header">
+        <i class="bi bi-person-slash"></i>
+        <span class="movement-card-title">Movimento do dia</span>
+        <span class="badge-entrada">+{{ movimento_inativos_hoje.entraram if movimento_inativos_hoje else 0 }} entraram</span>
+        <span class="badge-saida">-{{ movimento_inativos_hoje.sairam if movimento_inativos_hoje else 0 }} sairam</span>
+        <span class="badge" style="background:#e0f2fe;color:#0c4a6e;border:1px solid #bae6fd;font-size:.72rem;">
+          Total: {{ movimento_inativos_hoje.total if movimento_inativos_hoje else 0 }}
+        </span>
+        <button
+          class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1 js-collapse-toggle"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#movimentoInativosDetalheTv"
+          aria-expanded="false"
+          aria-controls="movimentoInativosDetalheTv"
+          data-text-collapsed="Ver movimento do dia"
+          data-text-expanded="Fechar movimento"
+        >
+          Ver movimento do dia
+        </button>
+        {% if movimento_inativos_hoje and movimento_inativos_hoje.atualizado_em %}
+        <small class="text-muted ms-auto">Atualizado {{ movimento_inativos_hoje.atualizado_em.strftime('%d/%m %H:%M') }}</small>
+        {% endif %}
+      </div>
+      <div class="collapse" id="movimentoInativosDetalheTv">
+        <div class="movement-card-body">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <div class="movement-list-title text-success"><i class="bi bi-arrow-down-circle-fill"></i> Entraram ({{ (movimento_inativos_detalhes.entraram or [])|length }})</div>
+              <div class="movement-list">
+                {% for c in movimento_inativos_detalhes.entraram or [] %}
+                <div class="movement-item">
+                  <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente }})</span></span>
+                </div>
+                {% else %}
+                <div class="movement-empty">Sem entradas hoje.</div>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="movement-list-title text-danger"><i class="bi bi-arrow-up-circle-fill"></i> Sairam ({{ (movimento_inativos_detalhes.sairam or [])|length }})</div>
+              <div class="movement-list">
+                {% for c in movimento_inativos_detalhes.sairam or [] %}
+                <div class="movement-item">
+                  <span class="movement-item-name">{{ c.cliente or '-' }} <span class="text-muted">({{ c.cd_cliente }})</span></span>
+                </div>
+                {% else %}
+                <div class="movement-empty">Sem saidas hoje.</div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row g-4">
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#dcfce7;"><i class="bi bi-check-circle" style="color:#16a34a;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#16a34a;">Liberados</div>
+            <div class="oracle-stat-val">{{ stats_inativos.liberados or 0 }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#fee2e2;"><i class="bi bi-exclamation-triangle" style="color:#dc2626;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#dc2626;">Inadimplentes</div>
+            <div class="oracle-stat-val">{{ stats_inativos.inadimplentes or 0 }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:var(--brand-50);"><i class="bi bi-currency-dollar" style="color:var(--brand-600);"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:var(--brand-600);">Ticket Medio</div>
+            <div class="oracle-stat-val" style="font-size:.85rem;">{{ stats_inativos.ticket_medio | formatar_dinheiro }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#fef9c3;"><i class="bi bi-calendar-x" style="color:#b45309;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#b45309;">Media Dias</div>
+            <div class="oracle-stat-val">{{ "%.0f"|format(stats_inativos.dias_sem_pedido or 0) }}d</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-4">
+      <div class="dist-bar">
+        <div class="segment" style="background:#16a34a;width:{{ stats_inativos.perc_liberados or 0 }}%;">
+          {{ stats_inativos.perc_liberados or 0 }}%
+        </div>
+        <div class="segment" style="background:#dc2626;width:{{ stats_inativos.perc_inadimplentes or 0 }}%;">
+          {{ stats_inativos.perc_inadimplentes or 0 }}%
+        </div>
+        <div class="segment" style="background:#94a3b8;width:{{ stats_inativos.perc_sem_conceito or 0 }}%;">
+          {{ stats_inativos.perc_sem_conceito or 0 }}%
+        </div>
+      </div>
+      <div class="d-flex gap-4 mt-2" style="font-size:.72rem;color:var(--text-2);">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#16a34a;margin-right:4px;"></span>Liberados</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#dc2626;margin-right:4px;"></span>Inadimplentes</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#94a3b8;margin-right:4px;"></span>Sem Conceito</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if aba == 'inativos' and stats_televendas %}
+<div class="panel-card mb-3">
+  <div class="panel-header">
+    <i class="bi bi-people"></i>
+    <span>Produtividade Televendas (Hoje/7 dias/30 dias)</span>
+  </div>
+  <div class="panel-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th class="px-3 py-2">Televendas</th>
+            <th class="px-3 py-2 text-center">Hoje</th>
+            <th class="px-3 py-2 text-center">7 dias</th>
+            <th class="px-3 py-2 text-center">30 dias</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in stats_televendas %}
+          <tr {% if current_user.id == t.usuario_id %}style="background:rgba(37,99,235,.06);" {% endif %}>
+            <td class="px-3 py-2 fw-semibold">{{ t.nome }}</td>
+            <td class="px-3 py-2 text-center"><span class="badge-count">{{ t.ligacoes_hoje }}</span></td>
+            <td class="px-3 py-2 text-center">{{ t.ligacoes_semana }}</td>
+            <td class="px-3 py-2 text-center">{{ t.ligacoes_mes }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+

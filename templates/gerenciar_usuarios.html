@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}Gerenciar Usuários{% endblock %}
+{% block content %}
+
+{% include "gerenciar_usuarios/_header.html" %}
+
+{% include "gerenciar_usuarios/_tabela.html" %}
+
+{% include "gerenciar_usuarios/_modais.html" %}
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% include "gerenciar_usuarios/_scripts.html" %}
+{% endblock %}

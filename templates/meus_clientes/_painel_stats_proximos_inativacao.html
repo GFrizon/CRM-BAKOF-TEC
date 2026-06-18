@@ -1,0 +1,56 @@
+<!-- ============================================================
+     PAINEL DE ESTATÍSTICAS PROXIMOS INATIVAÇÃO
+     ============================================================ -->
+{% if aba == 'proximos_inativacao' and stats_proximos is defined and stats_proximos %}
+<div class="panel-card mt-3">
+  <div class="panel-header" style="background:linear-gradient(135deg,#b45309,#d97706);">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span>Clientes próximos de inativação – 151 a 180 dias sem pedido</span>
+    <span class="badge ms-auto" style="background:rgba(255,255,255,.25);color:#fff;font-weight:600;">{{ total_proximos }} clientes</span>
+  </div>
+  <div class="panel-body">
+    <div class="row g-4">
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#dcfce7;"><i class="bi bi-check-circle" style="color:#16a34a;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#16a34a;">Liberados</div>
+            <div class="oracle-stat-val">{{ stats_proximos.liberados }}</div>
+            <div class="oracle-stat-sub">{{ stats_proximos.perc_liberados }}%</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#fee2e2;"><i class="bi bi-exclamation-triangle" style="color:#dc2626;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#dc2626;">Inadimplentes</div>
+            <div class="oracle-stat-val">{{ stats_proximos.inadimplentes }}</div>
+            <div class="oracle-stat-sub">{{ stats_proximos.perc_inadimplentes }}%</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:var(--brand-50);"><i class="bi bi-currency-dollar" style="color:var(--brand-600);"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:var(--brand-600);">Ticket Médio</div>
+            <div class="oracle-stat-val" style="font-size:.9rem;">{{ stats_proximos.ticket_medio | formatar_dinheiro }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="oracle-stat">
+          <div class="oracle-stat-icon" style="background:#fef9c3;"><i class="bi bi-clock-history" style="color:#b45309;"></i></div>
+          <div>
+            <div class="oracle-stat-label" style="color:#b45309;">Dias sem Pedido</div>
+            <div class="oracle-stat-val">{{ stats_proximos.dias_sem_pedido }}d</div>
+            <div class="oracle-stat-sub text-danger">Inativa em &lt;{{ 181 - stats_proximos.dias_sem_pedido }}d avg</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
