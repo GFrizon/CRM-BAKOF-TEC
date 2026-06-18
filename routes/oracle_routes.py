@@ -243,6 +243,7 @@ def register_oracle_routes(app):
                 "cd_centralizado": centralizadora.get("cd_centralizado"),
                 "nome_centralizadora": centralizadora.get("nome_centralizadora"),
                 "pagamento_medio_dias": pagamento_medio_dias,
+                "origem": origem_cliente,
             }
         else:
             dt_pedido = ultimo_pedido_lista.get("dt_pedido") or detalhes_oracle.get("dt_pedido")
@@ -268,6 +269,7 @@ def register_oracle_routes(app):
                 "cd_centralizado": centralizadora.get("cd_centralizado"),
                 "nome_centralizadora": centralizadora.get("nome_centralizadora"),
                 "pagamento_medio_dias": pagamento_medio_dias,
+                "origem": "oracle",
             }
 
         return jsonify({
