@@ -2852,13 +2852,40 @@ async function salvarEdicaoClienteManual(event) {
     if (j.sucesso) {
       mostrarToastMensagem('Cliente atualizado com sucesso!', 'success');
       if (modalEditarClienteManual) modalEditarClienteManual.hide();
-      setTimeout(() => window.location.reload(), 800);
+      // Atualiza o cliente na lista sem recarregar a pagina
+      atualizarClienteNaListaAposEdicao(id, nome, cnpj, telefone, telefone2);
     } else {
       mostrarToastMensagem(j.mensagem || 'Erro ao atualizar cliente', 'error');
     }
   } catch (e) {
     mostrarToastMensagem('Erro de conexao: ' + e.message, 'error');
   }
+}
+
+// Atualiza os dados do cliente na lista/tabela apos edicao
+function atualizarClienteNaListaAposEdicao(id, nome, cnpj, telefone, telefone2) {
+  // Procura o cliente na tabela/lista pelo ID
+  const linhas = document.querySelectorAll(`tr[data-cliente-id="${id}"], [data-cliente-id="${id}"]`);
+  linhas.forEach(el => {
+    // Atualiza nome
+    const nomeEl = el.querySelector('.cliente-nome, td:nth-child(2) .fw-medium, .nome-cliente');
+    if (nomeEl) nomeEl.textContent = nome;
+    // Atualiza CNPJ se existir na tela
+    const cnpjEl = el.querySelector('.cliente-cnpj, .cnpj-cliente');
+    if (cnpjEl && cnpj) cnpjEl.textContent = cnpj;
+    // Atualiza telefone
+    const telEl = el.querySelector('.cliente-telefone, .telefone-cliente');
+    if (telEl) telEl.textContent = telefone;
+  });
+  // Tambem atualiza se estiver no modal de detalhes
+  if (window.clienteDetalhesAtual === parseInt(id)) {
+    window.clienteDetalhesDados.nome = nome;
+    window.clienteDetalhesDados.cnpj = cnpj;
+    window.clienteDetalhesDados.telefone = telefone;
+    window.clienteDetalhesDados.telefone2 = telefone2;
+  }
+  // Se quiser sincronizar com Oracle apos trocar CNPJ, descomente:
+  // sincronizarClienteOracleAposEdicao(id);
 }
 
 // Funcao para editar cliente manual desde o modal de detalhes
